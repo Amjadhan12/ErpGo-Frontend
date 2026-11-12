@@ -1,16 +1,25 @@
-# React + Vite
+# ERPGO Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The current frontend scope is the ERPGO sign-in experience.
 
-Currently, two official plugins are available:
+## API configuration
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Set `VITE_API_URL` to the Laravel backend origin before starting or building the frontend, for example:
 
-## React Compiler
+```env
+VITE_API_URL=http://localhost:8000
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The frontend sends requests to the existing `/api/auth/login`, `/api/auth/user`, and `/api/auth/logout` endpoints. A URL ending in `/api` is also normalized to the backend origin. If `VITE_API_URL` is empty, the frontend uses the current origin; configure a same-origin proxy in that case.
 
-## Expanding the ESLint configuration
+The returned Sanctum bearer token is kept in `sessionStorage` for the current browser tab. Settings are requested only after a Secretary has authenticated, because the backend protects `/api/settings` with the Secretary role. Its `image_path` is resolved through Laravel's public `/storage/` URL; all other roles use the ERPGO fallback mark.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Role destinations are mapped for Secretary, Customer, and Supplier sign-ins, but portal pages are intentionally not part of this frontend scope yet.
+
+## Checks
+
+```sh
+npm run typecheck
+npm run lint
+npm run build
+```
