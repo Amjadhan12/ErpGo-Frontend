@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import {
   ArrowRight,
   Bird,
@@ -13,12 +13,21 @@ import {
   Sprout,
 } from 'lucide-react'
 import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
+import {
   AuthProvider,
   getSignInError,
   portalLabels,
   useAuth,
   type UserRole,
 } from '@/auth/AuthContext'
+import SecretaryLayout from '@/app/SecretaryLayout'
 
 function BrandMark({ imageUrl, compact = false }: { imageUrl?: string; compact?: boolean }) {
   const [imageFailed, setImageFailed] = useState(false)
@@ -42,8 +51,29 @@ function RoleLabel({ role }: { role: UserRole }) {
   )
 }
 
+function getRouteNotice(value: unknown): {
+  secretaryAccessDenied: boolean
+  logoutWarning: boolean
+} {
+  if (typeof value !== 'object' || value === null) {
+    return {
+      secretaryAccessDenied: false,
+      logoutWarning: false,
+    }
+  }
+
+  const state = value as Record<string, unknown>
+
+  return {
+    secretaryAccessDenied: state.secretaryAccessDenied === true,
+    logoutWarning: state.logoutWarning === true,
+  }
+}
+
 function LoginExperience() {
   const { user, isCheckingSession, sessionNotice, companyBranding, signIn, signOut } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -53,6 +83,13 @@ function LoginExperience() {
     Partial<Record<'email' | 'password', string>>
   >({})
   const [signOutError, setSignOutError] = useState<string | null>(null)
+  const routeNotice = getRouteNotice(location.state)
+
+  useEffect(() => {
+    if (!isCheckingSession && user?.role === 'Secretary') {
+      navigate('/secretary', { replace: true, state: null })
+    }
+  }, [isCheckingSession, navigate, user])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -81,6 +118,7 @@ function LoginExperience() {
       await signOut()
       setEmail('')
       setPassword('')
+      navigate('/', { replace: true, state: null })
     } catch {
       setSignOutError('Your local session was cleared, but the server could not confirm sign-out.')
     }
@@ -150,6 +188,16 @@ function LoginExperience() {
                 You’re signed in to ERPGO. Your account is recognized for the
                 {' '}{portalLabels[user.role]}.
               </p>
+              {routeNotice.secretaryAccessDenied && (
+                <p className="form-alert form-alert--error" role="alert">
+                  Secretary access is restricted to Secretary accounts.
+                </p>
+              )}
+              {routeNotice.logoutWarning && (
+                <p className="form-alert form-alert--notice" role="status">
+                  Your local session ended, but the server could not confirm sign-out.
+                </p>
+              )}
               <RoleLabel role={user.role} />
               {signOutError && <p className="form-alert form-alert--error" role="alert">{signOutError}</p>}
               <button className="secondary-button" type="button" onClick={handleSignOut}>
@@ -164,6 +212,11 @@ function LoginExperience() {
                 <p>Use your work email and password to continue.</p>
               </div>
 
+              {routeNotice.logoutWarning && (
+                <div className="form-alert form-alert--notice" role="status">
+                  Your local session ended, but the server could not confirm sign-out.
+                </div>
+              )}
               {sessionNotice && (
                 <div className="form-alert form-alert--notice" role="status">
                   {sessionNotice}
@@ -273,10 +326,39 @@ function LoginExperience() {
   )
 }
 
+function ProtectedSecretaryRoute() {
+  const { user, isCheckingSession } = useAuth()
+
+  if (isCheckingSession) {
+    return (
+      <div className="secretary-route-loading" role="status">
+        <span className="loading-spinner" />
+        <span>Checking your secure session…</span>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Navigate to="/" replace />
+  }
+
+  if (user.role !== 'Secretary') {
+    return <Navigate to="/" replace state={{ secretaryAccessDenied: true }} />
+  }
+
+  return <SecretaryLayout />
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <LoginExperience />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<LoginExperience />} />
+          <Route path="/secretary" element={<ProtectedSecretaryRoute />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
