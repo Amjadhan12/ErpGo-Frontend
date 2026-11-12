@@ -28,6 +28,8 @@ import {
   type UserRole,
 } from '@/auth/AuthContext'
 import SecretaryLayout from '@/app/SecretaryLayout'
+import SecretaryOverview from '@/app/SecretaryOverview'
+import PurchaseList from '@/app/PurchaseList'
 
 function BrandMark({ imageUrl, compact = false }: { imageUrl?: string; compact?: boolean }) {
   const [imageFailed, setImageFailed] = useState(false)
@@ -355,7 +357,10 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<LoginExperience />} />
-          <Route path="/secretary" element={<ProtectedSecretaryRoute />} />
+          <Route path="/secretary" element={<ProtectedSecretaryRoute />}>
+            <Route index element={<SecretaryOverview />} />
+            <Route path="purchases" element={<PurchaseList />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

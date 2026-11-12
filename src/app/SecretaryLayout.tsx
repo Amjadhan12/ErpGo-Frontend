@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowDownUp,
   BarChart3,
@@ -25,12 +25,10 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/auth/AuthContext'
-import SecretaryOverview from '@/app/SecretaryOverview'
 
 interface MenuItem {
   label: string
   icon: LucideIcon
-  active?: boolean
 }
 
 interface MenuGroup {
@@ -41,7 +39,7 @@ interface MenuGroup {
 const menuGroups: MenuGroup[] = [
   {
     label: 'Workspace',
-    items: [{ label: 'Dashboard', icon: LayoutDashboard, active: true }],
+    items: [{ label: 'Dashboard', icon: LayoutDashboard }],
   },
   {
     label: 'Partners',
@@ -134,6 +132,8 @@ function SecretarySidebar({
   title?: string
   logoUrl?: string
 }) {
+  const location = useLocation()
+
   return (
     <>
       {mobileOpen && (
@@ -165,16 +165,24 @@ function SecretarySidebar({
           {menuGroups.map((group) => (
             <div className="secretary-navigation__group" key={group.label}>
               <p className="secretary-navigation__heading">{group.label}</p>
-              {group.items.map(({ label, icon: Icon, active }) => {
+              {group.items.map(({ label, icon: Icon }) => {
+                const route = label === 'Dashboard'
+                  ? '/secretary'
+                  : label === 'Purchases'
+                    ? '/secretary/purchases'
+                    : null
+                const isActive = route === '/secretary'
+                  ? location.pathname === route
+                  : route !== null && location.pathname.startsWith(route)
                 const className =
-                  `secretary-navigation__item${active ? ' secretary-navigation__item--active' : ''}`
+                  `secretary-navigation__item${isActive ? ' secretary-navigation__item--active' : ''}`
 
-                if (active) {
+                if (route) {
                   return (
                     <NavLink
                       className={className}
-                      to="/secretary"
-                      end
+                      to={route}
+                      end={label === 'Dashboard'}
                       key={label}
                       aria-label={label}
                       title={collapsed ? label : undefined}
@@ -219,6 +227,7 @@ function SecretarySidebar({
 
 export default function SecretaryLayout() {
   const { user, companyBranding, signOut } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -263,6 +272,7 @@ export default function SecretaryLayout() {
   }
 
   const companyTitle = companyBranding?.titleEn || 'ERPGO'
+  const pageTitle = location.pathname.startsWith('/secretary/purchases') ? 'Purchases' : 'Overview'
 
   return (
     <div className={`secretary-shell${collapsed ? ' secretary-shell--collapsed' : ''}`}>
@@ -298,7 +308,7 @@ export default function SecretaryLayout() {
             <div className="secretary-breadcrumb">
               <span>Workspace</span>
               <ChevronDown size={14} aria-hidden="true" />
-              <strong>Overview</strong>
+              <strong>{pageTitle}</strong>
             </div>
           </div>
 
@@ -325,7 +335,7 @@ export default function SecretaryLayout() {
           </div>
         </header>
         <main className="secretary-content">
-          <SecretaryOverview />
+          <Outlet />
         </main>
 
         <footer className="secretary-footer">ERPGO Management System</footer>
