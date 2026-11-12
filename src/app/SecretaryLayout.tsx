@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/auth/AuthContext'
+import SecretaryOverview from '@/app/SecretaryOverview'
 
 interface MenuItem {
   label: string
@@ -297,7 +298,7 @@ export default function SecretaryLayout() {
             <div className="secretary-breadcrumb">
               <span>Workspace</span>
               <ChevronDown size={14} aria-hidden="true" />
-              <strong>Dashboard</strong>
+              <strong>Overview</strong>
             </div>
           </div>
 
@@ -324,14 +325,7 @@ export default function SecretaryLayout() {
           </div>
         </header>
         <main className="secretary-content">
-          <section className="secretary-welcome" aria-labelledby="secretary-welcome-title">
-            <div className="secretary-welcome__icon" aria-hidden="true">
-              <LayoutDashboard size={21} strokeWidth={1.8} />
-            </div>
-            <p className="secretary-welcome__eyebrow">YOUR WORKSPACE</p>
-            <h1 id="secretary-welcome-title">Welcome to ERPGO</h1>
-            <p>Manage your poultry business operations from one place.</p>
-          </section>
+          <SecretaryOverview />
         </main>
 
         <footer className="secretary-footer">ERPGO Management System</footer>
