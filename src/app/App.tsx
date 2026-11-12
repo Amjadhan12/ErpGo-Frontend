@@ -30,6 +30,7 @@ import {
 import SecretaryLayout from '@/app/SecretaryLayout'
 import SecretaryOverview from '@/app/SecretaryOverview'
 import PurchaseList from '@/app/PurchaseList'
+import CreatePurchase from '@/app/CreatePurchase'
 
 function BrandMark({ imageUrl, compact = false }: { imageUrl?: string; compact?: boolean }) {
   const [imageFailed, setImageFailed] = useState(false)
@@ -360,6 +361,7 @@ export default function App() {
           <Route path="/secretary" element={<ProtectedSecretaryRoute />}>
             <Route index element={<SecretaryOverview />} />
             <Route path="purchases" element={<PurchaseList />} />
+            <Route path="purchases/create" element={<CreatePurchase />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

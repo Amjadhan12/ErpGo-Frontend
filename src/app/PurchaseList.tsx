@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
-import { AlertCircle, ChevronLeft, ChevronRight, Eye, RefreshCw, X } from 'lucide-react'
+import { AlertCircle, ChevronLeft, ChevronRight, Eye, Plus, RefreshCw, X } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
 
 interface PurchaseItem {
@@ -162,12 +163,33 @@ function statusLabel(value: string): string {
 }
 
 export default function PurchaseList() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [page, setPage] = useState<PurchasePage | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [retry, setRetry] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (
+      typeof location.state === 'object' &&
+      location.state !== null &&
+      'purchaseCreated' in location.state &&
+      location.state.purchaseCreated === true
+    ) {
+      setSuccessMessage('Purchase created successfully.')
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location.pathname, location.state, navigate])
+
+  useEffect(() => {
+    if (!successMessage) return
+    const timer = window.setTimeout(() => setSuccessMessage(null), 6000)
+    return () => window.clearTimeout(timer)
+  }, [successMessage])
 
   const loadPurchases = useCallback(async (signal: AbortSignal) => {
     setIsLoading(true)
@@ -223,9 +245,18 @@ export default function PurchaseList() {
           <RefreshCw size={16} className={isLoading ? 'overview-refresh__spinning' : ''} aria-hidden="true" />
           <span>Refresh</span>
         </button>
+        <button
+          className="purchase-create-button"
+          type="button"
+          onClick={() => navigate('/secretary/purchases/create')}
+        >
+          <Plus size={16} aria-hidden="true" />
+          <span>Create Purchase</span>
+        </button>
       </header>
 
       <section className="purchases-panel" aria-label="Purchase list">
+        {successMessage && <p className="purchase-success-message" role="status">{successMessage}</p>}
         {isLoading ? (
           <div className="purchases-state" role="status">
             <span className="loading-spinner" />

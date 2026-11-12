@@ -272,7 +272,11 @@ export default function SecretaryLayout() {
   }
 
   const companyTitle = companyBranding?.titleEn || 'ERPGO'
-  const pageTitle = location.pathname.startsWith('/secretary/purchases') ? 'Purchases' : 'Overview'
+  const pageTitle = location.pathname === '/secretary/purchases/create'
+    ? 'Create Purchase'
+    : location.pathname.startsWith('/secretary/purchases')
+      ? 'Purchases'
+      : 'Overview'
 
   return (
     <div className={`secretary-shell${collapsed ? ' secretary-shell--collapsed' : ''}`}>
