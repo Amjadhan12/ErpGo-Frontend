@@ -7,6 +7,7 @@ import {
   Boxes,
   CircleAlert,
   RefreshCw,
+  ShoppingCart,
   ShoppingBasket,
   TrendingUp,
   Wallet,
@@ -52,11 +53,18 @@ interface ProfitLossSummary {
   netProfit: number
 }
 
+interface PurchaseSummary {
+  totalPurchaseCount: number
+  grossPurchases: AmountRow[]
+  purchaseReturnsNote: string
+}
+
 interface OverviewData {
   financial: Resource<FinancialSummary>
   accounts: Resource<FinancialAccountBalance[]>
   inventory: Resource<InventorySummary>
   profitLoss: Resource<ProfitLossSummary>
+  purchases: Resource<PurchaseSummary>
 }
 
 interface AmountRow {
@@ -70,6 +78,8 @@ interface SummaryCardProps {
   color: 'green' | 'amber' | 'blue' | 'violet'
   resource: Resource<AmountRow[]>
   emptyMessage: string
+  totalCount?: number
+  note?: string
 }
 
 const initialOverview: OverviewData = {
@@ -77,6 +87,7 @@ const initialOverview: OverviewData = {
   accounts: { status: 'loading' },
   inventory: { status: 'loading' },
   profitLoss: { status: 'loading' },
+  purchases: { status: 'loading' },
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -192,6 +203,56 @@ function parseProfitLoss(value: unknown): ProfitLossSummary {
   }
 }
 
+function parsePurchaseSummary(value: unknown): PurchaseSummary {
+  if (!isRecord(value) || !isRecord(value.data)) {
+    throw new Error('The purchase summary response was not in the expected format.')
+  }
+
+  const {
+    total_purchase_count,
+    gross_purchases_by_currency,
+    purchase_returns_included,
+    purchase_returns_note,
+  } = value.data
+
+  if (
+    !Array.isArray(gross_purchases_by_currency) ||
+    typeof purchase_returns_included !== 'boolean' ||
+    typeof purchase_returns_note !== 'string'
+  ) {
+    throw new Error('The purchase summary response did not include currency totals and its returns note.')
+  }
+
+  const totalPurchaseCount = parseAmount(total_purchase_count, 'purchase count')
+  if (!Number.isInteger(totalPurchaseCount) || totalPurchaseCount < 0) {
+    throw new Error('The server returned an invalid purchase count.')
+  }
+
+  return {
+    totalPurchaseCount,
+    grossPurchases: gross_purchases_by_currency.map((group: unknown) => {
+      if (
+        !isRecord(group) ||
+        typeof group.currency_code !== 'string' ||
+        !Number.isInteger(parseAmount(group.currency_id, 'currency ID'))
+      ) {
+        throw new Error('The purchase summary included an invalid currency group.')
+      }
+
+      const purchaseCount = parseAmount(group.purchase_count, `${group.currency_code} purchase count`)
+      if (!Number.isInteger(purchaseCount) || purchaseCount < 0) {
+        throw new Error(`The server returned an invalid ${group.currency_code} purchase count.`)
+      }
+
+      return {
+        currency: group.currency_code,
+        amount: parseAmount(group.gross_purchase_amount, `${group.currency_code} purchase amount`),
+      }
+    }),
+    purchaseReturnsNote: purchase_returns_note,
+  }
+}
+
 function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const responseData: unknown = error.response?.data
@@ -228,6 +289,12 @@ function formatNumber(amount: number): string {
   }).format(amount)
 }
 
+function formatInteger(amount: number): string {
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
 function formatCurrencyAmount(amount: number, currency: string): string {
   return `${formatNumber(amount)} ${currency}`
 }
@@ -258,6 +325,8 @@ function SummaryCard({
   color,
   resource,
   emptyMessage,
+  totalCount,
+  note,
 }: SummaryCardProps) {
   return (
     <article className="overview-card">
@@ -271,17 +340,28 @@ function SummaryCard({
         <p className="overview-card__message overview-card__message--error" role="alert">
           {resource.message}
         </p>
-      ) : resource.data.length === 0 ? (
-        <p className="overview-card__message">{emptyMessage}</p>
       ) : (
-        <ul className="overview-amount-list">
-          {resource.data.map(({ currency, amount }) => (
-            <li key={currency}>
-              <span>{currency}</span>
-              <strong>{formatCurrencyAmount(amount, currency)}</strong>
-            </li>
-          ))}
-        </ul>
+        <>
+          {totalCount !== undefined && (
+            <p className="overview-card__total-count">
+              <span>Total purchases</span>
+              <strong>{formatInteger(totalCount)}</strong>
+            </p>
+          )}
+          {resource.data.length === 0 ? (
+            <p className="overview-card__message">{emptyMessage}</p>
+          ) : (
+            <ul className="overview-amount-list">
+              {resource.data.map(({ currency, amount }, index) => (
+                <li key={`${currency}-${index}`}>
+                  <span>{currency}</span>
+                  <strong>{formatCurrencyAmount(amount, currency)}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+          {note && <p className="overview-card__note">{note}</p>}
+        </>
       )}
     </article>
   )
@@ -332,14 +412,15 @@ export default function SecretaryOverview() {
     setIsRefreshing(true)
     setOverview(initialOverview)
 
-    const [financial, accounts, inventory, profitLoss] = await Promise.all([
+    const [financial, accounts, inventory, profitLoss, purchases] = await Promise.all([
       loadResource('/api/reports/financial-summary', parseFinancialSummary),
       loadResource('/api/financial-accounts/balances', parseAccountBalances),
       loadResource('/api/reports/inventory', parseInventorySummary),
       loadResource('/api/reports/profit-loss', parseProfitLoss),
+      loadResource('/api/reports/purchase-summary', parsePurchaseSummary),
     ])
 
-    setOverview({ financial, accounts, inventory, profitLoss })
+    setOverview({ financial, accounts, inventory, profitLoss, purchases })
     setIsRefreshing(false)
   }, [])
 
@@ -371,9 +452,17 @@ export default function SecretaryOverview() {
       : overview.accounts,
     [overview.accounts],
   )
+  const purchaseAmounts = useMemo<Resource<AmountRow[]>>(
+    () => overview.purchases.status === 'success'
+      ? { status: 'success', data: overview.purchases.data.grossPurchases }
+      : overview.purchases,
+    [overview.purchases],
+  )
 
   const inventory = overview.inventory.status === 'success' ? overview.inventory.data : null
   const profitLoss = overview.profitLoss.status === 'success' ? overview.profitLoss.data : null
+  const purchaseSummary =
+    overview.purchases.status === 'success' ? overview.purchases.data : null
 
   return (
     <div className="overview-page">
@@ -430,6 +519,15 @@ export default function SecretaryOverview() {
             color="violet"
             resource={bankBalance}
             emptyMessage="No accounts categorized as bank."
+          />
+          <SummaryCard
+            title="Total Purchases"
+            icon={ShoppingCart}
+            color="green"
+            resource={purchaseAmounts}
+            emptyMessage="No posted purchases recorded."
+            totalCount={purchaseSummary?.totalPurchaseCount}
+            note={purchaseSummary?.purchaseReturnsNote}
           />
         </div>
       </section>
@@ -512,18 +610,6 @@ export default function SecretaryOverview() {
           )}
         </ReportPanel>
 
-        <section className="overview-panel overview-panel--unavailable">
-          <div className="overview-panel__header">
-            <span className="overview-panel__icon"><CircleAlert size={18} aria-hidden="true" /></span>
-            <div>
-              <h2>Purchases</h2>
-              <p>No currency-grouped purchase summary is available.</p>
-            </div>
-          </div>
-          <div className="overview-empty">
-            <span>The existing purchases endpoint returns only a paginated list, not a complete total.</span>
-          </div>
-        </section>
       </section>
 
       <p className="overview-footnote">

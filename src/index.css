@@ -1641,7 +1641,7 @@ input:focus-visible {
 
 .overview-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 13px;
 }
 
@@ -1730,6 +1730,30 @@ input:focus-visible {
 
 .overview-card__message--error {
   color: #a64c3c;
+}
+
+.overview-card__total-count {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 9px;
+  color: #919b93;
+  font-size: 9px;
+}
+
+.overview-card__total-count strong {
+  color: #30483a;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 690;
+}
+
+.overview-card__note {
+  margin: 9px 0 0;
+  color: #929c94;
+  font-size: 8px;
+  line-height: 1.5;
 }
 
 .overview-skeleton {
@@ -1931,7 +1955,7 @@ input:focus-visible {
 
 @media (max-width: 1100px) {
   .overview-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -1964,6 +1988,7 @@ input:focus-visible {
   }
 
   .overview-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
 
