@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowDownUp,
+  Banknote,
   BarChart3,
   Boxes,
   BriefcaseBusiness,
@@ -71,6 +72,7 @@ const menuGroups: MenuGroup[] = [
     label: 'Finance & tools',
     items: [
       { label: 'Financial Accounts', icon: Building2 },
+      { label: 'Supplier Payments', icon: Banknote },
       { label: 'Cash Book', icon: Wallet },
       { label: 'Reports', icon: BarChart3 },
       { label: 'Chat', icon: MessageCircle },
@@ -170,6 +172,8 @@ function SecretarySidebar({
                   ? '/secretary'
                   : label === 'Purchases'
                     ? '/secretary/purchases'
+                    : label === 'Supplier Payments'
+                      ? '/secretary/supplier-payments'
                     : null
                 const isActive = route === '/secretary'
                   ? location.pathname === route
@@ -276,6 +280,8 @@ export default function SecretaryLayout() {
     ? 'Create Purchase'
     : location.pathname.startsWith('/secretary/purchases')
       ? 'Purchases'
+      : location.pathname.startsWith('/secretary/supplier-payments')
+        ? 'Supplier Payments'
       : 'Overview'
 
   return (

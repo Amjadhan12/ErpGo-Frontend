@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import axios from 'axios'
-import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
 
@@ -547,26 +546,22 @@ export default function CreatePurchase() {
     <div className="purchases-page create-purchase-page">
       <header className="purchases-heading">
         <div>
-          <p className="overview-eyebrow">OPERATIONS</p>
           <h1>Create Purchase</h1>
-          <p className="overview-heading__description">Record a supplier purchase and its items.</p>
         </div>
         <button className="overview-refresh" type="button" onClick={() => navigate('/secretary/purchases')}>
-          <ArrowLeft size={16} aria-hidden="true" />
-          <span>Back to purchases</span>
+          Cancel
         </button>
       </header>
 
       <form className="create-purchase-form" onSubmit={(event) => void submit(event)} noValidate>
         {generalError && <p className="create-purchase-alert" role="alert">{generalError}</p>}
+        <div className="create-purchase-main">
+          <section className="purchase-form-section">
+            <header className="purchase-form-section__heading">
+              <h2>Purchase Information</h2>
+            </header>
 
-        <section className="purchase-form-section">
-          <header className="purchase-form-section__heading">
-            <span>01</span>
-            <div><h2>Purchase information</h2><p>Enter the purchase reference and supplier details.</p></div>
-          </header>
-
-          <div className="purchase-form-grid">
+            <div className="purchase-form-grid">
             <label className="purchase-field">
               <span>Purchase Number <i>*</i></span>
               <input
@@ -590,7 +585,7 @@ export default function CreatePurchase() {
               {errors.purchaseDate && <small className="purchase-field__error">{errors.purchaseDate}</small>}
             </label>
 
-            <div className="purchase-field">
+            <div className="purchase-field purchase-field--supplier">
               <label htmlFor="supplier-search"><span>Supplier <i>*</i></span></label>
               <input
                 id="supplier-search"
@@ -701,133 +696,113 @@ export default function CreatePurchase() {
               />
             </label>
 
-            <label className="purchase-field purchase-field--wide">
-              <span>Notes</span>
-              <textarea
-                value={values.notes}
-                onChange={(event) => setField('notes', event.target.value)}
-                maxLength={5000}
-                rows={3}
-              />
-            </label>
-          </div>
-        </section>
-
-        <section className="purchase-form-section">
-          <header className="purchase-form-section__heading purchase-form-section__heading--actions">
-            <div className="purchase-form-section__title">
-              <span>02</span>
-              <div><h2>Purchase items</h2><p>Add products included in this purchase.</p></div>
             </div>
-            <button type="button" className="purchase-add-item" onClick={addLine} disabled={products.loading}>
-              <Plus size={16} aria-hidden="true" /> Add Item
-            </button>
-          </header>
+          </section>
 
-          {products.error && (
-            <div className="purchase-options-error" role="alert">
-              {products.error}
-              <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>Retry loading products</button>
-            </div>
-          )}
+          <section className="purchase-form-section">
+            <header className="purchase-form-section__heading purchase-form-section__heading--actions">
+              <h2>Purchase Items</h2>
+              <button type="button" className="purchase-add-item" onClick={addLine} disabled={products.loading}>
+                + Add Item
+              </button>
+            </header>
 
-          <div className="purchase-line-list">
-            {lines.map((line, index) => {
-              const duplicateIds = new Set(lines.filter((other) => other.key !== line.key).map((other) => other.productId))
-              const totals = lineTotals.find((total) => total.key === line.key)
-              const gross = totals?.gross ?? 0
-              const lineTotal = totals?.total ?? 0
-              const keyPrefix = `item.${line.key}.`
-              return (
-                <article className="purchase-line" key={line.key}>
-                  <header className="purchase-line__heading">
-                    <strong>Item {index + 1}</strong>
-                    <button
-                      type="button"
-                      className="purchase-remove-item"
-                      onClick={() => removeLine(line.key)}
-                      disabled={lines.length === 1}
-                      aria-label={`Remove item ${index + 1}`}
-                    >
-                      <Trash2 size={15} aria-hidden="true" /><span>Remove</span>
-                    </button>
-                  </header>
+            {products.error && (
+              <div className="purchase-options-error" role="alert">
+                {products.error}
+                <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>Retry</button>
+              </div>
+            )}
 
-                  <div className="purchase-line-grid">
-                    <label className="purchase-field purchase-field--product">
-                      <span>Product <i>*</i></span>
-                      <select
-                        value={line.productId}
-                        onChange={(event) => updateLine(line.key, 'productId', event.target.value)}
-                        disabled={products.loading || Boolean(products.error)}
-                        aria-invalid={Boolean(errors[`${keyPrefix}product_id`])}
-                      >
-                        <option value="">
-                          {products.loading
-                            ? 'Loading products…'
-                            : products.data.length === 0
-                              ? 'No active products available'
-                              : 'Select product'}
-                        </option>
-                        {products.data
-                          .filter((product) => !duplicateIds.has(String(product.id)) || String(product.id) === line.productId)
-                          .map((product) => (
-                            <option value={product.id} key={product.id}>
-                              {product.label}{product.sku ? ` · ${product.sku}` : ''}{product.unit ? ` (${product.unit})` : ''}
+            <div className="purchase-items-scroll purchase-items-scroll--form">
+              <table className="purchase-entry-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Unit Cost</th>
+                    <th>Discount</th>
+                    <th>Batch</th>
+                    <th>Expiry</th>
+                    <th>Total</th>
+                    <th><span className="visually-hidden">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((line) => {
+                    const duplicateIds = new Set(lines.filter((other) => other.key !== line.key).map((other) => other.productId))
+                    const totals = lineTotals.find((total) => total.key === line.key)
+                    const keyPrefix = `item.${line.key}.`
+                    return (
+                      <tr key={line.key}>
+                        <td>
+                          <select
+                            value={line.productId}
+                            onChange={(event) => updateLine(line.key, 'productId', event.target.value)}
+                            disabled={products.loading || Boolean(products.error)}
+                            aria-label="Product"
+                            aria-invalid={Boolean(errors[`${keyPrefix}product_id`])}
+                          >
+                            <option value="">
+                              {products.loading ? 'Loading…' : products.data.length === 0 ? 'No products' : 'Select product'}
                             </option>
-                          ))}
-                      </select>
-                      {errors[`${keyPrefix}product_id`] && <small className="purchase-field__error">{errors[`${keyPrefix}product_id`]}</small>}
-                    </label>
+                            {products.data
+                              .filter((product) => !duplicateIds.has(String(product.id)) || String(product.id) === line.productId)
+                              .map((product) => (
+                                <option value={product.id} key={product.id}>
+                                  {product.label}{product.sku ? ` · ${product.sku}` : ''}{product.unit ? ` (${product.unit})` : ''}
+                                </option>
+                              ))}
+                          </select>
+                          {errors[`${keyPrefix}product_id`] && <small className="purchase-field__error">{errors[`${keyPrefix}product_id`]}</small>}
+                        </td>
+                        <td>
+                          <input type="number" min="0" step="any" value={line.quantity} onChange={(event) => updateLine(line.key, 'quantity', event.target.value)} aria-label="Quantity" aria-invalid={Boolean(errors[`${keyPrefix}quantity`])} />
+                          {errors[`${keyPrefix}quantity`] && <small className="purchase-field__error">{errors[`${keyPrefix}quantity`]}</small>}
+                        </td>
+                        <td>
+                          <input type="number" min="0" step="any" value={line.unitCost} onChange={(event) => updateLine(line.key, 'unitCost', event.target.value)} aria-label="Unit cost" aria-invalid={Boolean(errors[`${keyPrefix}unit_cost`])} />
+                          {errors[`${keyPrefix}unit_cost`] && <small className="purchase-field__error">{errors[`${keyPrefix}unit_cost`]}</small>}
+                        </td>
+                        <td>
+                          <input type="number" min="0" step="any" value={line.discountAmount} onChange={(event) => updateLine(line.key, 'discountAmount', event.target.value)} aria-label="Item discount" aria-invalid={Boolean(errors[`${keyPrefix}discount_amount`])} />
+                          {errors[`${keyPrefix}discount_amount`] && <small className="purchase-field__error">{errors[`${keyPrefix}discount_amount`]}</small>}
+                        </td>
+                        <td>
+                          <input value={line.batchNumber} onChange={(event) => updateLine(line.key, 'batchNumber', event.target.value)} maxLength={100} aria-label="Batch number (optional)" />
+                          {errors[`${keyPrefix}batch_number`] && <small className="purchase-field__error">{errors[`${keyPrefix}batch_number`]}</small>}
+                        </td>
+                        <td>
+                          <input type="date" min={values.purchaseDate} value={line.expiryDate} onChange={(event) => updateLine(line.key, 'expiryDate', event.target.value)} aria-label="Expiry date (optional)" aria-invalid={Boolean(errors[`${keyPrefix}expiry_date`])} />
+                          {errors[`${keyPrefix}expiry_date`] && <small className="purchase-field__error">{errors[`${keyPrefix}expiry_date`]}</small>}
+                        </td>
+                        <td className="purchase-entry-total">
+                          <strong>{formatCurrency(totals?.total ?? 0, selectedCurrency?.code ?? '')}</strong>
+                          <small>Gross {formatCurrency(totals?.gross ?? 0, selectedCurrency?.code ?? '')}</small>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="purchase-remove-item"
+                            onClick={() => removeLine(line.key)}
+                            disabled={lines.length === 1}
+                            aria-label="Remove item"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {errors.items && <p className="purchase-field__error purchase-form-error">{errors.items}</p>}
+          </section>
+        </div>
 
-                    <label className="purchase-field">
-                      <span>Quantity <i>*</i></span>
-                      <input type="number" min="0" step="any" value={line.quantity} onChange={(event) => updateLine(line.key, 'quantity', event.target.value)} aria-invalid={Boolean(errors[`${keyPrefix}quantity`])} />
-                      {errors[`${keyPrefix}quantity`] && <small className="purchase-field__error">{errors[`${keyPrefix}quantity`]}</small>}
-                    </label>
-
-                    <label className="purchase-field">
-                      <span>Unit Cost <i>*</i></span>
-                      <input type="number" min="0" step="any" value={line.unitCost} onChange={(event) => updateLine(line.key, 'unitCost', event.target.value)} aria-invalid={Boolean(errors[`${keyPrefix}unit_cost`])} />
-                      {errors[`${keyPrefix}unit_cost`] && <small className="purchase-field__error">{errors[`${keyPrefix}unit_cost`]}</small>}
-                    </label>
-
-                    <label className="purchase-field">
-                      <span>Item Discount</span>
-                      <input type="number" min="0" step="any" value={line.discountAmount} onChange={(event) => updateLine(line.key, 'discountAmount', event.target.value)} aria-invalid={Boolean(errors[`${keyPrefix}discount_amount`])} />
-                      {errors[`${keyPrefix}discount_amount`] && <small className="purchase-field__error">{errors[`${keyPrefix}discount_amount`]}</small>}
-                    </label>
-
-                    <label className="purchase-field">
-                      <span>Batch Number</span>
-                      <input value={line.batchNumber} onChange={(event) => updateLine(line.key, 'batchNumber', event.target.value)} maxLength={100} />
-                      {errors[`${keyPrefix}batch_number`] && <small className="purchase-field__error">{errors[`${keyPrefix}batch_number`]}</small>}
-                    </label>
-
-                    <label className="purchase-field">
-                      <span>Expiry Date</span>
-                      <input type="date" min={values.purchaseDate} value={line.expiryDate} onChange={(event) => updateLine(line.key, 'expiryDate', event.target.value)} aria-invalid={Boolean(errors[`${keyPrefix}expiry_date`])} />
-                      {errors[`${keyPrefix}expiry_date`] && <small className="purchase-field__error">{errors[`${keyPrefix}expiry_date`]}</small>}
-                    </label>
-                  </div>
-
-                  <footer className="purchase-line__totals">
-                    <span>Gross: <strong>{formatCurrency(gross, selectedCurrency?.code ?? '')}</strong></span>
-                    <span>Line total: <strong>{formatCurrency(lineTotal, selectedCurrency?.code ?? '')}</strong></span>
-                  </footer>
-                </article>
-              )
-            })}
-          </div>
-          {errors.items && <p className="purchase-field__error purchase-form-error">{errors.items}</p>}
-        </section>
-
-        <section className="purchase-form-section">
-          <header className="purchase-form-section__heading">
-            <span>03</span>
-            <div><h2>Payment</h2><p>Choose whether this purchase is paid now or on credit.</p></div>
-          </header>
-
+        <section className="purchase-form-section purchase-payment-summary">
+          <header className="purchase-form-section__heading"><h2>Payment &amp; Summary</h2></header>
           <div className="purchase-payment-options">
             <label className={`purchase-payment-option${paymentType === 'credit' ? ' purchase-payment-option--selected' : ''}`}>
               <input type="radio" name="payment-type" value="credit" checked={paymentType === 'credit'} onChange={() => {
@@ -835,11 +810,11 @@ export default function CreatePurchase() {
                 setFinancialAccountId('')
                 setErrors((current) => { const next = { ...current }; delete next.financialAccountId; return next })
               }} />
-              <span><strong>Credit</strong><small>Record the purchase as unpaid.</small></span>
+              <span>Credit</span>
             </label>
             <label className={`purchase-payment-option${paymentType === 'cash' ? ' purchase-payment-option--selected' : ''}`}>
               <input type="radio" name="payment-type" value="cash" checked={paymentType === 'cash'} onChange={() => setPaymentType('cash')} />
-              <span><strong>Cash</strong><small>Pay from a matching financial account.</small></span>
+              <span>Cash</span>
             </label>
           </div>
 
@@ -863,7 +838,7 @@ export default function CreatePurchase() {
                     <option value={account.id} key={account.id}>{account.label} · {account.accountType}</option>
                   ))}
                 </select>
-                {accounts.loading && <small className="purchase-field__hint">Loading active accounts for the selected currency…</small>}
+                {accounts.loading && <small className="purchase-field__hint">Loading accounts…</small>}
                 {accounts.error && (
                   <small className="purchase-field__error">
                     {accounts.error}
@@ -871,43 +846,53 @@ export default function CreatePurchase() {
                   </small>
                 )}
                 {!accounts.loading && !accounts.error && values.currencyId && accounts.data.length === 0 && (
-                  <small className="purchase-field__error">No active financial accounts are available for this currency. Cash payment is unavailable.</small>
+                  <small className="purchase-field__error">No active account for this currency.</small>
                 )}
                 {accountError && <small className="purchase-field__error">{accountError}</small>}
               </label>
             </div>
           )}
-        </section>
 
-        <aside className="purchase-summary-panel" aria-label="Purchase summary">
-          <div className="purchase-summary-panel__heading"><div><p className="overview-eyebrow">SUMMARY</p><h2>Purchase total</h2></div></div>
-          <div className="purchase-summary-row"><span>Subtotal</span><strong>{formatCurrency(subtotal, selectedCurrency?.code ?? '')}</strong></div>
-          <div className="purchase-summary-row"><span>Total item discounts</span><strong>− {formatCurrency(itemDiscountTotal, selectedCurrency?.code ?? '')}</strong></div>
-          <label className="purchase-summary-row purchase-summary-row--discount">
-            <span>Purchase discount</span>
-            <span className="purchase-summary-input-wrap">
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={values.purchaseDiscount}
-                onChange={(event) => setField('purchaseDiscount', event.target.value)}
-                aria-label="Purchase-level discount"
-                aria-invalid={Boolean(errors.purchaseDiscount)}
-              />
-              <small>{selectedCurrency?.code ?? ''}</small>
-            </span>
+          <label className="purchase-field purchase-notes-field">
+            <span>Notes <small>(optional)</small></span>
+            <textarea
+              value={values.notes}
+              onChange={(event) => setField('notes', event.target.value)}
+              maxLength={5000}
+              rows={2}
+            />
           </label>
-          {errors.purchaseDiscount && <small className="purchase-field__error">{errors.purchaseDiscount}</small>}
-          <div className="purchase-summary-row purchase-summary-row--grand"><span>Grand Total</span><strong>{formatCurrency(grandTotal, selectedCurrency?.code ?? '')}</strong></div>
+
+          <div className="purchase-summary-panel">
+            <div className="purchase-summary-row"><span>Subtotal</span><strong>{formatCurrency(subtotal, selectedCurrency?.code ?? '')}</strong></div>
+            <div className="purchase-summary-row"><span>Item discounts</span><strong>− {formatCurrency(itemDiscountTotal, selectedCurrency?.code ?? '')}</strong></div>
+            <label className="purchase-summary-row purchase-summary-row--discount">
+              <span>Purchase discount</span>
+              <span className="purchase-summary-input-wrap">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={values.purchaseDiscount}
+                  onChange={(event) => setField('purchaseDiscount', event.target.value)}
+                  aria-label="Purchase-level discount"
+                  aria-invalid={Boolean(errors.purchaseDiscount)}
+                />
+                <small>{selectedCurrency?.code ?? ''}</small>
+              </span>
+            </label>
+            {errors.purchaseDiscount && <small className="purchase-field__error">{errors.purchaseDiscount}</small>}
+            <div className="purchase-summary-row purchase-summary-row--grand"><span>Grand Total</span><strong>{formatCurrency(grandTotal, selectedCurrency?.code ?? '')}</strong></div>
+          </div>
+
           {errors.items && <small className="purchase-field__error">{errors.items}</small>}
           <div className="purchase-form-actions">
             <button type="button" className="purchase-cancel-button" onClick={() => navigate('/secretary/purchases')} disabled={isSaving}>Cancel</button>
             <button type="submit" className="purchase-save-button" disabled={isSaving}>
-              {isSaving ? <><span className="button-spinner" aria-hidden="true" /> Saving…</> : <><Save size={16} aria-hidden="true" /> Save Purchase</>}
+              {isSaving ? 'Saving…' : 'Save Purchase'}
             </button>
           </div>
-        </aside>
+        </section>
       </form>
     </div>
   )
