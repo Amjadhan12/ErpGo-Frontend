@@ -44,6 +44,8 @@ import StockWastage from "@/app/StockWastage";
 import BatchExpiry from "@/app/BatchExpiry";
 import Sales from "@/app/Sales";
 import Expenses from "@/app/Expenses";
+import Chat from "@/app/Chat";
+import Documents from "@/app/Documents";
 import FinancialAccounts from "@/app/FinancialAccounts";
 import CashBook from "@/app/CashBook";
 const Reports = lazy(() => import("@/app/Reports"));
@@ -477,6 +479,8 @@ export default function App() {
             <Route path="financial-accounts" element={<FinancialAccounts />} />
             <Route path="cash-book" element={<CashBook />} />
             <Route path="reports" element={<Suspense fallback={<div className="reports-loading" role="status"><span className="loading-spinner" /><span>Loading reports…</span></div>}><Reports /></Suspense>} />
+            <Route path="chat" element={<Chat />} />
+            <Route path="/secretary/documents" element={<Documents />} />
             <Route path="supplier-payments" element={<SupplierPayments />} />
             <Route path="customers" element={<Customers />} />
             <Route path="suppliers" element={<Suppliers />} />

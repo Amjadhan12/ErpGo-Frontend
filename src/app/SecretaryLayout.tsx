@@ -102,6 +102,8 @@ const routeByLabel: Record<string, string> = {
   "Financial Accounts": "/secretary/financial-accounts",
   "Cash Book": "/secretary/cash-book",
   Reports: "/secretary/reports",
+  Chat: "/secretary/chat",
+  Documents: "/secretary/documents",
   "Supplier Payments": "/secretary/supplier-payments",
 };
 
@@ -297,7 +299,9 @@ export default function SecretaryLayout() {
 
   const companyTitle = companyBranding?.titleEn || "ERPGO";
   const pageTitle =
-    location.pathname === "/secretary/purchases/create"
+    location.pathname === "/secretary/documents"
+      ? "Documents"
+      : location.pathname === "/secretary/purchases/create"
       ? "Create Purchase"
       : location.pathname === "/secretary/sales/create"
         ? "Create Sale"
