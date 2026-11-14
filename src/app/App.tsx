@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import {
   ArrowRight,
   Bird,
@@ -46,6 +46,7 @@ import Sales from "@/app/Sales";
 import Expenses from "@/app/Expenses";
 import FinancialAccounts from "@/app/FinancialAccounts";
 import CashBook from "@/app/CashBook";
+const Reports = lazy(() => import("@/app/Reports"));
 
 function BrandMark({
   imageUrl,
@@ -475,6 +476,7 @@ export default function App() {
             <Route path="expenses/create" element={<Expenses />} />
             <Route path="financial-accounts" element={<FinancialAccounts />} />
             <Route path="cash-book" element={<CashBook />} />
+            <Route path="reports" element={<Suspense fallback={<div className="reports-loading" role="status"><span className="loading-spinner" /><span>Loading reports…</span></div>}><Reports /></Suspense>} />
             <Route path="supplier-payments" element={<SupplierPayments />} />
             <Route path="customers" element={<Customers />} />
             <Route path="suppliers" element={<Suppliers />} />
