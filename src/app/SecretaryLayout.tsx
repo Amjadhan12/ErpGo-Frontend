@@ -84,6 +84,23 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
+const routeByLabel: Record<string, string> = {
+  Dashboard: "/secretary",
+  Customers: "/secretary/customers",
+  Suppliers: "/secretary/suppliers",
+  Products: "/secretary/products",
+  Warehouses: "/secretary/warehouses",
+  Inventory: "/secretary/inventory",
+  "Opening Stocks": "/secretary/opening-stocks",
+  "Stock Transfers": "/secretary/stock-transfers",
+  "Stock Adjustments": "/secretary/stock-adjustments",
+  "Stock Wastage": "/secretary/stock-wastage",
+  "Batch & Expiry": "/secretary/batch-expiry",
+  Purchases: "/secretary/purchases",
+  Sales: "/secretary/sales",
+  "Supplier Payments": "/secretary/supplier-payments",
+};
+
 function getInitials(name: string): string {
   return name
     .trim()
@@ -166,34 +183,7 @@ function SecretarySidebar({
             <div className="secretary-navigation__group" key={group.label}>
               <p className="secretary-navigation__heading">{group.label}</p>
               {group.items.map(({ label, icon: Icon }) => {
-                const route =
-                  label === "Dashboard"
-                    ? "/secretary"
-                    : label === "Customers"
-                      ? "/secretary/customers"
-                      : label === "Suppliers"
-                        ? "/secretary/suppliers"
-                        : label === "Products"
-                          ? "/secretary/products"
-                            : label === "Warehouses"
-                              ? "/secretary/warehouses"
-                              : label === "Inventory"
-                                ? "/secretary/inventory"
-                                : label === "Opening Stocks"
-                                  ? "/secretary/opening-stocks"
-                                  : label === "Stock Transfers"
-                                    ? "/secretary/stock-transfers"
-                                    : label === "Stock Adjustments"
-                                      ? "/secretary/stock-adjustments"
-                                      : label === "Stock Wastage"
-                                        ? "/secretary/stock-wastage"
-                                        : label === "Batch & Expiry"
-                                          ? "/secretary/batch-expiry"
-                              : label === "Purchases"
-                              ? "/secretary/purchases"
-                              : label === "Supplier Payments"
-                                ? "/secretary/supplier-payments"
-                                : null;
+                const route = routeByLabel[label] ?? null;
                 const isActive =
                   route === "/secretary"
                     ? location.pathname === route
@@ -305,31 +295,13 @@ export default function SecretaryLayout() {
   const pageTitle =
     location.pathname === "/secretary/purchases/create"
       ? "Create Purchase"
-      : location.pathname.startsWith("/secretary/customers")
-        ? "Customers"
-        : location.pathname.startsWith("/secretary/suppliers")
-          ? "Suppliers"
-          : location.pathname.startsWith("/secretary/products")
-            ? "Products"
-        : location.pathname.startsWith("/secretary/warehouses")
-              ? "Warehouses"
-              : location.pathname.startsWith("/secretary/inventory")
-                ? "Inventory"
-                : location.pathname.startsWith("/secretary/opening-stocks")
-                  ? "Opening Stocks"
-                  : location.pathname.startsWith("/secretary/stock-transfers")
-                    ? "Stock Transfers"
-                    : location.pathname.startsWith("/secretary/stock-adjustments")
-                      ? "Stock Adjustments"
-                      : location.pathname.startsWith("/secretary/stock-wastage")
-                        ? "Stock Wastage"
-                        : location.pathname.startsWith("/secretary/batch-expiry")
-                          ? "Batch & Expiry"
-              : location.pathname.startsWith("/secretary/purchases")
-                ? "Purchases"
-                : location.pathname.startsWith("/secretary/supplier-payments")
-                  ? "Supplier Payments"
-                  : "Overview";
+      : location.pathname === "/secretary/sales/create"
+        ? "Create Sale"
+        : location.pathname.startsWith("/secretary/sales")
+          ? "Sales"
+          : Object.entries(routeByLabel).find(([label, route]) =>
+              label !== "Dashboard" && location.pathname.startsWith(route),
+            )?.[0] ?? "Overview";
 
   return (
     <div

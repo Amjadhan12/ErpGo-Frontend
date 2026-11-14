@@ -4019,6 +4019,287 @@ input:focus-visible {
   box-shadow: 0 4px 14px rgb(34 55 38 / 2.5%);
 }
 
+.sales-page-actions,
+.sales-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sales-line-list {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.sales-line {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(100px, 1fr)) auto auto;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e4ebe4;
+  border-radius: 9px;
+  background: #fbfcfb;
+}
+
+.sales-line small {
+  color: #66746a;
+  font-size: 11px;
+}
+
+.sales-line-total {
+  margin: 0;
+  color: #425448;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.sales-remove-line {
+  display: grid;
+  width: 36px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid #e7d9d9;
+  border-radius: 7px;
+  background: #fff;
+  color: #9b4545;
+  cursor: pointer;
+}
+
+.sales-remove-line:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.sales-summary {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.sales-summary > div,
+.sales-invoice-totals dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sales-summary dt,
+.sales-summary dd,
+.sales-invoice-totals dt,
+.sales-invoice-totals dd {
+  margin: 0;
+}
+
+.sales-summary-grand {
+  padding-top: 10px;
+  border-top: 1px solid #dfe7df;
+  color: #263f2e;
+  font-weight: 700;
+}
+
+.sales-field-error {
+  color: #a33f3f;
+  font-size: 12px;
+  font-weight: 450;
+}
+
+.sales-detail-body {
+  background: #f6f8f6;
+}
+
+.sales-invoice-print {
+  padding: 28px;
+  background: #fff;
+  color: #24352a;
+}
+
+.sales-invoice-company {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid #314b38;
+}
+
+.sales-invoice-company img {
+  max-width: 76px;
+  max-height: 64px;
+  object-fit: contain;
+}
+
+.sales-invoice-company h1,
+.sales-invoice-company p {
+  margin: 0 0 4px;
+}
+
+.sales-invoice-company strong {
+  margin-left: auto;
+  font-size: 19px;
+  letter-spacing: .08em;
+}
+
+.sales-invoice-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.sales-invoice-meta dt {
+  color: #6b776e;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.sales-invoice-meta dd {
+  margin: 3px 0 0;
+  font-weight: 600;
+}
+
+.sales-invoice-table th,
+.sales-invoice-table td {
+  padding: 8px 7px;
+}
+
+.sales-invoice-totals {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.sales-invoice-totals dl {
+  display: grid;
+  width: min(100%, 340px);
+  gap: 9px;
+  margin: 0;
+}
+
+.sales-invoice-notes {
+  margin-top: 20px;
+  white-space: pre-wrap;
+}
+
+.sales-invoice-footer {
+  margin-top: 48px;
+  text-align: center;
+}
+
+.sales-invoice-footer > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  margin-top: 54px;
+}
+
+.sales-invoice-footer span {
+  width: 42%;
+  padding-top: 8px;
+  border-top: 1px solid #89948c;
+}
+
+@media (max-width: 900px) {
+  .sales-line {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .sales-page-actions {
+    width: 100%;
+  }
+
+  .sales-line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sales-invoice-print {
+    padding: 14px;
+  }
+
+  .sales-invoice-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-invoice-company {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .sales-modal-backdrop,
+  .sales-modal,
+  .sales-detail-body,
+  .sales-invoice-print,
+  .sales-invoice-print * {
+    visibility: visible !important;
+  }
+
+  .sales-modal-backdrop {
+    position: static !important;
+    display: block !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .sales-modal {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .sales-modal-header,
+  .secretary-sidebar,
+  .secretary-header,
+  .secretary-footer,
+  .sales-page-actions,
+  button {
+    display: none !important;
+  }
+
+  .sales-detail-body {
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .sales-invoice-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    color: #111 !important;
+    background: #fff !important;
+  }
+
+  .sales-invoice-table tr,
+  .sales-invoice-totals,
+  .sales-invoice-meta > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .sales-invoice-table thead {
+    display: table-header-group;
+  }
+}
+
 .inventory-operation-page .inventory-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
