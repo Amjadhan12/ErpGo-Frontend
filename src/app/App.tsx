@@ -34,6 +34,7 @@ import CreatePurchase from "@/app/CreatePurchase";
 import SupplierPayments from "@/app/SupplierPayments";
 import Customers from "@/app/Customers";
 import Suppliers from "@/app/Suppliers";
+import Products from "@/app/Products";
 
 function BrandMark({
   imageUrl,
@@ -460,6 +461,7 @@ export default function App() {
             <Route path="supplier-payments" element={<SupplierPayments />} />
             <Route path="customers" element={<Customers />} />
             <Route path="suppliers" element={<Suppliers />} />
+            <Route path="products" element={<Products />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

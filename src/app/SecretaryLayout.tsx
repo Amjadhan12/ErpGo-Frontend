@@ -171,11 +171,13 @@ function SecretarySidebar({
                       ? "/secretary/customers"
                       : label === "Suppliers"
                         ? "/secretary/suppliers"
-                        : label === "Purchases"
-                          ? "/secretary/purchases"
-                          : label === "Supplier Payments"
-                            ? "/secretary/supplier-payments"
-                            : null;
+                        : label === "Products"
+                          ? "/secretary/products"
+                          : label === "Purchases"
+                            ? "/secretary/purchases"
+                            : label === "Supplier Payments"
+                              ? "/secretary/supplier-payments"
+                              : null;
                 const isActive =
                   route === "/secretary"
                     ? location.pathname === route
@@ -291,11 +293,13 @@ export default function SecretaryLayout() {
         ? "Customers"
         : location.pathname.startsWith("/secretary/suppliers")
           ? "Suppliers"
-          : location.pathname.startsWith("/secretary/purchases")
-            ? "Purchases"
-            : location.pathname.startsWith("/secretary/supplier-payments")
-              ? "Supplier Payments"
-              : "Overview";
+          : location.pathname.startsWith("/secretary/products")
+            ? "Products"
+            : location.pathname.startsWith("/secretary/purchases")
+              ? "Purchases"
+              : location.pathname.startsWith("/secretary/supplier-payments")
+                ? "Supplier Payments"
+                : "Overview";
 
   return (
     <div
