@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowDownUp,
   Banknote,
@@ -24,63 +24,63 @@ import {
   Wallet,
   X,
   type LucideIcon,
-} from 'lucide-react'
-import { useAuth } from '@/auth/AuthContext'
+} from "lucide-react";
+import { useAuth } from "@/auth/AuthContext";
 
 interface MenuItem {
-  label: string
-  icon: LucideIcon
+  label: string;
+  icon: LucideIcon;
 }
 
 interface MenuGroup {
-  label: string
-  items: MenuItem[]
+  label: string;
+  items: MenuItem[];
 }
 
 const menuGroups: MenuGroup[] = [
   {
-    label: 'Workspace',
-    items: [{ label: 'Dashboard', icon: LayoutDashboard }],
+    label: "Workspace",
+    items: [{ label: "Dashboard", icon: LayoutDashboard }],
   },
   {
-    label: 'Partners',
+    label: "Partners",
     items: [
-      { label: 'Customers', icon: UsersRound },
-      { label: 'Suppliers', icon: Truck },
+      { label: "Customers", icon: UsersRound },
+      { label: "Suppliers", icon: Truck },
     ],
   },
   {
-    label: 'Inventory',
+    label: "Inventory",
     items: [
-      { label: 'Products', icon: Package },
-      { label: 'Warehouses', icon: Warehouse },
-      { label: 'Inventory', icon: Boxes },
-      { label: 'Stock Transfers', icon: ArrowDownUp },
-      { label: 'Stock Adjustments', icon: SlidersHorizontal },
-      { label: 'Stock Wastage', icon: BarChart3 },
+      { label: "Products", icon: Package },
+      { label: "Warehouses", icon: Warehouse },
+      { label: "Inventory", icon: Boxes },
+      { label: "Stock Transfers", icon: ArrowDownUp },
+      { label: "Stock Adjustments", icon: SlidersHorizontal },
+      { label: "Stock Wastage", icon: BarChart3 },
     ],
   },
   {
-    label: 'Operations',
+    label: "Operations",
     items: [
-      { label: 'Purchases', icon: ShoppingCart },
-      { label: 'Sales', icon: BriefcaseBusiness },
-      { label: 'Expenses', icon: Wallet },
+      { label: "Purchases", icon: ShoppingCart },
+      { label: "Sales", icon: BriefcaseBusiness },
+      { label: "Expenses", icon: Wallet },
     ],
   },
   {
-    label: 'Finance & tools',
+    label: "Finance & tools",
     items: [
-      { label: 'Financial Accounts', icon: Building2 },
-      { label: 'Supplier Payments', icon: Banknote },
-      { label: 'Cash Book', icon: Wallet },
-      { label: 'Reports', icon: BarChart3 },
-      { label: 'Chat', icon: MessageCircle },
-      { label: 'Documents', icon: FileText },
-      { label: 'Settings', icon: Settings },
+      { label: "Financial Accounts", icon: Building2 },
+      { label: "Supplier Payments", icon: Banknote },
+      { label: "Cash Book", icon: Wallet },
+      { label: "Reports", icon: BarChart3 },
+      { label: "Chat", icon: MessageCircle },
+      { label: "Documents", icon: FileText },
+      { label: "Settings", icon: Settings },
     ],
   },
-]
+];
 
 function getInitials(name: string): string {
   return name
@@ -88,37 +88,33 @@ function getInitials(name: string): string {
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
-    .join('')
+    .join("");
 }
 
 function SidebarBrand({
   title,
   imageUrl,
 }: {
-  title?: string
-  imageUrl?: string
+  title?: string;
+  imageUrl?: string;
 }) {
-  const [imageFailed, setImageFailed] = useState(false)
+  const [imageFailed, setImageFailed] = useState(false);
 
   return (
     <div className="secretary-brand">
       <span className="secretary-brand__mark">
         {imageUrl && !imageFailed ? (
-          <img
-            src={imageUrl}
-            alt=""
-            onError={() => setImageFailed(true)}
-          />
+          <img src={imageUrl} alt="" onError={() => setImageFailed(true)} />
         ) : (
           <span aria-hidden="true">E</span>
         )}
       </span>
       <span className="secretary-brand__text">
-        <strong>{title || 'ERPGO'}</strong>
+        <strong>{title || "ERPGO"}</strong>
         <small>MANAGEMENT SYSTEM</small>
       </span>
     </div>
-  )
+  );
 }
 
 function SecretarySidebar({
@@ -128,13 +124,13 @@ function SecretarySidebar({
   title,
   logoUrl,
 }: {
-  collapsed: boolean
-  mobileOpen: boolean
-  onClose: () => void
-  title?: string
-  logoUrl?: string
+  collapsed: boolean;
+  mobileOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  logoUrl?: string;
 }) {
-  const location = useLocation()
+  const location = useLocation();
 
   return (
     <>
@@ -147,7 +143,7 @@ function SecretarySidebar({
         />
       )}
       <aside
-        className={`secretary-sidebar${collapsed ? ' secretary-sidebar--collapsed' : ''}${mobileOpen ? ' secretary-sidebar--mobile-open' : ''}`}
+        className={`secretary-sidebar${collapsed ? " secretary-sidebar--collapsed" : ""}${mobileOpen ? " secretary-sidebar--mobile-open" : ""}`}
         id="secretary-sidebar"
         aria-label="Secretary navigation"
       >
@@ -168,25 +164,28 @@ function SecretarySidebar({
             <div className="secretary-navigation__group" key={group.label}>
               <p className="secretary-navigation__heading">{group.label}</p>
               {group.items.map(({ label, icon: Icon }) => {
-                const route = label === 'Dashboard'
-                  ? '/secretary'
-                  : label === 'Purchases'
-                    ? '/secretary/purchases'
-                    : label === 'Supplier Payments'
-                      ? '/secretary/supplier-payments'
-                    : null
-                const isActive = route === '/secretary'
-                  ? location.pathname === route
-                  : route !== null && location.pathname.startsWith(route)
-                const className =
-                  `secretary-navigation__item${isActive ? ' secretary-navigation__item--active' : ''}`
+                const route =
+                  label === "Dashboard"
+                    ? "/secretary"
+                    : label === "Customers"
+                      ? "/secretary/customers"
+                      : label === "Purchases"
+                        ? "/secretary/purchases"
+                        : label === "Supplier Payments"
+                          ? "/secretary/supplier-payments"
+                          : null;
+                const isActive =
+                  route === "/secretary"
+                    ? location.pathname === route
+                    : route !== null && location.pathname.startsWith(route);
+                const className = `secretary-navigation__item${isActive ? " secretary-navigation__item--active" : ""}`;
 
                 if (route) {
                   return (
                     <NavLink
                       className={className}
                       to={route}
-                      end={label === 'Dashboard'}
+                      end={label === "Dashboard"}
                       key={label}
                       aria-label={label}
                       title={collapsed ? label : undefined}
@@ -195,7 +194,7 @@ function SecretarySidebar({
                       <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                       <span>{label}</span>
                     </NavLink>
-                  )
+                  );
                 }
 
                 return (
@@ -205,20 +204,26 @@ function SecretarySidebar({
                     key={label}
                     disabled
                     aria-label={`${label} — not available yet`}
-                    title={collapsed ? `${label} — not available yet` : undefined}
+                    title={
+                      collapsed ? `${label} — not available yet` : undefined
+                    }
                   >
                     <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                     <span>{label}</span>
-                    {!collapsed && <span className="secretary-navigation__later">Soon</span>}
+                    {!collapsed && (
+                      <span className="secretary-navigation__later">Soon</span>
+                    )}
                   </button>
-                )
+                );
               })}
             </div>
           ))}
         </nav>
 
         <div className="secretary-sidebar__help">
-          <span className="secretary-sidebar__help-icon"><CircleHelp size={17} aria-hidden="true" /></span>
+          <span className="secretary-sidebar__help-icon">
+            <CircleHelp size={17} aria-hidden="true" />
+          </span>
           <span className="secretary-sidebar__help-copy">
             <strong>Need a hand?</strong>
             <small>Your workspace is ready to grow.</small>
@@ -226,66 +231,72 @@ function SecretarySidebar({
         </div>
       </aside>
     </>
-  )
+  );
 }
 
 export default function SecretaryLayout() {
-  const { user, companyBranding, signOut } = useAuth()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [collapsed, setCollapsed] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [isSigningOut, setIsSigningOut] = useState(false)
+  const { user, companyBranding, signOut } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(
-    () => window.matchMedia('(max-width: 760px)').matches,
-  )
+    () => window.matchMedia("(max-width: 760px)").matches,
+  );
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 760px)')
-    const updateViewport = (event: MediaQueryListEvent) => setIsMobileViewport(event.matches)
+    const mediaQuery = window.matchMedia("(max-width: 760px)");
+    const updateViewport = (event: MediaQueryListEvent) =>
+      setIsMobileViewport(event.matches);
 
-    mediaQuery.addEventListener('change', updateViewport)
-    return () => mediaQuery.removeEventListener('change', updateViewport)
-  }, [])
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
-  if (!user) return null
+  if (!user) return null;
 
   async function handleSignOut() {
-    setIsSigningOut(true)
+    setIsSigningOut(true);
 
     try {
-      await signOut()
-      navigate('/', { replace: true, state: null })
+      await signOut();
+      navigate("/", { replace: true, state: null });
     } catch {
-      navigate('/', {
+      navigate("/", {
         replace: true,
         state: { logoutWarning: true },
-      })
+      });
     } finally {
-      setIsSigningOut(false)
+      setIsSigningOut(false);
     }
   }
 
   function toggleSidebar() {
     if (isMobileViewport) {
-      setMobileOpen((open) => !open)
-      return
+      setMobileOpen((open) => !open);
+      return;
     }
 
-    setCollapsed((isCollapsed) => !isCollapsed)
+    setCollapsed((isCollapsed) => !isCollapsed);
   }
 
-  const companyTitle = companyBranding?.titleEn || 'ERPGO'
-  const pageTitle = location.pathname === '/secretary/purchases/create'
-    ? 'Create Purchase'
-    : location.pathname.startsWith('/secretary/purchases')
-      ? 'Purchases'
-      : location.pathname.startsWith('/secretary/supplier-payments')
-        ? 'Supplier Payments'
-      : 'Overview'
+  const companyTitle = companyBranding?.titleEn || "ERPGO";
+  const pageTitle =
+    location.pathname === "/secretary/purchases/create"
+      ? "Create Purchase"
+      : location.pathname.startsWith("/secretary/customers")
+        ? "Customers"
+        : location.pathname.startsWith("/secretary/purchases")
+          ? "Purchases"
+          : location.pathname.startsWith("/secretary/supplier-payments")
+            ? "Supplier Payments"
+            : "Overview";
 
   return (
-    <div className={`secretary-shell${collapsed ? ' secretary-shell--collapsed' : ''}`}>
+    <div
+      className={`secretary-shell${collapsed ? " secretary-shell--collapsed" : ""}`}
+    >
       <SecretarySidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
@@ -304,11 +315,11 @@ export default function SecretaryLayout() {
               aria-label={
                 isMobileViewport
                   ? mobileOpen
-                    ? 'Close navigation menu'
-                    : 'Open navigation menu'
+                    ? "Close navigation menu"
+                    : "Open navigation menu"
                   : collapsed
-                    ? 'Expand navigation sidebar'
-                    : 'Collapse navigation sidebar'
+                    ? "Expand navigation sidebar"
+                    : "Collapse navigation sidebar"
               }
               aria-expanded={isMobileViewport ? mobileOpen : !collapsed}
               aria-controls="secretary-sidebar"
@@ -324,7 +335,9 @@ export default function SecretaryLayout() {
 
           <div className="secretary-header__user">
             <div className="secretary-user">
-              <span className="secretary-user__avatar" aria-hidden="true">{getInitials(user.name)}</span>
+              <span className="secretary-user__avatar" aria-hidden="true">
+                {getInitials(user.name)}
+              </span>
               <span className="secretary-user__info">
                 <strong>{user.name}</strong>
                 <small>Secretary</small>
@@ -340,7 +353,7 @@ export default function SecretaryLayout() {
               title="Log out"
             >
               <LogOut size={17} aria-hidden="true" />
-              <span>{isSigningOut ? 'Signing out…' : 'Log out'}</span>
+              <span>{isSigningOut ? "Signing out…" : "Log out"}</span>
             </button>
           </div>
         </header>
@@ -351,5 +364,5 @@ export default function SecretaryLayout() {
         <footer className="secretary-footer">ERPGO Management System</footer>
       </div>
     </div>
-  )
+  );
 }

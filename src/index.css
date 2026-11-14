@@ -1,7 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   color: #1c3028;
   background: #f7f8f5;
   font-synthesis: none;
@@ -72,9 +79,17 @@ input:focus-visible {
   inset: 0;
   pointer-events: none;
   opacity: 0.12;
-  background-image: radial-gradient(rgb(255 255 255 / 54%) 0.6px, transparent 0.6px);
+  background-image: radial-gradient(
+    rgb(255 255 255 / 54%) 0.6px,
+    transparent 0.6px
+  );
   background-size: 13px 13px;
-  mask-image: linear-gradient(120deg, transparent 5%, black 47%, transparent 90%);
+  mask-image: linear-gradient(
+    120deg,
+    transparent 5%,
+    black 47%,
+    transparent 90%
+  );
 }
 
 .brand-header,
@@ -198,7 +213,9 @@ input:focus-visible {
   height: 220px;
   border: 1px solid rgb(221 203 147 / 18%);
   border-radius: 50%;
-  box-shadow: 0 0 0 22px rgb(221 203 147 / 3%), 0 0 0 46px rgb(221 203 147 / 2%);
+  box-shadow:
+    0 0 0 22px rgb(221 203 147 / 3%),
+    0 0 0 46px rgb(221 203 147 / 2%);
 }
 
 .illustration-egg {
@@ -213,7 +230,9 @@ input:focus-visible {
   border-radius: 54% 46% 48% 52% / 63% 63% 37% 37%;
   color: #6b8465;
   background: linear-gradient(145deg, #f8f0db, #dfc98f);
-  box-shadow: inset -14px -10px 24px rgb(99 105 65 / 13%), 0 20px 50px rgb(5 26 18 / 21%);
+  box-shadow:
+    inset -14px -10px 24px rgb(99 105 65 / 13%),
+    0 20px 50px rgb(5 26 18 / 21%);
   transform: rotate(9deg);
   animation: egg-float 6s ease-in-out infinite;
 }
@@ -234,7 +253,11 @@ input:focus-visible {
   border: 1px solid rgb(223 237 208 / 22%);
   border-radius: 90% 10% 82% 18%;
   color: #c5d5a5;
-  background: linear-gradient(145deg, rgb(145 172 117 / 50%), rgb(46 91 56 / 77%));
+  background: linear-gradient(
+    145deg,
+    rgb(145 172 117 / 50%),
+    rgb(46 91 56 / 77%)
+  );
 }
 
 .illustration-leaf svg {
@@ -440,7 +463,10 @@ input:focus-visible {
   border: 1px solid #dfe6df;
   border-radius: 9px;
   background: rgb(255 255 255 / 86%);
-  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
 }
 
 .input-wrap:focus-within {
@@ -524,7 +550,10 @@ input:focus-visible {
   box-shadow: 0 7px 16px rgb(44 99 68 / 16%);
   font-size: 13px;
   font-weight: 680;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
 }
 
 .primary-button {
@@ -683,17 +712,30 @@ input:focus-visible {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes content-enter {
-  from { opacity: 0; transform: translateY(9px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes egg-float {
-  0%, 100% { transform: rotate(9deg) translateY(0); }
-  50% { transform: rotate(7deg) translateY(-7px); }
+  0%,
+  100% {
+    transform: rotate(9deg) translateY(0);
+  }
+  50% {
+    transform: rotate(7deg) translateY(-7px);
+  }
 }
 
 @media (max-width: 1000px) {
@@ -805,7 +847,10 @@ input:focus-visible {
   font-size: 10px;
   font-weight: 660;
   white-space: nowrap;
-  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
 }
 
 .purchase-create-button:hover,
@@ -975,7 +1020,9 @@ input:focus-visible {
   font: inherit;
   font-size: 10px;
   font-weight: 450;
-  transition: border-color 140ms ease, box-shadow 140ms ease;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .purchase-field textarea {
@@ -1133,7 +1180,9 @@ input:focus-visible {
   border: 1px solid #e5ebe4;
   border-radius: 8px;
   cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
 }
 
 .purchase-payment-option--selected {
@@ -1795,11 +1844,21 @@ input:focus-visible {
     font-size: 8px;
   }
 
-  .purchase-entry-table td:nth-child(2)::before { content: "Quantity"; }
-  .purchase-entry-table td:nth-child(3)::before { content: "Unit cost"; }
-  .purchase-entry-table td:nth-child(4)::before { content: "Discount"; }
-  .purchase-entry-table td:nth-child(5)::before { content: "Batch (optional)"; }
-  .purchase-entry-table td:nth-child(6)::before { content: "Expiry (optional)"; }
+  .purchase-entry-table td:nth-child(2)::before {
+    content: "Quantity";
+  }
+  .purchase-entry-table td:nth-child(3)::before {
+    content: "Unit cost";
+  }
+  .purchase-entry-table td:nth-child(4)::before {
+    content: "Discount";
+  }
+  .purchase-entry-table td:nth-child(5)::before {
+    content: "Batch (optional)";
+  }
+  .purchase-entry-table td:nth-child(6)::before {
+    content: "Expiry (optional)";
+  }
 
   .purchase-entry-table td:nth-child(5),
   .purchase-entry-table td:nth-child(6) {
@@ -1910,6 +1969,175 @@ input:focus-visible {
 
 .supplier-payment-modal {
   width: min(620px, 100%);
+}
+
+.customers-page {
+  gap: 16px;
+}
+
+.customers-success {
+  border: 1px solid #dfece0;
+  border-radius: 7px;
+}
+
+.customers-form-panel {
+  padding: 16px;
+}
+
+.customers-form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.customers-form-heading h2 {
+  margin: 0;
+  color: #394b3e;
+  font-size: 13px;
+  font-weight: 680;
+}
+
+.customers-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.customers-form-wide,
+.customers-form-actions {
+  grid-column: 1 / -1;
+}
+
+.customers-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.customers-form-actions .purchase-cancel-button {
+  min-width: 90px;
+}
+
+.customers-form-actions .purchase-save-button {
+  min-width: 130px;
+}
+
+.customers-form-alert {
+  margin-bottom: 12px;
+}
+
+.customers-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #edf1ec;
+}
+
+.customers-search {
+  display: flex;
+  width: min(420px, 100%);
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid #dfe7df;
+  border-radius: 7px;
+  color: #829087;
+  background: #fff;
+}
+
+.customers-search:focus-within {
+  border-color: #82a98a;
+  box-shadow: 0 0 0 3px rgb(68 129 82 / 10%);
+}
+
+.customers-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #394b3e;
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+}
+
+.customers-table {
+  min-width: 760px;
+}
+
+.customer-modal {
+  width: min(680px, 100%);
+}
+
+.customer-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.customer-detail-notes {
+  margin-top: 16px;
+}
+
+.customer-detail-notes strong {
+  color: #8a958d;
+  font-size: 9px;
+  font-weight: 570;
+}
+
+.customer-detail-notes p {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+  color: #3f5144;
+  font-size: 10px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.customer-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #edf1ec;
+}
+
+.customer-detail-actions .purchase-save-button {
+  gap: 7px;
+}
+
+@media (max-width: 900px) {
+  .customers-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .customers-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .customers-form-wide,
+  .customers-form-actions {
+    grid-column: 1;
+  }
+
+  .customers-form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+  }
+
+  .customers-toolbar {
+    align-items: stretch;
+  }
+
+  .customers-search {
+    flex: 1;
+  }
 }
 
 @media (max-width: 900px) {
@@ -2083,7 +2311,9 @@ input:focus-visible {
   font-weight: 540;
   text-align: left;
   white-space: nowrap;
-  transition: background 150ms ease, color 150ms ease;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
 }
 
 .secretary-navigation__item svg {
@@ -2216,7 +2446,10 @@ input:focus-visible {
   border-radius: 8px;
   color: #637168;
   background: transparent;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
 }
 
 .icon-button:hover {
@@ -2312,7 +2545,10 @@ input:focus-visible {
   background: #fff;
   font-size: 11px;
   font-weight: 600;
-  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease,
+    background 140ms ease;
 }
 
 .secretary-logout:hover:not(:disabled) {
@@ -2432,7 +2668,9 @@ input:focus-visible {
   padding-left: 10px;
 }
 
-.secretary-shell--collapsed .secretary-navigation__group + .secretary-navigation__group {
+.secretary-shell--collapsed
+  .secretary-navigation__group
+  + .secretary-navigation__group {
   margin-top: 16px;
 }
 
@@ -2688,8 +2926,12 @@ input:focus-visible {
 }
 
 @keyframes overlay-enter {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .overview-page {
@@ -2744,7 +2986,10 @@ input:focus-visible {
   background: #fff;
   font-size: 11px;
   font-weight: 620;
-  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease,
+    background 140ms ease;
 }
 
 .overview-refresh:hover:not(:disabled) {
@@ -3099,7 +3344,9 @@ input:focus-visible {
 }
 
 @keyframes overview-shimmer {
-  to { background-position: -200% 0; }
+  to {
+    background-position: -200% 0;
+  }
 }
 
 @media (max-width: 1100px) {
@@ -3312,7 +3559,10 @@ input:focus-visible {
   background: #fff;
   font-size: 9px;
   font-weight: 640;
-  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease,
+    background 140ms ease;
 }
 
 .purchase-view-button:hover,
