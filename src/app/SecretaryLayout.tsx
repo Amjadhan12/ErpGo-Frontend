@@ -98,6 +98,7 @@ const routeByLabel: Record<string, string> = {
   "Batch & Expiry": "/secretary/batch-expiry",
   Purchases: "/secretary/purchases",
   Sales: "/secretary/sales",
+  Expenses: "/secretary/expenses",
   "Supplier Payments": "/secretary/supplier-payments",
 };
 

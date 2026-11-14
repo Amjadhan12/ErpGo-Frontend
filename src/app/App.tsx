@@ -43,6 +43,7 @@ import StockAdjustments from "@/app/StockAdjustments";
 import StockWastage from "@/app/StockWastage";
 import BatchExpiry from "@/app/BatchExpiry";
 import Sales from "@/app/Sales";
+import Expenses from "@/app/Expenses";
 
 function BrandMark({
   imageUrl,
@@ -468,6 +469,8 @@ export default function App() {
             <Route path="purchases/create" element={<CreatePurchase />} />
             <Route path="sales" element={<Sales />} />
             <Route path="sales/create" element={<Sales />} />
+            <Route path="expenses" element={<Expenses />} />
+            <Route path="expenses/create" element={<Expenses />} />
             <Route path="supplier-payments" element={<SupplierPayments />} />
             <Route path="customers" element={<Customers />} />
             <Route path="suppliers" element={<Suppliers />} />
