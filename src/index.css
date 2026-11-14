@@ -4019,6 +4019,83 @@ input:focus-visible {
   box-shadow: 0 4px 14px rgb(34 55 38 / 2.5%);
 }
 
+.inventory-operation-page .inventory-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 20px;
+}
+
+.inventory-operation-page .inventory-form > label,
+.inventory-filters > label {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  color: #46564a;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.inventory-operation-page .inventory-form input,
+.inventory-operation-page .inventory-form select,
+.inventory-filters select {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #dce4dc;
+  border-radius: 7px;
+  background: #fff;
+  color: #283d2f;
+  font: inherit;
+}
+
+.inventory-operation-page .inventory-form input:focus,
+.inventory-operation-page .inventory-form select:focus,
+.inventory-filters select:focus {
+  border-color: #5c8464;
+  outline: 3px solid rgb(92 132 100 / 14%);
+}
+
+.inventory-operation-page .inventory-form > button {
+  justify-self: start;
+}
+
+.inventory-operation-page .inventory-form-hint {
+  margin: -4px 20px 18px;
+  color: #69766c;
+  font-size: 12px;
+}
+
+.inventory-operation-page .purchases-panel > h2 {
+  margin: 0;
+  padding: 20px 20px 0;
+  color: #283d2f;
+  font-size: 17px;
+}
+
+.inventory-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px;
+}
+
+.batch-expiry-page .purchases-panel > .purchases-state {
+  margin: 0 18px 18px;
+}
+
+@media (max-width: 640px) {
+  .inventory-operation-page .inventory-form,
+  .inventory-filters {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px;
+  }
+
+  .inventory-operation-page .inventory-form-hint {
+    margin: -2px 16px 16px;
+  }
+}
+
 .purchases-table-scroll,
 .purchase-items-scroll {
   width: 100%;

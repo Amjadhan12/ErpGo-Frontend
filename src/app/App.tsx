@@ -36,6 +36,12 @@ import Customers from "@/app/Customers";
 import Suppliers from "@/app/Suppliers";
 import Products from "@/app/Products";
 import Warehouses from "@/app/Warehouses";
+import Inventory from "@/app/Inventory";
+import OpeningStocks from "@/app/OpeningStocks";
+import StockTransfers from "@/app/StockTransfers";
+import StockAdjustments from "@/app/StockAdjustments";
+import StockWastage from "@/app/StockWastage";
+import BatchExpiry from "@/app/BatchExpiry";
 
 function BrandMark({
   imageUrl,
@@ -464,6 +470,12 @@ export default function App() {
             <Route path="suppliers" element={<Suppliers />} />
             <Route path="products" element={<Products />} />
             <Route path="warehouses" element={<Warehouses />} />
+            <Route path="inventory" element={<Inventory />} />
+            <Route path="opening-stocks" element={<OpeningStocks />} />
+            <Route path="stock-transfers" element={<StockTransfers />} />
+            <Route path="stock-adjustments" element={<StockAdjustments />} />
+            <Route path="stock-wastage" element={<StockWastage />} />
+            <Route path="batch-expiry" element={<BatchExpiry />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

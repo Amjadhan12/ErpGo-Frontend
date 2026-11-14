@@ -1,12 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
-import axios from "axios";
 import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
   Eye,
   Plus,
-  RefreshCw,
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";

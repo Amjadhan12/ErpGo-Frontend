@@ -55,9 +55,11 @@ const menuGroups: MenuGroup[] = [
       { label: "Products", icon: Package },
       { label: "Warehouses", icon: Warehouse },
       { label: "Inventory", icon: Boxes },
+      { label: "Opening Stocks", icon: Boxes },
       { label: "Stock Transfers", icon: ArrowDownUp },
       { label: "Stock Adjustments", icon: SlidersHorizontal },
       { label: "Stock Wastage", icon: BarChart3 },
+      { label: "Batch & Expiry", icon: BarChart3 },
     ],
   },
   {
@@ -173,9 +175,21 @@ function SecretarySidebar({
                         ? "/secretary/suppliers"
                         : label === "Products"
                           ? "/secretary/products"
-                          : label === "Warehouses"
-                            ? "/secretary/warehouses"
-                            : label === "Purchases"
+                            : label === "Warehouses"
+                              ? "/secretary/warehouses"
+                              : label === "Inventory"
+                                ? "/secretary/inventory"
+                                : label === "Opening Stocks"
+                                  ? "/secretary/opening-stocks"
+                                  : label === "Stock Transfers"
+                                    ? "/secretary/stock-transfers"
+                                    : label === "Stock Adjustments"
+                                      ? "/secretary/stock-adjustments"
+                                      : label === "Stock Wastage"
+                                        ? "/secretary/stock-wastage"
+                                        : label === "Batch & Expiry"
+                                          ? "/secretary/batch-expiry"
+                              : label === "Purchases"
                               ? "/secretary/purchases"
                               : label === "Supplier Payments"
                                 ? "/secretary/supplier-payments"
@@ -297,8 +311,20 @@ export default function SecretaryLayout() {
           ? "Suppliers"
           : location.pathname.startsWith("/secretary/products")
             ? "Products"
-            : location.pathname.startsWith("/secretary/warehouses")
+        : location.pathname.startsWith("/secretary/warehouses")
               ? "Warehouses"
+              : location.pathname.startsWith("/secretary/inventory")
+                ? "Inventory"
+                : location.pathname.startsWith("/secretary/opening-stocks")
+                  ? "Opening Stocks"
+                  : location.pathname.startsWith("/secretary/stock-transfers")
+                    ? "Stock Transfers"
+                    : location.pathname.startsWith("/secretary/stock-adjustments")
+                      ? "Stock Adjustments"
+                      : location.pathname.startsWith("/secretary/stock-wastage")
+                        ? "Stock Wastage"
+                        : location.pathname.startsWith("/secretary/batch-expiry")
+                          ? "Batch & Expiry"
               : location.pathname.startsWith("/secretary/purchases")
                 ? "Purchases"
                 : location.pathname.startsWith("/secretary/supplier-payments")

@@ -121,10 +121,6 @@ function parseAdjustment(value: unknown): Adjustment {
   };
 }
 
-function nextKey(lines: AdjustmentLine[]): number {
-  return lines.reduce((max, line) => Math.max(max, line.key), 0) + 1;
-}
-
 export default function StockAdjustments() {
   const [adjustments, setAdjustments] =
     useState<LaravelPage<Adjustment> | null>(null);
