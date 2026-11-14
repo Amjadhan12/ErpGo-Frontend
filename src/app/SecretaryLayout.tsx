@@ -100,6 +100,7 @@ const routeByLabel: Record<string, string> = {
   Sales: "/secretary/sales",
   Expenses: "/secretary/expenses",
   "Financial Accounts": "/secretary/financial-accounts",
+  "Cash Book": "/secretary/cash-book",
   "Supplier Payments": "/secretary/supplier-payments",
 };
 

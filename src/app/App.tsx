@@ -45,6 +45,7 @@ import BatchExpiry from "@/app/BatchExpiry";
 import Sales from "@/app/Sales";
 import Expenses from "@/app/Expenses";
 import FinancialAccounts from "@/app/FinancialAccounts";
+import CashBook from "@/app/CashBook";
 
 function BrandMark({
   imageUrl,
@@ -473,6 +474,7 @@ export default function App() {
             <Route path="expenses" element={<Expenses />} />
             <Route path="expenses/create" element={<Expenses />} />
             <Route path="financial-accounts" element={<FinancialAccounts />} />
+            <Route path="cash-book" element={<CashBook />} />
             <Route path="supplier-payments" element={<SupplierPayments />} />
             <Route path="customers" element={<Customers />} />
             <Route path="suppliers" element={<Suppliers />} />
