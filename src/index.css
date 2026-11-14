@@ -1971,20 +1971,24 @@ input:focus-visible {
   width: min(620px, 100%);
 }
 
-.customers-page {
+.customers-page,
+.suppliers-page {
   gap: 16px;
 }
 
-.customers-success {
+.customers-success,
+.suppliers-success {
   border: 1px solid #dfece0;
   border-radius: 7px;
 }
 
-.customers-form-panel {
+.customers-form-panel,
+.suppliers-form-panel {
   padding: 16px;
 }
 
-.customers-form-heading {
+.customers-form-heading,
+.suppliers-form-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1992,14 +1996,16 @@ input:focus-visible {
   margin-bottom: 14px;
 }
 
-.customers-form-heading h2 {
+.customers-form-heading h2,
+.suppliers-form-heading h2 {
   margin: 0;
   color: #394b3e;
   font-size: 13px;
   font-weight: 680;
 }
 
-.customers-form {
+.customers-form,
+.suppliers-form {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: start;
@@ -2007,29 +2013,36 @@ input:focus-visible {
 }
 
 .customers-form-wide,
-.customers-form-actions {
+.customers-form-actions,
+.suppliers-form-wide,
+.suppliers-form-actions {
   grid-column: 1 / -1;
 }
 
-.customers-form-actions {
+.customers-form-actions,
+.suppliers-form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
-.customers-form-actions .purchase-cancel-button {
+.customers-form-actions .purchase-cancel-button,
+.suppliers-form-actions .purchase-cancel-button {
   min-width: 90px;
 }
 
-.customers-form-actions .purchase-save-button {
+.customers-form-actions .purchase-save-button,
+.suppliers-form-actions .purchase-save-button {
   min-width: 130px;
 }
 
-.customers-form-alert {
+.customers-form-alert,
+.suppliers-form-alert {
   margin-bottom: 12px;
 }
 
-.customers-toolbar {
+.customers-toolbar,
+.suppliers-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2038,7 +2051,8 @@ input:focus-visible {
   border-bottom: 1px solid #edf1ec;
 }
 
-.customers-search {
+.customers-search,
+.suppliers-search {
   display: flex;
   width: min(420px, 100%);
   min-height: 36px;
@@ -2051,12 +2065,14 @@ input:focus-visible {
   background: #fff;
 }
 
-.customers-search:focus-within {
+.customers-search:focus-within,
+.suppliers-search:focus-within {
   border-color: #82a98a;
   box-shadow: 0 0 0 3px rgb(68 129 82 / 10%);
 }
 
-.customers-search input {
+.customers-search input,
+.suppliers-search input {
   width: 100%;
   min-width: 0;
   border: 0;
@@ -2067,29 +2083,35 @@ input:focus-visible {
   font-size: 10px;
 }
 
-.customers-table {
+.customers-table,
+.suppliers-table {
   min-width: 760px;
 }
 
-.customer-modal {
+.customer-modal,
+.supplier-modal {
   width: min(680px, 100%);
 }
 
-.customer-detail-grid {
+.customer-detail-grid,
+.supplier-detail-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.customer-detail-notes {
+.customer-detail-notes,
+.supplier-detail-notes {
   margin-top: 16px;
 }
 
-.customer-detail-notes strong {
+.customer-detail-notes strong,
+.supplier-detail-notes strong {
   color: #8a958d;
   font-size: 9px;
   font-weight: 570;
 }
 
-.customer-detail-notes p {
+.customer-detail-notes p,
+.supplier-detail-notes p {
   margin: 6px 0 0;
   overflow-wrap: anywhere;
   color: #3f5144;
@@ -2098,7 +2120,8 @@ input:focus-visible {
   white-space: pre-wrap;
 }
 
-.customer-detail-actions {
+.customer-detail-actions,
+.supplier-detail-actions {
   display: flex;
   justify-content: flex-end;
   margin-top: 18px;
@@ -2106,36 +2129,44 @@ input:focus-visible {
   border-top: 1px solid #edf1ec;
 }
 
-.customer-detail-actions .purchase-save-button {
+.customer-detail-actions .purchase-save-button,
+.supplier-detail-actions .purchase-save-button {
   gap: 7px;
 }
 
 @media (max-width: 900px) {
-  .customers-form {
+  .customers-form,
+  .suppliers-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 600px) {
-  .customers-form {
+  .customers-form,
+  .suppliers-form {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .customers-form-wide,
-  .customers-form-actions {
+  .customers-form-actions,
+  .suppliers-form-wide,
+  .suppliers-form-actions {
     grid-column: 1;
   }
 
-  .customers-form-actions {
+  .customers-form-actions,
+  .suppliers-form-actions {
     display: grid;
     grid-template-columns: 1fr 1.4fr;
   }
 
-  .customers-toolbar {
+  .customers-toolbar,
+  .suppliers-toolbar {
     align-items: stretch;
   }
 
-  .customers-search {
+  .customers-search,
+  .suppliers-search {
     flex: 1;
   }
 }
