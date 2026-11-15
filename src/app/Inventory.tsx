@@ -7,6 +7,7 @@ import {
   Search,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import DatePeriodFilter from "@/app/DatePeriodFilter";
 import {
   formatCurrency,
   formatQuantity,
@@ -565,27 +566,16 @@ export default function Inventory() {
                   ))}
                 </select>
               </label>
-              <label className="inventory-filter">
-                <span>From</span>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(event) =>
-                    updateFilter(setFromDate, event.target.value)
-                  }
-                />
-              </label>
-              <label className="inventory-filter">
-                <span>To</span>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(event) =>
-                    updateFilter(setToDate, event.target.value)
-                  }
-                  min={fromDate || undefined}
-                />
-              </label>
+              <DatePeriodFilter
+                className="inventory-period-filter"
+                fromDate={fromDate}
+                toDate={toDate}
+                onApply={(nextFromDate, nextToDate) => {
+                  setFromDate(nextFromDate);
+                  setToDate(nextToDate);
+                  setPage(1);
+                }}
+              />
             </>
           )}
         </div>

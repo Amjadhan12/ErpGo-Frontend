@@ -4495,7 +4495,7 @@ input:focus-visible {
 .cash-book-panel-heading h2 { margin:0 0 4px; color:#2d3d33; font-size:15px; }
 .cash-book-panel-heading p { margin:0; color:#87928a; font-size:11px; }
 .cash-book-panel-icon { display:grid; width:35px; height:35px; flex:0 0 auto; place-items:center; border-radius:9px; background:#eff6f0; color:#477653; }
-.cash-book-filter-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; padding:17px 20px 14px; }
+.cash-book-filter-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; padding:17px 20px 14px; }
 .cash-book-filter-grid label { display:flex; min-width:0; flex-direction:column; gap:6px; color:#55645a; font-size:11px; font-weight:650; }
 .cash-book-filter-grid input,.cash-book-filter-grid select { width:100%; min-height:38px; box-sizing:border-box; padding:8px 9px; border:1px solid #dce4dd; border-radius:7px; outline:none; background:#fff; color:#3b4a40; font:inherit; font-weight:450; }
 .cash-book-filter-grid input:focus,.cash-book-filter-grid select:focus { border-color:#75a180; box-shadow:0 0 0 3px rgb(89 137 101 / 12%); }
@@ -4540,6 +4540,24 @@ input:focus-visible {
 .cash-book-pagination button:disabled { cursor:default; opacity:.45; }
 @media (max-width:850px) { .cash-book-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .cash-book-summary-grid { grid-template-columns:1fr; } .cash-book-summary-card { padding:13px 15px; } .cash-book-ledger-table { min-width:980px; } .cash-book-table:not(.cash-book-ledger-table) { min-width:760px; } }
 @media (max-width:520px) { .cash-book-heading { align-items:flex-start; } .cash-book-filter-grid { grid-template-columns:1fr; padding:14px; } .cash-book-panel-heading { padding:14px; } .cash-book-filter-actions { align-items:flex-start; flex-direction:column; padding:11px 14px; } .cash-book-filter-actions>div { width:100%; } .cash-book-filter-actions button { flex:1; } .cash-book-inline-error,.cash-book-options-error { margin-right:14px; margin-left:14px; } .cash-book-pagination { align-items:flex-start; flex-direction:column; } }
+
+.date-period-filter { display:grid; grid-template-columns:minmax(150px,1.2fr) repeat(3,minmax(105px,1fr)) auto; align-items:end; gap:10px; padding:12px 16px; border:1px solid #e8eee9; border-radius:8px; background:#fbfcfb; }
+.date-period-filter>label { display:grid; min-width:0; gap:5px; color:#647168; font-size:10px; font-weight:650; }
+.date-period-filter input,.date-period-filter select { width:100%; min-width:0; min-height:36px; padding:7px 9px; border:1px solid #dce4dd; border-radius:6px; outline:none; background:#fff; color:#35443a; font:inherit; font-size:11px; font-weight:450; }
+.date-period-filter input:focus,.date-period-filter select:focus { border-color:#75a180; box-shadow:0 0 0 3px rgb(89 137 101 / 12%); }
+.date-period-applied { display:grid; min-width:0; gap:4px; padding-bottom:3px; }
+.date-period-applied span { color:#89938d; font-size:10px; }
+.date-period-applied strong { overflow:hidden; color:#34453a; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.date-period-actions { display:flex; gap:7px; }
+.date-period-actions button { min-height:36px; padding:0 11px; border-radius:6px; font:inherit; font-size:10px; font-weight:700; white-space:nowrap; cursor:pointer; }
+.date-period-reset { border:1px solid #dfe6e0; background:#fff; color:#536258; }
+.date-period-apply { border:1px solid #386c49; background:#386c49; color:#fff; }
+.date-period-error { grid-column:1/-1; color:#a64e48; font-size:10px; }
+.cash-book-period-filter { margin:0 20px 13px; }
+.financial-ledger-period { margin:0 20px 14px; }
+.inventory-period-filter { grid-column:1/-1; }
+@media(max-width:900px) { .date-period-filter { grid-template-columns:repeat(2,minmax(0,1fr)); } .date-period-applied,.date-period-actions,.date-period-error { grid-column:1/-1; } }
+@media(max-width:560px) { .date-period-filter { grid-template-columns:minmax(0,1fr); padding:12px; } .date-period-applied,.date-period-actions,.date-period-error { grid-column:auto; } .date-period-actions { width:100%; } .date-period-actions button { flex:1; } .cash-book-period-filter,.financial-ledger-period { margin-right:14px; margin-left:14px; } }
 
 /* Financial accounts */
 .financial-accounts-page { width: 100%; max-width: 1440px; margin: 0 auto; color: #223128; }
