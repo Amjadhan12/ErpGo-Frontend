@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Building2, LoaderCircle, LogOut, RefreshCw, UserRound } from "lucide-react";
-import { useAuth, type UserRole } from "@/auth/AuthContext";
+import { AlertCircle, LoaderCircle, RefreshCw, UserRound } from "lucide-react";
+import type { UserRole } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import { getErrorMessage, isRecord, numberValue, optionalText, parseId } from "@/app/InventoryShared";
 
@@ -63,13 +63,11 @@ function dateLabel(value: string): string {
 }
 
 export default function PartnerPortal({ role }: { role: PortalRole }) {
-  const { user, signOut } = useAuth();
   const [data, setData] = useState<PortalData | null>(null);
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [signingOut, setSigningOut] = useState(false);
   const config = roleConfig[role];
 
   useEffect(() => {
@@ -94,13 +92,7 @@ export default function PartnerPortal({ role }: { role: PortalRole }) {
     return value.balanceType === "we_owe_supplier" ? "The company owes you" : "You owe the company";
   };
 
-  async function handleSignOut() {
-    setSigningOut(true);
-    try { await signOut(); } catch { /* The local session is cleared even if logout cannot reach the server. */ } finally { setSigningOut(false); }
-  }
-
   return <main className="partner-portal-page">
-    <header className="partner-portal-header"><a className="partner-portal-brand" href={role === "Customer" ? "/customer" : "/supplier"}><span className="partner-portal-brand-icon"><Building2 size={20} /></span><span><strong>ERPGO</strong><small>{role} portal</small></span></a><div className="partner-portal-user"><span>{user?.name}</span><button type="button" onClick={() => void handleSignOut()} disabled={signingOut}><LogOut size={16} />{signingOut ? "Signing out…" : "Sign out"}</button></div></header>
     <div className="partner-portal-content">
       <header className="partner-portal-heading"><div><p className="overview-eyebrow">{role.toUpperCase()} ACCOUNT</p><h1>{role} portal</h1><p>Your account profile, balances, and transaction history.</p></div><button className="partner-portal-refresh" type="button" onClick={() => setRetry((value) => value + 1)} disabled={loading}><RefreshCw size={16} /> Refresh</button></header>
       {loading ? <div className="partner-portal-state" role="status"><LoaderCircle className="partner-portal-spin" size={20} /> Loading your account…</div>
@@ -119,6 +111,5 @@ export default function PartnerPortal({ role }: { role: PortalRole }) {
             </section>
           </>}
     </div>
-    <footer className="partner-portal-footer">ERPGO · {role} account</footer>
   </main>;
 }
