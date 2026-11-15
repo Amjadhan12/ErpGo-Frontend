@@ -52,6 +52,7 @@ import Chat from "@/app/Chat";
 import Documents from "@/app/Documents";
 import SettingsPage from "@/app/Settings";
 import FinancialAccounts from "@/app/FinancialAccounts";
+import OpeningBalances from "@/app/OpeningBalances";
 import CashBook from "@/app/CashBook";
 import CashTransfers from "@/app/CashTransfers";
 import SaleReturns from "@/app/SaleReturns";
@@ -492,6 +493,7 @@ export default function App() {
             <Route path="expenses/create" element={<Expenses />} />
             <Route path="expense-categories" element={<ExpenseCategories />} />
             <Route path="financial-accounts" element={<FinancialAccounts />} />
+            <Route path="account-opening-balances" element={<OpeningBalances />} />
             <Route path="cash-book" element={<CashBook />} />
             <Route path="cash-transfers" element={<CashTransfers />} />
             <Route path="reports" element={<Suspense fallback={<div className="reports-loading" role="status"><span className="loading-spinner" /><span>Loading reports…</span></div>}><Reports /></Suspense>} />

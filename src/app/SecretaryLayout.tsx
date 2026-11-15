@@ -50,7 +50,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { label: "Customers", icon: UsersRound },
       { label: "Suppliers", icon: Truck },
-      { label: "Opening Balances", icon: Banknote },
+      { label: "Partner Opening Balances", icon: Banknote },
     ],
   },
   {
@@ -81,6 +81,7 @@ const menuGroups: MenuGroup[] = [
     label: "Finance & tools",
     items: [
       { label: "Financial Accounts", icon: Building2 },
+      { label: "Opening Balances", icon: Banknote },
       { label: "Cash Transfers", icon: ArrowDownUp },
       { label: "Sale Return Settlements", icon: Banknote },
       { label: "Purchase Return Settlements", icon: Banknote },
@@ -100,7 +101,7 @@ const routeByLabel: Record<string, string> = {
   Dashboard: "/secretary",
   Customers: "/secretary/customers",
   Suppliers: "/secretary/suppliers",
-  "Opening Balances": "/secretary/opening-balances",
+  "Partner Opening Balances": "/secretary/opening-balances",
   Products: "/secretary/products",
   Warehouses: "/secretary/warehouses",
   Inventory: "/secretary/inventory",
@@ -116,6 +117,7 @@ const routeByLabel: Record<string, string> = {
   Expenses: "/secretary/expenses",
   "Expense Categories": "/secretary/expense-categories",
   "Financial Accounts": "/secretary/financial-accounts",
+  "Opening Balances": "/secretary/account-opening-balances",
   "Cash Transfers": "/secretary/cash-transfers",
   "Sale Return Settlements": "/secretary/sale-return-settlements",
   "Purchase Return Settlements": "/secretary/purchase-return-settlements",
