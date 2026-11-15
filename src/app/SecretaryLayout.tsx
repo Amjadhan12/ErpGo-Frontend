@@ -82,6 +82,7 @@ const menuGroups: MenuGroup[] = [
       { label: "Sale Return Settlements", icon: Banknote },
       { label: "Purchase Return Settlements", icon: Banknote },
       { label: "Supplier Payments", icon: Banknote },
+      { label: "Customer Receipts", icon: Banknote },
       { label: "Cash Book", icon: Wallet },
       { label: "Reports", icon: BarChart3 },
       { label: "Chat", icon: MessageCircle },
@@ -119,6 +120,7 @@ const routeByLabel: Record<string, string> = {
   Documents: "/secretary/documents",
   Settings: "/secretary/settings",
   "Supplier Payments": "/secretary/supplier-payments",
+  "Customer Receipts": "/secretary/customer-receipts",
 };
 
 function getInitials(name: string): string {
