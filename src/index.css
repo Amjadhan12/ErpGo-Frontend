@@ -7179,3 +7179,107 @@ button[class*="modal-close"] { min-width: 44px; min-height: 44px; flex: 0 0 auto
   .partner-portal-nav a { padding: 0 9px; }
   .secretary-breadcrumb strong { max-width: 34vw; }
 }
+
+/* Phase 18 Secretary forms, detail dialogs, and action controls */
+.secretary-shell form label,
+.secretary-shell form > label,
+.secretary-shell form .form-label { color: #334155; font-size: 15px !important; line-height: 1.45; }
+.secretary-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.secretary-shell select,
+.secretary-shell textarea { min-height: 48px !important; padding: 11px 13px !important; border-color: var(--color-border) !important; color: var(--color-text) !important; font-size: 16px !important; }
+.secretary-shell textarea { min-height: 112px !important; line-height: 1.55 !important; }
+.secretary-shell input::placeholder,
+.secretary-shell textarea::placeholder { color: #64748b !important; opacity: 1; }
+.secretary-shell input:disabled,
+.secretary-shell select:disabled,
+.secretary-shell textarea:disabled { color: #475569 !important; background: #f1f5f9 !important; opacity: 1; }
+.secretary-shell input:focus-visible,
+.secretary-shell select:focus-visible,
+.secretary-shell textarea:focus-visible { border-color: var(--color-primary) !important; outline: 3px solid rgb(79 70 229 / 18%) !important; outline-offset: 1px; }
+.secretary-shell form [role="alert"],
+.secretary-shell form [class*="error"],
+.secretary-shell form [class*="invalid"] { color: #991b1b; font-size: 14px; line-height: 1.45; }
+.secretary-shell button[type="submit"],
+.secretary-shell button[class*="primary"],
+.secretary-shell button[class*="save"],
+.secretary-shell button[class*="create"],
+.secretary-shell button[class*="submit"] { min-height: 44px; border-color: var(--color-primary); background: var(--color-primary); color: #fff; font-size: 15px !important; }
+.secretary-shell button[class*="cancel"],
+.secretary-shell button[class*="close"],
+.secretary-shell button[class*="back"],
+.secretary-shell button[class*="secondary"] { min-height: 44px; border-color: var(--color-border); background: #fff; color: #334155; font-size: 15px !important; }
+.secretary-shell button[class*="danger"],
+.secretary-shell button[class*="delete"],
+.secretary-shell button[class*="deactivate"] { border-color: var(--color-error); background: var(--color-error); color: #fff; }
+.secretary-shell button:disabled { color: #475569; opacity: .78; }
+.secretary-shell button[class*="primary"]:disabled,
+.secretary-shell button[class*="save"]:disabled,
+.secretary-shell button[type="submit"]:disabled { color: #f8fafc; background: #64748b; }
+.secretary-shell button[class*="danger"]:disabled,
+.secretary-shell button[class*="delete"]:disabled { color: #fff; background: #b91c1c; }
+.secretary-shell table td button,
+.secretary-shell [class*="row-actions"] button,
+.secretary-shell [class*="actions"] button { min-height: 40px; }
+.secretary-shell [role="dialog"][aria-modal="true"] {
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+.secretary-shell [role="dialog"][aria-modal="true"] > header,
+.secretary-shell [role="dialog"][aria-modal="true"] [class*="modal__header"] {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  background: var(--color-surface);
+}
+.secretary-shell [role="dialog"][aria-modal="true"] > header button,
+.secretary-shell [role="dialog"][aria-modal="true"] button[aria-label*="Close"] { min-width: 44px; min-height: 44px; }
+.secretary-shell [role="dialog"][aria-modal="true"] > footer,
+.secretary-shell [role="dialog"][aria-modal="true"] [class*="modal-actions"],
+.secretary-shell [role="dialog"][aria-modal="true"] [class*="modal__footer"] {
+  position: sticky;
+  z-index: 4;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 0 max(8px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.secretary-shell [role="dialog"][aria-modal="true"] p,
+.secretary-shell [role="dialog"][aria-modal="true"] dd,
+.secretary-shell [role="dialog"][aria-modal="true"] li { color: #334155; font-size: 15px; line-height: 1.55; }
+.secretary-shell [role="dialog"][aria-modal="true"] dt { color: #475569; font-size: 14px; font-weight: 650; }
+.secretary-shell .secretary-content { min-width: 0; }
+.secretary-shell .secretary-header__menu:focus-visible,
+.secretary-shell .secretary-logout:focus-visible,
+.secretary-shell .secretary-navigation__item:focus-visible { outline: 3px solid #99f6e4; outline-offset: 2px; }
+.secretary-shell .secretary-navigation__item--active { color: #fff; background: var(--color-primary-dark); }
+.secretary-shell .secretary-navigation__item:not(:disabled):hover { color: #fff; background: rgb(255 255 255 / 10%); }
+
+@media (max-width: 760px) {
+  .secretary-shell [role="dialog"][aria-modal="true"] { width: 100%; max-width: 100%; max-height: calc(100dvh - 12px); border-radius: 14px 14px 0 0; }
+  .secretary-shell [role="dialog"][aria-modal="true"] > footer,
+  .secretary-shell [role="dialog"][aria-modal="true"] [class*="modal-actions"],
+  .secretary-shell [role="dialog"][aria-modal="true"] [class*="modal__footer"] { gap: 8px; }
+  .secretary-shell [role="dialog"][aria-modal="true"] > footer button,
+  .secretary-shell [role="dialog"][aria-modal="true"] [class*="modal-actions"] button,
+  .secretary-shell [role="dialog"][aria-modal="true"] [class*="modal__footer"] button { flex: 1 1 140px; }
+  .secretary-shell .secretary-header { gap: 8px; }
+  .secretary-shell .secretary-header__user { gap: 9px; }
+  .secretary-shell .secretary-logout { width: 42px; min-height: 42px; }
+}
+
+@media (max-width: 420px) {
+  .secretary-shell [role="dialog"][aria-modal="true"] > header { gap: 8px; padding: 14px; }
+  .secretary-shell [role="dialog"][aria-modal="true"] > header h2 { overflow-wrap: anywhere; }
+  .secretary-shell [role="dialog"][aria-modal="true"] [class*="modal-actions"] button,
+  .secretary-shell [role="dialog"][aria-modal="true"] [class*="modal__footer"] button { flex-basis: 100%; }
+  .secretary-shell .secretary-breadcrumb strong { max-width: 34vw; }
+}
