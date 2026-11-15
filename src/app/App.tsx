@@ -54,7 +54,7 @@ import Documents from "@/app/Documents";
 import SettingsPage from "@/app/Settings";
 import FinancialAccounts from "@/app/FinancialAccounts";
 import OpeningBalances from "@/app/OpeningBalances";
-import { CustomerPortalLayout, PortalIndex, SupplierChatPage, SupplierPortalLayout } from "@/app/PartnerPortalLayout";
+import { CustomerChatPage, CustomerPortalLayout, PortalIndex, SupplierChatPage, SupplierPortalLayout } from "@/app/PartnerPortalLayout";
 import CashBook from "@/app/CashBook";
 import CashTransfers from "@/app/CashTransfers";
 import SaleReturns from "@/app/SaleReturns";
@@ -483,6 +483,7 @@ export default function App() {
           <Route path="/" element={<LoginExperience />} />
           <Route path="/customer" element={<CustomerPortalLayout />}>
             <Route index element={<PortalIndex role="Customer" />} />
+            <Route path="chat" element={<CustomerChatPage />} />
           </Route>
           <Route path="/supplier" element={<SupplierPortalLayout />}>
             <Route index element={<PortalIndex role="Supplier" />} />

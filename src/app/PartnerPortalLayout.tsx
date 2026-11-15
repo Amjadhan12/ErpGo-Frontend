@@ -4,6 +4,7 @@ import { Navigate, NavLink, Outlet } from "react-router-dom";
 import { portalPaths, useAuth, type UserRole } from "@/auth/AuthContext";
 import PartnerPortalPage from "@/app/PartnerPortal";
 import SupplierChat from "@/app/SupplierChat";
+import CustomerChat from "@/app/CustomerChat";
 
 type PortalRole = Extract<UserRole, "Customer" | "Supplier">;
 
@@ -24,7 +25,7 @@ function PartnerPortalLayout({ role }: { role: PortalRole }) {
   }
 
   return <div className="partner-portal-shell">
-    <header className="partner-portal-header"><div className="partner-portal-brand"><span className="partner-portal-brand-icon"><Building2 size={20} /></span><span><strong>ERPGO</strong><small>{role} portal</small></span></div><nav className="partner-portal-nav" aria-label={`${role} portal navigation`}><NavLink to={role === "Customer" ? "/customer" : "/supplier"} end><UserRound size={15} /> Account</NavLink>{role === "Supplier" && <NavLink to="/supplier/chat"><MessageCircle size={15} /> Chat</NavLink>}</nav><div className="partner-portal-user"><span>{user.name}</span><button type="button" onClick={() => void handleSignOut()} disabled={signingOut}><LogOut size={15} />{signingOut ? "Signing out…" : "Sign out"}</button></div></header>
+    <header className="partner-portal-header"><div className="partner-portal-brand"><span className="partner-portal-brand-icon"><Building2 size={20} /></span><span><strong>ERPGO</strong><small>{role} portal</small></span></div><nav className="partner-portal-nav" aria-label={`${role} portal navigation`}><NavLink to={role === "Customer" ? "/customer" : "/supplier"} end><UserRound size={15} /> Account</NavLink>{role === "Customer" && <NavLink to="/customer/chat"><MessageCircle size={15} /> Chat</NavLink>}{role === "Supplier" && <NavLink to="/supplier/chat"><MessageCircle size={15} /> Chat</NavLink>}</nav><div className="partner-portal-user"><span>{user.name}</span><button type="button" onClick={() => void handleSignOut()} disabled={signingOut}><LogOut size={15} />{signingOut ? "Signing out…" : "Sign out"}</button></div></header>
     <Outlet />
     <footer className="partner-portal-footer">ERPGO · {role} account</footer>
   </div>;
@@ -44,4 +45,8 @@ export function PortalIndex({ role }: { role: PortalRole }) {
 
 export function SupplierChatPage() {
   return <SupplierChat />;
+}
+
+export function CustomerChatPage() {
+  return <CustomerChat />;
 }
