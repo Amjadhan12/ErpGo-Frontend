@@ -6731,3 +6731,29 @@ input:focus-visible {
 .account-opening-spin { animation: account-opening-rotate 1s linear infinite; }
 @keyframes account-opening-rotate { to { transform: rotate(360deg); } }
 @media (max-width: 640px) { .account-opening-form { grid-template-columns: 1fr; gap: 13px; padding: 15px; } .account-opening-field--wide,.account-opening-duplicate,.account-opening-form-error,.account-opening-form-actions { grid-column: auto; } .account-opening-form-actions { align-items: stretch; flex-direction: column; } .account-opening-form-actions button { width: 100%; } .account-opening-panel-heading { padding: 15px; } }
+/* Partner aging report */
+.reports-aging-filters { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; margin:0 0 10px; padding:13px; border:1px solid #e8eee9; border-radius:8px; background:#fbfcfb; }
+.reports-aging-filters>label { display:flex; min-width:130px; flex-direction:column; gap:5px; color:#68756c; font-size:10px; font-weight:650; }
+.reports-aging-filters input,.reports-aging-filters select { min-height:35px; padding:7px 9px; border:1px solid #dce4dd; border-radius:6px; background:#fff; color:#35443a; font:inherit; font-size:11px; }
+.reports-aging-filters .reports-aging-search { min-width:220px; flex:1; }
+.reports-aging-actions { display:flex; gap:7px; }
+.reports-aging-actions button,.reports-aging-pagination button { min-height:35px; padding:0 12px; border:1px solid #dce5dd; border-radius:6px; background:#fff; color:#486150; font:inherit; font-size:11px; font-weight:700; cursor:pointer; }
+.reports-aging-actions .reports-apply { border-color:#34734a; background:#34734a; color:#fff; }
+.reports-aging-meta { margin:0 0 12px; color:#7b877e; font-size:10px; }
+.reports-aging-meta strong { color:#43564a; }
+.reports-aging-table-wrap { margin-top:0; }
+.reports-aging-table { min-width:1120px; }
+.reports-aging-table td { white-space:nowrap; }
+.reports-aging-table td:first-child { white-space:normal; min-width:160px; }
+.reports-aging-currency { display:inline-block; border-radius:5px; background:#edf6ef; padding:4px 7px; color:#39754b; font-size:10px; font-weight:750; }
+.reports-aging-toggle { border:0; background:transparent; padding:4px 2px; color:#34734a; font:inherit; font-size:10px; font-weight:700; text-decoration:underline; cursor:pointer; }
+.reports-aging-detail-row>td { padding:0 !important; background:#f8faf8; white-space:normal !important; }
+.reports-aging-items { padding:14px; }
+.reports-aging-items h3 { margin:0 0 9px; color:#34443a; font-size:12px; }
+.reports-aging-items .reports-table-wrap { margin:0; }
+.reports-aging-items .reports-table { min-width:750px; }
+.reports-aging-pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 2px 0; color:#78847c; font-size:10px; }
+.reports-aging-pagination>div { display:flex; gap:7px; }
+.reports-aging-pagination button:disabled { opacity:.45; cursor:not-allowed; }
+@media(max-width:700px) { .reports-aging-filters { align-items:stretch; } .reports-aging-filters>label,.reports-aging-filters .reports-aging-search { min-width:calc(50% - 6px); flex:1; } .reports-aging-actions { align-self:flex-end; } }
+@media(max-width:540px) { .reports-aging-filters { flex-direction:column; align-items:stretch; } .reports-aging-filters>label,.reports-aging-filters .reports-aging-search { min-width:0; width:100%; } .reports-aging-actions button { flex:1; } .reports-aging-pagination { align-items:flex-start; flex-direction:column; } .reports-aging-pagination>div { width:100%; } .reports-aging-pagination button { flex:1; } }

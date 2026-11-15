@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BarChart3, Boxes, CircleDollarSign, RefreshCw, TrendingUp, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
@@ -14,6 +14,12 @@ type CashFlow = { currency: string; inflow: number; outflow: number; net: number
 type InventoryRow = { id: number; warehouse: string; product: string; sku: string | null; unit: string; quantity: number; valueAfn: number; status: string };
 type InventoryReport = { rows: InventoryRow[]; totalValue: number; productCount: number; lowStock: number; outOfStock: number };
 type PartnerBalance = { id: number; name: string; partnerType: string; balances: { currency: string; balance: number; balanceType: string }[] };
+type AgingBuckets = { "0_30_days": number; "31_60_days": number; "61_90_days": number; over_90_days: number };
+type AgingOpenItem = { transactionDate: string; amount: number; ageDays: number; agingBucket: string; source: string; transactionType: string; referenceType: string | null; referenceId: number | null; description: string | null };
+type PartnerAgingCurrency = { currencyId: number; currency: string; currencyName: string; currencySymbol: string; aging: AgingBuckets; totalOutstanding: number; unappliedCredit: number; openItems: AgingOpenItem[] };
+type PartnerAgingPartner = { id: number; partnerType: string; name: string; businessName: string | null; phone: string | null; currencies: PartnerAgingCurrency[] };
+type PartnerAgingReport = { partners: PartnerAgingPartner[]; page: number; lastPage: number; perPage: number; total: number; asOfDate: string; allocationMethod: string; agingBasis: string };
+type PartnerAgingTableRow = { key: string; partner: PartnerAgingPartner; currency: PartnerAgingCurrency | null };
 type PurchaseSummary = { count: number; byCurrency: { code: string; count: number; amount: number }[]; returnsNote: string | null };
 type PeriodMode = "custom" | "monthly" | "yearly";
 
@@ -77,6 +83,61 @@ function parsePartners(value: unknown): PartnerBalance[] {
     }) };
   });
 }
+function parsePartnerAging(value: unknown): PartnerAgingReport {
+  if (!isRecord(value) || !isRecord(value.data) || !Array.isArray(value.data.data) || !isRecord(value.filters)) throw new Error("The partner aging report response is incomplete.");
+  const pagination = value.data;
+  const partners = (pagination.data as unknown[]).map((partner): PartnerAgingPartner => {
+    if (!isRecord(partner) || !Array.isArray(partner.currencies)) throw new Error("The partner aging report contains an invalid partner.");
+    return {
+      id: parseId(partner.id, "partner ID"),
+      partnerType: typeof partner.partner_type === "string" ? partner.partner_type : "Partner",
+      name: typeof partner.name === "string" ? partner.name : "Partner",
+      businessName: typeof partner.business_name === "string" ? partner.business_name : null,
+      phone: typeof partner.phone === "string" ? partner.phone : null,
+      currencies: partner.currencies.map((currency): PartnerAgingCurrency => {
+        if (!isRecord(currency) || !isRecord(currency.aging) || !Array.isArray(currency.open_items)) throw new Error("The partner aging report contains an invalid currency row.");
+        return {
+          currencyId: parseId(currency.currency_id, "currency ID"),
+          currency: typeof currency.currency === "string" ? currency.currency.toUpperCase() : "AFN",
+          currencyName: typeof currency.currency_name === "string" ? currency.currency_name : "Currency",
+          currencySymbol: typeof currency.currency_symbol === "string" ? currency.currency_symbol : "",
+          aging: {
+            "0_30_days": numberValue(currency.aging["0_30_days"], "0–30 day aging amount"),
+            "31_60_days": numberValue(currency.aging["31_60_days"], "31–60 day aging amount"),
+            "61_90_days": numberValue(currency.aging["61_90_days"], "61–90 day aging amount"),
+            over_90_days: numberValue(currency.aging.over_90_days, "over 90 day aging amount"),
+          },
+          totalOutstanding: numberValue(currency.total_outstanding, "total outstanding"),
+          unappliedCredit: numberValue(currency.unapplied_credit, "unapplied credit"),
+          openItems: currency.open_items.map((item): AgingOpenItem => {
+            if (!isRecord(item) || typeof item.transaction_date !== "string") throw new Error("The partner aging report contains an invalid open item.");
+            return {
+              transactionDate: item.transaction_date,
+              amount: numberValue(item.amount, "open item amount"),
+              ageDays: numberValue(item.age_days, "open item age"),
+              agingBucket: typeof item.aging_bucket === "string" ? item.aging_bucket : "",
+              source: typeof item.source === "string" ? item.source : "",
+              transactionType: typeof item.transaction_type === "string" ? item.transaction_type : "",
+              referenceType: typeof item.reference_type === "string" ? item.reference_type : null,
+              referenceId: typeof item.reference_id === "number" ? item.reference_id : null,
+              description: typeof item.description === "string" ? item.description : null,
+            };
+          }),
+        };
+      }),
+    };
+  });
+  return {
+    partners,
+    page: numberValue(pagination.current_page, "current page"),
+    lastPage: numberValue(pagination.last_page, "last page"),
+    perPage: numberValue(pagination.per_page, "page size"),
+    total: numberValue(pagination.total, "partner count"),
+    asOfDate: typeof value.filters.as_of_date === "string" ? value.filters.as_of_date : "",
+    allocationMethod: typeof value.filters.allocation_method === "string" ? value.filters.allocation_method : "",
+    agingBasis: typeof value.filters.aging_basis === "string" ? value.filters.aging_basis : "",
+  };
+}
 function parsePurchases(value: unknown): PurchaseSummary {
   if (!isRecord(value) || !isRecord(value.data) || !Array.isArray(value.data.gross_purchases_by_currency)) throw new Error("The purchase summary response is incomplete.");
   return { count: numberValue(value.data.total_purchase_count, "purchase count"), byCurrency: value.data.gross_purchases_by_currency.map((item) => {
@@ -107,6 +168,8 @@ function money(amount: number, currency: string): string {
   catch { return `${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`; }
 }
 function moneyTick(amount: number): string { return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(amount); }
+function localToday(): string { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
+function agingLabel(value: string): string { return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 function SectionState<T>({ report, children }: { report: ReportState<T>; children: (data: T) => React.ReactNode }) {
   if (report.loading) return <div className="reports-state" role="status">Loading report…</div>;
   if (report.error) return <div className="reports-state reports-state--error" role="alert">{report.error}<button type="button" onClick={report.reload}>Try again</button></div>;
@@ -133,6 +196,13 @@ export default function Reports() {
   const [warehouseId, setWarehouseId] = useState("");
   const [partnerType, setPartnerType] = useState("");
   const [partnerCurrency, setPartnerCurrency] = useState("");
+  const [agingDateDraft, setAgingDateDraft] = useState(localToday);
+  const [agingTypeDraft, setAgingTypeDraft] = useState("");
+  const [agingCurrencyDraft, setAgingCurrencyDraft] = useState("");
+  const [agingSearchDraft, setAgingSearchDraft] = useState("");
+  const [agingFilters, setAgingFilters] = useState({ asOfDate: localToday(), partnerType: "", currencyId: "", search: "" });
+  const [agingPage, setAgingPage] = useState(1);
+  const [expandedAgingRows, setExpandedAgingRows] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const controller = new AbortController(); const signal = controller.signal;
@@ -148,6 +218,14 @@ export default function Reports() {
   const cashFlow = useReport("/api/reports/cash-flow", { from_date: fromDate || undefined, to_date: toDate || undefined, currency_id: cashFlowCurrency ? Number(cashFlowCurrency) : undefined }, parseCashFlow);
   const inventory = useReport("/api/reports/inventory", { warehouse_id: warehouseId ? Number(warehouseId) : undefined }, parseInventory);
   const partners = useReport("/api/reports/partner-balances", { partner_type: partnerType || undefined }, parsePartners);
+  const partnerAging = useReport("/api/reports/partner-aging", {
+    partner_type: agingFilters.partnerType || undefined,
+    search: agingFilters.search || undefined,
+    currency_id: agingFilters.currencyId ? Number(agingFilters.currencyId) : undefined,
+    as_of_date: agingFilters.asOfDate || undefined,
+    per_page: 50,
+    page: agingPage,
+  }, parsePartnerAging);
   const purchases = useReport("/api/reports/purchase-summary", { from_date: fromDate || undefined, to_date: toDate || undefined }, parsePurchases);
 
   const partnerCurrencies = useMemo(() => [...new Set((partners.data ?? []).flatMap((partner) => partner.balances.map((balance) => balance.currency)))].sort(), [partners.data]);
@@ -155,6 +233,9 @@ export default function Reports() {
     const balance = partner.balances.find((item) => item.currency === partnerCurrency);
     return balance ? [{ name: partner.name, type: partner.partnerType, balance: balance.balance, balanceType: balance.balanceType }] : [];
   }).sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance)).slice(0, 15), [partners.data, partnerCurrency]);
+  const partnerAgingRows = useMemo(() => (partnerAging.data?.partners ?? []).flatMap((partner): PartnerAgingTableRow[] => partner.currencies.length
+    ? partner.currencies.map((currency) => ({ key: `${partner.id}-${currency.currencyId}`, partner, currency }))
+    : [{ key: `${partner.id}-none`, partner, currency: null }]), [partnerAging.data]);
   const warehouseValues = useMemo(() => {
     const totals = new Map<string, number>();
     for (const row of inventory.data?.rows ?? []) totals.set(row.warehouse, (totals.get(row.warehouse) ?? 0) + row.valueAfn);
@@ -208,7 +289,7 @@ export default function Reports() {
   function resetDates() { setPeriodMode("custom"); setFromDraft(""); setToDraft(""); setFromDate(""); setToDate(""); setPeriodLabel("All dates"); setDateError(null); }
 
   return <div className="reports-page">
-    <header className="reports-heading"><div><p className="reports-eyebrow">ANALYTICS</p><h1>Reports</h1><p>Explore financial performance, cash movement, inventory, partners, and purchases.</p></div><button className="reports-refresh" type="button" onClick={() => { financial.reload(); profitLoss.reload(); cashFlow.reload(); inventory.reload(); partners.reload(); purchases.reload(); }}><RefreshCw size={16} /> Refresh reports</button></header>
+    <header className="reports-heading"><div><p className="reports-eyebrow">ANALYTICS</p><h1>Reports</h1><p>Explore financial performance, cash movement, inventory, partners, and purchases.</p></div><button className="reports-refresh" type="button" onClick={() => { financial.reload(); profitLoss.reload(); cashFlow.reload(); inventory.reload(); partners.reload(); purchases.reload(); partnerAging.reload(); }}><RefreshCw size={16} /> Refresh reports</button></header>
     <section className="reports-date-filter"><div className="reports-period-copy"><strong>Report period</strong><span>Applies to Profit & Loss, Cash Flow, and Purchase Summary.</span><small>Applied: {periodLabel}</small></div><label>Period<select value={periodMode} onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}><option value="custom">Custom Range</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>{periodMode === "custom" ? <><label>From<input type="date" value={fromDraft} max={toDraft || undefined} onChange={(event) => setFromDraft(event.target.value)} /></label><label>To<input type="date" value={toDraft} min={fromDraft || undefined} onChange={(event) => setToDraft(event.target.value)} /></label></> : <>{periodMode === "monthly" && <label>Month<select value={periodMonth} onChange={(event) => setPeriodMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2020, index, 1))}</option>)}</select></label>}<label>Year<input type="number" min="1" max="9999" value={periodYear} onChange={(event) => setPeriodYear(Number(event.target.value))} /></label></>}<div className="reports-filter-buttons"><button type="button" className="reports-reset" onClick={resetDates}>Reset</button><button type="button" className="reports-apply" onClick={applyPeriod}>Apply period</button></div>{dateError && <span className="reports-date-error" role="alert">{dateError}</span>}</section>
     {optionsError && <div className="reports-options-error" role="alert">Some filter options could not be loaded: {optionsError}</div>}
 
@@ -223,6 +304,35 @@ export default function Reports() {
     <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><Boxes size={19} /></div><div><h2>Inventory</h2><p>Stock quantities stay with their product units; stock values are reported in AFN.</p></div><label className="reports-compact-filter">Warehouse<select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}><option value="">All warehouses</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label></div><SectionState report={inventory}>{(data) => <><div className="reports-inventory-metrics"><div><small>Inventory records</small><strong>{data.productCount}</strong></div><div><small>Total stock value</small><strong>{money(data.totalValue, "AFN")}</strong></div><div><small>Low stock</small><strong>{data.lowStock}</strong></div><div><small>Out of stock</small><strong>{data.outOfStock}</strong></div></div>{warehouseValues.length > 0 && <div className="reports-chart-grid reports-inventory-charts"><div className="reports-chart-card"><h3>Stock value by warehouse · AFN</h3><ResponsiveContainer width="100%" height={270}><PieChart><Pie data={warehouseValues} dataKey="value" nameKey="warehouse" cx="50%" cy="50%" outerRadius="72%" label={({ name }) => name}>{warehouseValues.map((item, index) => <Cell key={item.warehouse} fill={chartColors[index % chartColors.length]} />)}</Pie><Tooltip formatter={(value) => money(Number(value), "AFN")} /><Legend /></PieChart></ResponsiveContainer></div><div className="reports-chart-card"><h3>Warehouse stock value · AFN</h3><ResponsiveContainer width="100%" height={270}><BarChart data={warehouseValues} layout="vertical" margin={{ top: 8, right: 22, left: 18, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 10 }} /><YAxis type="category" dataKey="warehouse" width={100} tick={{ fontSize: 10 }} /><Tooltip formatter={(value) => money(Number(value), "AFN")} /><Bar dataKey="value" name="Stock value (AFN)" fill="#668d68" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer></div></div>}{data.rows.length ? <div className="reports-table-wrap"><table className="reports-table"><thead><tr><th>Product</th><th>Warehouse</th><th>Quantity</th><th>Stock value (AFN)</th><th>Status</th></tr></thead><tbody>{data.rows.map((row) => <tr key={row.id}><td><strong>{row.product}</strong>{row.sku && <small>{row.sku}</small>}</td><td>{row.warehouse}</td><td>{formatQuantity(row.quantity)} {row.unit}</td><td>{money(row.valueAfn, "AFN")}</td><td><span className={`reports-stock-status reports-stock-status--${row.status}`}>{row.status.replaceAll("_", " ")}</span></td></tr>)}</tbody></table></div> : <div className="reports-empty">No inventory records match this warehouse.</div>}</>}</SectionState></section>
 
     <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><BarChart3 size={19} /></div><div><h2>Partner balances</h2><p>Customer and supplier balances are compared within one selected currency.</p></div><div className="reports-inline-filters"><label className="reports-compact-filter">Partner type<select value={partnerType} onChange={(event) => setPartnerType(event.target.value)}><option value="">All partners</option><option value="Customer">Customers</option><option value="Supplier">Suppliers</option></select></label><label className="reports-compact-filter">Currency<select value={partnerCurrency} onChange={(event) => setPartnerCurrency(event.target.value)}><option value="">Choose currency</option>{partnerCurrencies.map((code) => <option key={code} value={code}>{code}</option>)}</select></label></div></div><SectionState report={partners}>{() => !partnerCurrencies.length ? <div className="reports-empty">No partner balances are available.</div> : !partnerCurrency ? <div className="reports-empty">Choose a currency to view comparable partner balances.</div> : visiblePartners.length ? <div className="reports-chart-card reports-chart-card--wide"><h3>{partnerCurrency} outstanding balances · up to 15 partners</h3><ResponsiveContainer width="100%" height={Math.max(280, visiblePartners.length * 34)}><BarChart data={visiblePartners} layout="vertical" margin={{ top: 8, right: 24, left: 18, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 10 }} /><YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 10 }} /><Tooltip formatter={(value, _name, item) => [`${money(Number(value), partnerCurrency)} · ${item.payload.type}`, "Balance"]} /><Legend /><Bar dataKey="balance" name={`Balance (${partnerCurrency})`} fill="#668d68" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer><div className="reports-partner-legend"><span>Positive: customer owes us / we owe supplier</span><span>Negative: customer credit / supplier owes us</span></div></div> : <div className="reports-empty">No partner has a {partnerCurrency} balance.</div>}</SectionState></section>
+
+    <section className="reports-section reports-aging-section">
+      <div className="reports-section-heading"><div className="reports-icon"><BarChart3 size={19} /></div><div><h2>Partner aging</h2><p>Outstanding open items are aged by transaction date using the backend’s FIFO allocation.</p></div></div>
+      <form className="reports-aging-filters" onSubmit={(event) => { event.preventDefault(); setAgingFilters({ asOfDate: agingDateDraft, partnerType: agingTypeDraft, currencyId: agingCurrencyDraft, search: agingSearchDraft.trim() }); setAgingPage(1); setExpandedAgingRows({}); }}>
+        <label>As of date<input type="date" value={agingDateDraft} onChange={(event) => setAgingDateDraft(event.target.value)} required /></label>
+        <label>Partner type<select value={agingTypeDraft} onChange={(event) => setAgingTypeDraft(event.target.value)}><option value="">All partners</option><option value="Customer">Customers</option><option value="Supplier">Suppliers</option></select></label>
+        <label>Currency<select value={agingCurrencyDraft} onChange={(event) => setAgingCurrencyDraft(event.target.value)}><option value="">All currencies</option>{currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code}</option>)}</select></label>
+        <label className="reports-aging-search">Search<input type="search" value={agingSearchDraft} onChange={(event) => setAgingSearchDraft(event.target.value)} placeholder="Name, business name, or phone" /></label>
+        <div className="reports-aging-actions"><button className="reports-reset" type="button" onClick={() => { const today = localToday(); setAgingDateDraft(today); setAgingTypeDraft(""); setAgingCurrencyDraft(""); setAgingSearchDraft(""); setAgingFilters({ asOfDate: today, partnerType: "", currencyId: "", search: "" }); setAgingPage(1); setExpandedAgingRows({}); }}>Reset</button><button className="reports-apply" type="submit">Apply</button></div>
+      </form>
+      <p className="reports-aging-meta">As of <strong>{partnerAging.data?.asOfDate || agingFilters.asOfDate}</strong>{partnerAging.data?.allocationMethod && <> · Allocation: <strong>{partnerAging.data.allocationMethod}</strong></>}{partnerAging.data?.agingBasis && <> · Aging basis: <strong>{partnerAging.data.agingBasis.replaceAll("_", " ")}</strong></>}</p>
+      {partnerAging.loading ? <div className="reports-state" role="status">Loading partner aging report…</div>
+        : partnerAging.error ? <div className="reports-state reports-state--error" role="alert">{partnerAging.error}<button type="button" onClick={partnerAging.reload}>Try again</button></div>
+          : !partnerAging.data || partnerAging.data.total === 0 ? <div className="reports-empty">No partners match the selected filters.</div>
+            : <>
+              <div className="reports-table-wrap reports-aging-table-wrap"><table className="reports-table reports-aging-table"><thead><tr><th>Partner</th><th>Type</th><th>Currency</th><th>0–30 days</th><th>31–60 days</th><th>61–90 days</th><th>Over 90 days</th><th>Total outstanding</th><th>Unapplied credit</th><th>Open items</th></tr></thead>
+                <tbody>{partnerAgingRows.map(({ key, partner, currency }) => {
+                  const expanded = Boolean(expandedAgingRows[key]);
+                  return <Fragment key={key}><tr>
+                    <td><strong>{partner.name}</strong>{partner.businessName && <small>{partner.businessName}</small>}{partner.phone && <small>{partner.phone}</small>}</td><td>{partner.partnerType}</td><td>{currency ? <span className="reports-aging-currency">{currency.currency}</span> : "—"}</td>
+                    <td>{currency ? money(currency.aging["0_30_days"], currency.currency) : "—"}</td><td>{currency ? money(currency.aging["31_60_days"], currency.currency) : "—"}</td><td>{currency ? money(currency.aging["61_90_days"], currency.currency) : "—"}</td><td>{currency ? money(currency.aging.over_90_days, currency.currency) : "—"}</td>
+                    <td><strong>{currency ? money(currency.totalOutstanding, currency.currency) : "—"}</strong></td><td>{currency ? money(currency.unappliedCredit, currency.currency) : "—"}</td>
+                    <td>{currency && currency.openItems.length > 0 ? <button className="reports-aging-toggle" type="button" aria-expanded={expanded} onClick={() => setExpandedAgingRows((current) => ({ ...current, [key]: !current[key] }))}>{expanded ? "Hide" : "View"} ({currency.openItems.length})</button> : "—"}</td>
+                  </tr>{expanded && currency && <tr className="reports-aging-detail-row"><td colSpan={10}><div className="reports-aging-items"><h3>{partner.name} · {currency.currency} open items</h3><div className="reports-table-wrap"><table className="reports-table"><thead><tr><th>Transaction date</th><th>Age</th><th>Aging bucket</th><th>Amount</th><th>Source / type</th><th>Reference / description</th></tr></thead><tbody>{currency.openItems.map((item, index) => <tr key={`${key}-item-${index}`}><td>{item.transactionDate}</td><td>{item.ageDays} days</td><td>{agingLabel(item.agingBucket)}</td><td><strong>{money(item.amount, currency.currency)}</strong></td><td>{[item.source, item.transactionType].filter(Boolean).join(" · ") || "—"}</td><td>{[item.referenceType, item.referenceId === null ? null : `#${item.referenceId}`, item.description].filter(Boolean).join(" · ") || "—"}</td></tr>)}</tbody></table></div></div></td></tr>}</Fragment>;
+                })}</tbody>
+              </table></div>
+              <div className="reports-aging-pagination"><span>Showing page {partnerAging.data.page} of {partnerAging.data.lastPage} · {partnerAging.data.total} partners</span><div><button type="button" disabled={partnerAging.data.page <= 1} onClick={() => { setExpandedAgingRows({}); setAgingPage((page) => Math.max(1, page - 1)); }}>Previous</button><button type="button" disabled={partnerAging.data.page >= partnerAging.data.lastPage} onClick={() => { setExpandedAgingRows({}); setAgingPage((page) => page + 1); }}>Next</button></div></div>
+            </>}
+    </section>
 
     <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><BarChart3 size={19} /></div><div><h2>Purchase summary</h2><p>Posted gross purchases by currency. Purchase returns are excluded by the backend.</p></div></div><SectionState report={purchases}>{(data) => data.byCurrency.length ? <><div className="reports-purchase-cards">{data.byCurrency.map((row) => <article key={row.code}><span>{row.code}</span><strong>{money(row.amount, row.code)}</strong><small>{row.count} {row.count === 1 ? "purchase" : "purchases"}</small></article>)}</div><div className="reports-chart-card reports-chart-card--wide"><h3>Posted purchase count by currency</h3><ResponsiveContainer width="100%" height={250}><BarChart data={data.byCurrency} margin={{ top: 12, right: 15, left: 4, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="code" /><YAxis allowDecimals={false} /><Tooltip formatter={(value) => [Number(value).toLocaleString(), "Purchases"]} /><Legend /><Bar dataKey="count" name="Purchase count" fill="#668d68" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div>{data.returnsNote && <p className="reports-note">{data.returnsNote}</p>}</> : <div className="reports-empty">No posted purchases match this period.</div>}</SectionState></section>
   </div>;
