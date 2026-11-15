@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Settings,
   ShoppingCart,
+  Tag,
   Truck,
   UsersRound,
   Warehouse,
@@ -73,6 +74,7 @@ const menuGroups: MenuGroup[] = [
       { label: "Sales", icon: BriefcaseBusiness },
       { label: "Sale Returns", icon: RotateCcw },
       { label: "Expenses", icon: Wallet },
+      { label: "Expense Categories", icon: Tag },
     ],
   },
   {
@@ -112,6 +114,7 @@ const routeByLabel: Record<string, string> = {
   Sales: "/secretary/sales",
   "Sale Returns": "/secretary/sale-returns",
   Expenses: "/secretary/expenses",
+  "Expense Categories": "/secretary/expense-categories",
   "Financial Accounts": "/secretary/financial-accounts",
   "Cash Transfers": "/secretary/cash-transfers",
   "Sale Return Settlements": "/secretary/sale-return-settlements",

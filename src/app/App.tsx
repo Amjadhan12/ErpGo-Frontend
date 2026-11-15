@@ -47,6 +47,7 @@ import StockWastage from "@/app/StockWastage";
 import BatchExpiry from "@/app/BatchExpiry";
 import Sales from "@/app/Sales";
 import Expenses from "@/app/Expenses";
+import ExpenseCategories from "@/app/ExpenseCategories";
 import Chat from "@/app/Chat";
 import Documents from "@/app/Documents";
 import SettingsPage from "@/app/Settings";
@@ -489,6 +490,7 @@ export default function App() {
             <Route path="sales/create" element={<Sales />} />
             <Route path="expenses" element={<Expenses />} />
             <Route path="expenses/create" element={<Expenses />} />
+            <Route path="expense-categories" element={<ExpenseCategories />} />
             <Route path="financial-accounts" element={<FinancialAccounts />} />
             <Route path="cash-book" element={<CashBook />} />
             <Route path="cash-transfers" element={<CashTransfers />} />
