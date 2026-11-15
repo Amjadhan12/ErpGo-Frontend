@@ -6413,3 +6413,61 @@ input:focus-visible {
 .returns-detail-notes { margin:0; color:#58675b; font-size:12px; line-height:1.6; white-space:pre-wrap; }
 @media (max-width:850px) { .returns-form-top { grid-template-columns:1fr 1fr; } .returns-number { grid-column:1/-1; } .returns-source-summary { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media (max-width:560px) { .returns-heading { align-items:flex-start; flex-direction:column; } .returns-heading>button { width:100%; } .returns-form { padding:15px; } .returns-form-top { grid-template-columns:1fr; } .returns-number { grid-column:auto; } .returns-source-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .returns-form-actions { align-items:stretch; flex-direction:column; } .returns-submit { width:100%; } .returns-pagination { align-items:flex-start; flex-direction:column; } .returns-pagination>div { width:100%; justify-content:space-between; } .returns-detail-body dl { grid-template-columns:repeat(2,minmax(0,1fr)); } .returns-modal-backdrop { align-items:flex-end; padding:0; } .returns-modal { max-height:92vh; border-radius:14px 14px 0 0; } }
+
+/* Return settlements */
+.settlements-page { width:100%; max-width:1440px; margin:0 auto; color:#24352a; }
+.settlements-heading,.settlements-list-heading,.settlements-panel-heading,.settlements-form-actions,.settlements-pagination,.settlements-pagination>div { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.settlements-heading { margin-bottom:22px; }
+.settlements-heading h1 { margin:5px 0 8px; color:#20352a; font-size:clamp(27px,3vw,36px); letter-spacing:-.035em; }
+.settlements-heading>div>p:last-child { max-width:760px; margin:0; color:#738078; font-size:14px; }
+.settlements-panel { margin-bottom:18px; overflow:hidden; border:1px solid #e6ece7; border-radius:11px; background:#fff; box-shadow:0 3px 12px rgb(34 55 38 / 3%); }
+.settlements-panel-heading { justify-content:flex-start; padding:18px 20px 0; }
+.settlements-panel-heading>span { display:grid; width:36px; height:36px; place-items:center; border-radius:9px; background:#edf6ef; color:#3f7750; }
+.settlements-panel-heading h2,.settlements-list-heading h2 { margin:0; color:#26392d; font-size:16px; }
+.settlements-panel-heading p,.settlements-list-heading p { margin:4px 0 0; color:#77847b; font-size:12px; }
+.settlements-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; padding:18px 20px 20px; }
+.settlements-form>label { display:grid; align-content:start; gap:6px; color:#4a5a4e; font-size:12px; font-weight:650; }
+.settlements-form label>span { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.settlements-form label i { color:#dc6a5d; font-style:normal; }
+.settlements-form label>input,.settlements-form label>select,.settlements-form label>textarea { width:100%; min-height:40px; padding:9px 11px; border:1px solid #dce4dd; border-radius:8px; outline:none; background:#fff; color:#27382c; font:inherit; font-size:13px; font-weight:450; }
+.settlements-form label>textarea { min-height:65px; resize:vertical; }
+.settlements-form label>:focus { border-color:#74a481; box-shadow:0 0 0 3px rgb(95 148 109 / 12%); }
+.settlements-form [aria-invalid=true] { border-color:#dc5f55!important; }
+.settlements-number { display:grid; gap:4px; padding:9px 11px; border:1px solid #e7eee9; border-radius:8px; background:#f8fbf8; }
+.settlements-number small,.settlements-return-summary small { color:#6f7d72; font-size:11px; font-weight:650; }
+.settlements-number strong { color:#304537; font-size:13px; overflow-wrap:anywhere; }
+.settlements-number span { color:#87938a; font-size:10px; }
+.settlements-return-summary { grid-column:1/-1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:11px; padding:13px; border:1px solid #e7eee9; border-radius:9px; background:#f8fbf8; }
+.settlements-return-summary>div { display:grid; gap:4px; }
+.settlements-return-summary strong { color:#354a3a; font-size:12px; overflow-wrap:anywhere; }
+.settlements-field-error { color:#b42318; font-size:10px; font-weight:500; }
+.settlements-notes,.settlements-form-actions { grid-column:1/-1; }
+.settlements-form-actions { padding-top:2px; }
+.settlements-form-actions>span { color:#78857b; font-size:11px; }
+.settlements-submit { display:inline-flex; min-height:40px; align-items:center; justify-content:center; padding:9px 15px; border:0; border-radius:8px; background:#35734a; color:#fff; cursor:pointer; font:inherit; font-size:13px; font-weight:650; }
+.settlements-submit:disabled { opacity:.55; cursor:default; }
+.settlements-success,.settlements-error { display:flex; align-items:center; gap:9px; margin:0 0 16px; padding:11px 14px; border:1px solid #b9dfc3; border-radius:8px; background:#f0fbf2; color:#24713b; font-size:13px; }
+.settlements-error { border-color:#f0c3a1; background:#fff7ed; color:#9a3412; }
+.settlements-error button { margin-left:auto; border:0; background:none; color:inherit; cursor:pointer; font:inherit; font-weight:650; }
+.settlements-form-error { grid-column:1/-1; margin:0 20px; padding:10px 12px; border-radius:7px; background:#fff3f1; color:#ac3129; font-size:12px; }
+.settlements-list-heading { padding:17px 20px; border-bottom:1px solid #edf1ed; }
+.settlements-clear-filter { padding:6px 9px; border:1px solid #dce5de; border-radius:6px; background:#fff; color:#4f6655; cursor:pointer; font:inherit; font-size:11px; }
+.settlements-table-scroll { overflow-x:auto; }
+.settlements-table { width:100%; border-collapse:collapse; text-align:left; }
+.settlements-table th { padding:11px 13px; background:#f7f9f7; color:#78857a; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; }
+.settlements-table td { padding:12px 13px; border-top:1px solid #eef1ee; color:#4a594e; font-size:12px; vertical-align:middle; }
+.settlements-table td strong { color:#2b3e31; font-weight:650; }
+.settlements-table td small { display:block; max-width:180px; margin-top:4px; overflow:hidden; color:#849087; text-overflow:ellipsis; white-space:nowrap; }
+.settlements-currency { display:inline-block; padding:4px 7px; border-radius:20px; background:#edf5ef; color:#477052; font-size:10px; font-weight:700; }
+.settlements-pagination { padding:13px 18px; color:#78857a; font-size:11px; }
+.settlements-pagination>div { justify-content:flex-end; }
+.settlements-pagination button { display:inline-flex; align-items:center; gap:4px; padding:6px 8px; border:1px solid #e0e7e1; border-radius:6px; background:#fff; color:#536257; cursor:pointer; font:inherit; }
+.settlements-pagination button:disabled { opacity:.45; cursor:default; }
+.settlements-state { display:flex; min-height:100px; align-items:center; justify-content:center; gap:9px; padding:20px; color:#7b887e; font-size:13px; }
+.settlements-state--error { color:#ad3d35; }
+.settlements-state--error button { border:0; background:none; color:inherit; cursor:pointer; font:inherit; font-weight:650; }
+.settlements-state--empty { flex-direction:column; gap:6px; }
+.settlements-state--empty strong { color:#4e5d51; font-size:13px; }
+.settlements-state--empty small { color:#869188; }
+@media(max-width:800px) { .settlements-heading { align-items:flex-start; flex-direction:column; } .settlements-heading>button { width:100%; } }
+@media(max-width:560px) { .settlements-form { grid-template-columns:1fr; padding:15px; } .settlements-return-summary,.settlements-notes,.settlements-form-actions { grid-column:auto; } .settlements-return-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .settlements-form-actions { align-items:stretch; flex-direction:column; } .settlements-submit { width:100%; } .settlements-pagination { align-items:flex-start; flex-direction:column; } .settlements-pagination>div { width:100%; justify-content:space-between; } }

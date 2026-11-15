@@ -53,6 +53,8 @@ import CashBook from "@/app/CashBook";
 import CashTransfers from "@/app/CashTransfers";
 import SaleReturns from "@/app/SaleReturns";
 import PurchaseReturns from "@/app/PurchaseReturns";
+import SaleReturnSettlements from "@/app/SaleReturnSettlements";
+import PurchaseReturnSettlements from "@/app/PurchaseReturnSettlements";
 const Reports = lazy(() => import("@/app/Reports"));
 
 function BrandMark({
@@ -477,9 +479,11 @@ export default function App() {
             <Route index element={<SecretaryOverview />} />
             <Route path="purchases" element={<PurchaseList />} />
             <Route path="purchase-returns" element={<PurchaseReturns />} />
+            <Route path="purchase-return-settlements" element={<PurchaseReturnSettlements />} />
             <Route path="purchases/create" element={<CreatePurchase />} />
             <Route path="sales" element={<Sales />} />
             <Route path="sale-returns" element={<SaleReturns />} />
+            <Route path="sale-return-settlements" element={<SaleReturnSettlements />} />
             <Route path="sales/create" element={<Sales />} />
             <Route path="expenses" element={<Expenses />} />
             <Route path="expenses/create" element={<Expenses />} />

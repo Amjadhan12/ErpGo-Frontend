@@ -79,6 +79,8 @@ const menuGroups: MenuGroup[] = [
     items: [
       { label: "Financial Accounts", icon: Building2 },
       { label: "Cash Transfers", icon: ArrowDownUp },
+      { label: "Sale Return Settlements", icon: Banknote },
+      { label: "Purchase Return Settlements", icon: Banknote },
       { label: "Supplier Payments", icon: Banknote },
       { label: "Cash Book", icon: Wallet },
       { label: "Reports", icon: BarChart3 },
@@ -109,6 +111,8 @@ const routeByLabel: Record<string, string> = {
   Expenses: "/secretary/expenses",
   "Financial Accounts": "/secretary/financial-accounts",
   "Cash Transfers": "/secretary/cash-transfers",
+  "Sale Return Settlements": "/secretary/sale-return-settlements",
+  "Purchase Return Settlements": "/secretary/purchase-return-settlements",
   "Cash Book": "/secretary/cash-book",
   Reports: "/secretary/reports",
   Chat: "/secretary/chat",
