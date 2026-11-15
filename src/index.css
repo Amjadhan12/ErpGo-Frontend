@@ -6082,3 +6082,45 @@ input:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.settings-page { display:grid; gap:18px; color:#35443a; }
+.settings-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.settings-heading h1 { margin:3px 0 5px; color:#2e3c33; font-size:25px; letter-spacing:-.035em; }
+.settings-heading p:not(.overview-eyebrow) { margin:0; color:#7c8980; font-size:13px; }
+.settings-form { overflow:hidden; border:1px solid #e5ebe6; border-radius:12px; background:#fff; box-shadow:0 3px 12px rgb(34 55 38 / 3%); }
+.settings-form-heading { padding:19px 21px; border-bottom:1px solid #edf1ed; }
+.settings-form-heading h2 { margin:0 0 5px; color:#344339; font-size:15px; }
+.settings-form-heading p { margin:0; color:#89948c; font-size:11px; }
+.settings-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:17px 20px; padding:21px; }
+.settings-field { display:grid; align-content:start; gap:7px; min-width:0; color:#55635a; font-size:11px; font-weight:650; }
+.settings-field--wide { grid-column:1/-1; }
+.settings-field input:not([type=file]),.settings-field textarea { width:100%; min-width:0; border:1px solid #dfe7e0; border-radius:7px; background:#fff; color:#344339; font:inherit; font-size:12px; font-weight:450; outline:none; }
+.settings-field input:not([type=file]) { min-height:39px; padding:8px 10px; }
+.settings-field textarea { resize:vertical; padding:10px; }
+.settings-field input:focus,.settings-field textarea:focus { border-color:#81a88a; box-shadow:0 0 0 3px rgb(83 132 95 / 10%); }
+.settings-field input[aria-invalid=true],.settings-field textarea[aria-invalid=true] { border-color:#c9695d; }
+.settings-field em { color:#ba544a; font-size:10px; font-style:normal; font-weight:450; }
+.settings-logo-row { display:flex; align-items:center; flex-wrap:wrap; gap:11px; }
+.settings-logo-preview,.settings-logo-placeholder { display:grid; width:64px; height:58px; place-items:center; border:1px solid #e5ebe6; border-radius:8px; background:#f8faf8; object-fit:contain; color:#77917c; }
+.settings-logo-picker { position:relative; display:inline-flex; align-items:center; min-height:33px; padding:0 11px; border:1px solid #dfe7e0; border-radius:6px; background:#fff; color:#526258; font-size:10px; cursor:pointer; }
+.settings-logo-picker:hover { background:#f6faf6; }
+.settings-logo-picker input { position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; }
+.settings-logo-row small { color:#89948c; font-size:10px; font-weight:450; }
+.settings-form-footer { display:flex; justify-content:flex-end; padding:14px 21px; border-top:1px solid #edf1ed; background:#fcfdfc; }
+.settings-save { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:0 15px; border:0; border-radius:7px; background:#477653; color:#fff; font-size:11px; font-weight:650; cursor:pointer; }
+.settings-save:hover { background:#3b6748; }
+.settings-save:disabled { opacity:.65; cursor:wait; }
+.settings-success,.settings-error { display:flex; align-items:center; gap:8px; padding:11px 13px; border:1px solid #d8eade; border-radius:8px; background:#f3faf4; color:#386849; font-size:12px; }
+.settings-error { border-color:#f0d4d0; background:#fff7f6; color:#a8443c; }
+.settings-error button { margin-left:auto; padding:5px 9px; border:1px solid #ead0cd; border-radius:5px; background:#fff; color:#a8443c; cursor:pointer; }
+.settings-loading { display:flex; align-items:center; justify-content:center; gap:9px; min-height:170px; border:1px solid #e5ebe6; border-radius:12px; background:#fff; color:#7c8980; font-size:12px; }
+.settings-spin { animation:settings-spin 1s linear infinite; }
+@keyframes settings-spin { to { transform:rotate(360deg); } }
+@media (max-width:650px) {
+  .settings-heading { align-items:flex-start; }
+  .settings-fields { grid-template-columns:1fr; gap:14px; padding:17px; }
+  .settings-field--wide { grid-column:auto; }
+  .settings-form-heading { padding:17px; }
+  .settings-form-footer { padding:12px 17px; }
+  .settings-save { width:100%; }
+}

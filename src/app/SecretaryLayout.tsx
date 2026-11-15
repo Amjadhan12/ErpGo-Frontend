@@ -104,6 +104,7 @@ const routeByLabel: Record<string, string> = {
   Reports: "/secretary/reports",
   Chat: "/secretary/chat",
   Documents: "/secretary/documents",
+  Settings: "/secretary/settings",
   "Supplier Payments": "/secretary/supplier-payments",
 };
 

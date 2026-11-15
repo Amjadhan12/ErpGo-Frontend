@@ -51,6 +51,7 @@ interface AuthContextValue {
   isCheckingSession: boolean
   sessionNotice: string | null
   companyBranding: CompanyBranding | null
+  refreshCompanyBranding: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
 }
@@ -281,10 +282,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isCheckingSession,
       sessionNotice,
       companyBranding,
+      refreshCompanyBranding: loadCompanyBranding,
       signIn,
       signOut,
     }),
-    [user, isCheckingSession, sessionNotice, companyBranding, signIn, signOut],
+    [user, isCheckingSession, sessionNotice, companyBranding, loadCompanyBranding, signIn, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
