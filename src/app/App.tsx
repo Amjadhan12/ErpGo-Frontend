@@ -33,6 +33,7 @@ import PurchaseList from "@/app/PurchaseList";
 import CreatePurchase from "@/app/CreatePurchase";
 import SupplierPayments from "@/app/SupplierPayments";
 import CustomerReceipts from "@/app/CustomerReceipts";
+import DailyBookNotes from "@/app/DailyBookNotes";
 import Customers from "@/app/Customers";
 import Suppliers from "@/app/Suppliers";
 import Products from "@/app/Products";
@@ -497,6 +498,7 @@ export default function App() {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="supplier-payments" element={<SupplierPayments />} />
             <Route path="customer-receipts" element={<CustomerReceipts />} />
+            <Route path="daily-book-notes" element={<DailyBookNotes />} />
             <Route path="customers" element={<Customers />} />
             <Route path="suppliers" element={<Suppliers />} />
             <Route path="products" element={<Products />} />

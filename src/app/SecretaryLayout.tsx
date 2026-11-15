@@ -7,6 +7,7 @@ import {
   Boxes,
   BriefcaseBusiness,
   Building2,
+  BookOpen,
   ChevronDown,
   CircleHelp,
   FileText,
@@ -83,6 +84,7 @@ const menuGroups: MenuGroup[] = [
       { label: "Purchase Return Settlements", icon: Banknote },
       { label: "Supplier Payments", icon: Banknote },
       { label: "Customer Receipts", icon: Banknote },
+      { label: "Daily Book Notes", icon: BookOpen },
       { label: "Cash Book", icon: Wallet },
       { label: "Reports", icon: BarChart3 },
       { label: "Chat", icon: MessageCircle },
@@ -121,6 +123,7 @@ const routeByLabel: Record<string, string> = {
   Settings: "/secretary/settings",
   "Supplier Payments": "/secretary/supplier-payments",
   "Customer Receipts": "/secretary/customer-receipts",
+  "Daily Book Notes": "/secretary/daily-book-notes",
 };
 
 function getInitials(name: string): string {

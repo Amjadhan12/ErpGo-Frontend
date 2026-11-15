@@ -6529,3 +6529,75 @@ input:focus-visible {
 .customer-receipts-state--empty small { color:#869188; }
 @media(max-width:800px) { .customer-receipts-heading { align-items:flex-start; flex-direction:column; } .customer-receipts-heading>button { width:100%; } }
 @media(max-width:560px) { .customer-receipts-form { grid-template-columns:1fr; padding:15px; } .customer-receipts-sale-summary,.customer-receipts-notes,.customer-receipts-form-actions { grid-column:auto; } .customer-receipts-sale-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .customer-receipts-form-actions { align-items:stretch; flex-direction:column; } .customer-receipts-submit { width:100%; } .customer-receipts-pagination { align-items:flex-start; flex-direction:column; } .customer-receipts-pagination>div { width:100%; justify-content:space-between; } }
+.daily-notes-page { display:grid; gap:18px; color:#35443a; }
+.daily-notes-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.daily-notes-heading h1 { margin:3px 0 5px; color:#2e3c33; font-size:25px; letter-spacing:-.035em; }
+.daily-notes-heading p:not(.overview-eyebrow) { margin:0; color:#7c8980; font-size:13px; }
+.daily-notes-panel { min-width:0; overflow:hidden; border:1px solid #e5ebe6; border-radius:12px; background:#fff; box-shadow:0 3px 12px rgb(34 55 38 / 3%); }
+.daily-notes-compose { padding:18px 20px; }
+.daily-notes-panel-heading,.daily-notes-list-heading { display:flex; align-items:center; gap:11px; }
+.daily-notes-panel-heading { margin-bottom:16px; }
+.daily-notes-list-heading { padding:16px 20px; border-bottom:1px solid #edf1ed; }
+.daily-notes-icon { display:grid; width:36px; height:36px; flex:0 0 36px; place-items:center; border-radius:10px; background:#eff6f0; color:#548160; }
+.daily-notes-panel-heading h2,.daily-notes-list-heading h2 { margin:0 0 4px; color:#344339; font-size:15px; }
+.daily-notes-panel-heading p,.daily-notes-list-heading p { margin:0; color:#89948c; font-size:11px; }
+.daily-notes-icon-button { display:grid; width:34px; height:34px; flex:0 0 34px; margin-left:auto; place-items:center; border:1px solid #e5ebe6; border-radius:7px; background:#fff; color:#637166; cursor:pointer; }
+.daily-notes-icon-button:disabled { opacity:.5; cursor:wait; }
+.daily-notes-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px 16px; }
+.daily-notes-form>label { display:grid; align-content:start; gap:6px; color:#55635a; font-size:11px; font-weight:650; }
+.daily-notes-form label span { color:#87938a; font-size:10px; font-weight:450; }
+.daily-notes-form label b { color:#be5c4e; }
+.daily-notes-form input,.daily-notes-form textarea,.daily-notes-filters input { width:100%; min-width:0; border:1px solid #dfe7e0; border-radius:7px; background:#fff; color:#344339; font:inherit; font-size:12px; outline:none; }
+.daily-notes-form input { min-height:38px; padding:8px 10px; }
+.daily-notes-form textarea { resize:vertical; padding:9px 10px; }
+.daily-notes-form input:focus,.daily-notes-form textarea:focus,.daily-notes-filters input:focus { border-color:#81a88a; box-shadow:0 0 0 3px rgb(83 132 95 / 10%); }
+.daily-notes-form [aria-invalid=true] { border-color:#c9695d; }
+.daily-notes-form label small { color:#ba544a; font-size:10px; font-weight:450; }
+.daily-notes-wide { grid-column:1/-1; }
+.daily-notes-form-error { grid-column:1/-1; margin:0; color:#ad3d35; font-size:12px; }
+.daily-notes-form-actions { grid-column:1/-1; display:flex; justify-content:flex-end; gap:8px; }
+.daily-notes-primary,.daily-notes-filter-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:0 14px; border:0; border-radius:7px; background:#477653; color:#fff; font-size:12px; font-weight:650; cursor:pointer; }
+.daily-notes-primary:hover,.daily-notes-filter-button:hover { background:#3b6748; }
+.daily-notes-primary:disabled { opacity:.6; cursor:wait; }
+.daily-notes-secondary { min-height:37px; padding:0 13px; border:1px solid #dfe7e0; border-radius:7px; background:#fff; color:#536257; font:inherit; font-size:12px; cursor:pointer; }
+.daily-notes-notice { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 13px; border:1px solid #d8eade; border-radius:8px; background:#f3faf4; color:#386849; font-size:12px; }
+.daily-notes-notice button { display:grid; width:28px; height:28px; place-items:center; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
+.daily-notes-filters { display:flex; align-items:center; gap:9px; padding:14px 20px 12px; }
+.daily-notes-filters>label { display:flex; align-items:center; gap:7px; color:#87938a; font-size:10px; white-space:nowrap; }
+.daily-notes-filters input { height:35px; padding:0 9px; color:#536257; }
+.daily-notes-search { flex:1; min-width:150px; }
+.daily-notes-search input { border:0; padding-left:0; }
+.daily-notes-filter-button { min-height:35px; padding:0 14px; }
+.daily-notes-state { display:flex; min-height:130px; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:22px; color:#7c8980; font-size:12px; text-align:center; }
+.daily-notes-state strong { color:#4d5d52; font-size:13px; }
+.daily-notes-state-error { color:#a8443c; }
+.daily-notes-state button { padding:6px 10px; border:1px solid #ead0cd; border-radius:6px; background:#fff; color:inherit; cursor:pointer; font:inherit; }
+.daily-notes-state-empty { min-height:160px; }
+.daily-notes-state-empty svg { color:#9aaa9d; }
+.daily-notes-table-wrap { overflow-x:auto; }
+.daily-notes-table { width:100%; border-collapse:collapse; text-align:left; }
+.daily-notes-table th { padding:11px 13px; background:#f7f9f7; color:#78857a; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; }
+.daily-notes-table td { max-width:290px; padding:12px 13px; border-top:1px solid #eef1ee; color:#4a594e; font-size:12px; vertical-align:middle; }
+.daily-notes-table td strong { color:#2b3e31; font-weight:650; }
+.daily-notes-preview { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.daily-notes-row-actions { display:flex; gap:5px; }
+.daily-notes-row-actions button { display:grid; width:30px; height:30px; place-items:center; border:1px solid #e2e9e3; border-radius:6px; background:#fff; color:#617266; cursor:pointer; }
+.daily-notes-row-actions button:hover { border-color:#bdd1c0; background:#f5faf6; color:#397047; }
+.daily-notes-pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 18px; color:#78857a; font-size:11px; }
+.daily-notes-pagination>div { display:flex; align-items:center; gap:10px; }
+.daily-notes-pagination button { display:inline-flex; align-items:center; gap:4px; padding:6px 8px; border:1px solid #e0e7e1; border-radius:6px; background:#fff; color:#536257; cursor:pointer; font:inherit; }
+.daily-notes-pagination button:disabled { opacity:.45; cursor:default; }
+.daily-notes-backdrop { position:fixed; z-index:1200; inset:0; display:grid; place-items:center; padding:18px; background:rgb(15 23 42 / 48%); }
+.daily-notes-detail { width:min(580px,100%); max-height:90vh; overflow:auto; border-radius:12px; background:#fff; box-shadow:0 24px 64px rgb(15 23 42 / 24%); }
+.daily-notes-detail>header { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px 20px; border-bottom:1px solid #e7ece8; }
+.daily-notes-detail>header h2 { margin:4px 0 0; color:#263a2d; font-size:17px; }
+.daily-notes-meta { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:18px 20px; }
+.daily-notes-meta>div { display:grid; gap:4px; }
+.daily-notes-meta small { color:#79867c; font-size:11px; }
+.daily-notes-meta strong { color:#304235; font-size:12px; }
+.daily-notes-full-details { margin:0 20px 20px; color:#4a594e; font-size:13px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+.daily-notes-detail>footer { display:flex; justify-content:flex-end; padding:0 20px 18px; }
+.daily-notes-spin { animation:daily-notes-rotate .9s linear infinite; }
+@keyframes daily-notes-rotate { to { transform:rotate(360deg); } }
+@media(max-width:760px) { .daily-notes-heading { align-items:flex-start; flex-direction:column; } .daily-notes-heading>.daily-notes-primary { width:100%; } .daily-notes-filters { align-items:stretch; flex-wrap:wrap; } .daily-notes-search { flex-basis:100%; } .daily-notes-filters>label:not(.daily-notes-search) { flex:1; } .daily-notes-filter-button { flex:1; } }
+@media(max-width:540px) { .daily-notes-compose { padding:15px; } .daily-notes-form { grid-template-columns:1fr; } .daily-notes-wide,.daily-notes-form-error,.daily-notes-form-actions { grid-column:auto; } .daily-notes-form-actions { flex-direction:column-reverse; } .daily-notes-form-actions button { width:100%; } .daily-notes-pagination { align-items:flex-start; flex-direction:column; } .daily-notes-pagination>div { width:100%; justify-content:space-between; } .daily-notes-meta { grid-template-columns:1fr; } }
