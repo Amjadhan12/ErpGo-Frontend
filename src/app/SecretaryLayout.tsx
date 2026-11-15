@@ -47,6 +47,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { label: "Customers", icon: UsersRound },
       { label: "Suppliers", icon: Truck },
+      { label: "Opening Balances", icon: Banknote },
     ],
   },
   {
@@ -74,6 +75,7 @@ const menuGroups: MenuGroup[] = [
     label: "Finance & tools",
     items: [
       { label: "Financial Accounts", icon: Building2 },
+      { label: "Cash Transfers", icon: ArrowDownUp },
       { label: "Supplier Payments", icon: Banknote },
       { label: "Cash Book", icon: Wallet },
       { label: "Reports", icon: BarChart3 },
@@ -88,6 +90,7 @@ const routeByLabel: Record<string, string> = {
   Dashboard: "/secretary",
   Customers: "/secretary/customers",
   Suppliers: "/secretary/suppliers",
+  "Opening Balances": "/secretary/opening-balances",
   Products: "/secretary/products",
   Warehouses: "/secretary/warehouses",
   Inventory: "/secretary/inventory",
@@ -100,6 +103,7 @@ const routeByLabel: Record<string, string> = {
   Sales: "/secretary/sales",
   Expenses: "/secretary/expenses",
   "Financial Accounts": "/secretary/financial-accounts",
+  "Cash Transfers": "/secretary/cash-transfers",
   "Cash Book": "/secretary/cash-book",
   Reports: "/secretary/reports",
   Chat: "/secretary/chat",

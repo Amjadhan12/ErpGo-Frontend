@@ -38,6 +38,7 @@ import Products from "@/app/Products";
 import Warehouses from "@/app/Warehouses";
 import Inventory from "@/app/Inventory";
 import OpeningStocks from "@/app/OpeningStocks";
+import PartnerOpeningBalances from "@/app/PartnerOpeningBalances";
 import StockTransfers from "@/app/StockTransfers";
 import StockAdjustments from "@/app/StockAdjustments";
 import StockWastage from "@/app/StockWastage";
@@ -49,6 +50,7 @@ import Documents from "@/app/Documents";
 import SettingsPage from "@/app/Settings";
 import FinancialAccounts from "@/app/FinancialAccounts";
 import CashBook from "@/app/CashBook";
+import CashTransfers from "@/app/CashTransfers";
 const Reports = lazy(() => import("@/app/Reports"));
 
 function BrandMark({
@@ -479,6 +481,7 @@ export default function App() {
             <Route path="expenses/create" element={<Expenses />} />
             <Route path="financial-accounts" element={<FinancialAccounts />} />
             <Route path="cash-book" element={<CashBook />} />
+            <Route path="cash-transfers" element={<CashTransfers />} />
             <Route path="reports" element={<Suspense fallback={<div className="reports-loading" role="status"><span className="loading-spinner" /><span>Loading reports…</span></div>}><Reports /></Suspense>} />
             <Route path="chat" element={<Chat />} />
             <Route path="/secretary/documents" element={<Documents />} />
@@ -490,6 +493,7 @@ export default function App() {
             <Route path="warehouses" element={<Warehouses />} />
             <Route path="inventory" element={<Inventory />} />
             <Route path="opening-stocks" element={<OpeningStocks />} />
+            <Route path="opening-balances" element={<PartnerOpeningBalances />} />
             <Route path="stock-transfers" element={<StockTransfers />} />
             <Route path="stock-adjustments" element={<StockAdjustments />} />
             <Route path="stock-wastage" element={<StockWastage />} />

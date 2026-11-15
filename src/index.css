@@ -4019,6 +4019,221 @@ input:focus-visible {
   box-shadow: 0 4px 14px rgb(34 55 38 / 2.5%);
 }
 
+.partner-statement {
+  border-top: 1px solid #e5eaf0;
+  margin-top: 22px;
+  padding-top: 20px;
+}
+.partner-statement__heading,
+.partner-statement__heading > div,
+.partner-statement__summary header,
+.partner-statement__summary footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.partner-statement__heading h3 { margin: 0; color: #1e293b; font-size: 1rem; }
+.partner-statement__heading p { margin: 4px 0 0; color: #64748b; font-size: .8rem; }
+.partner-statement__filters { display: flex; gap: 12px; margin: 16px 0; }
+.partner-statement__filters label { display: grid; gap: 5px; color: #475569; font-size: .78rem; font-weight: 600; }
+.partner-statement__filters select { min-width: 145px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; background: white; color: #1e293b; }
+.partner-statement__summaries { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.partner-statement__summary { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.partner-statement__summary > header { padding: 12px 14px; border-bottom: 1px solid #edf0f4; background: #f8fafc; }
+.partner-statement__summary header > div { display: grid; gap: 2px; }
+.partner-statement__summary header strong { color: #0f172a; font-size: .95rem; }
+.partner-statement__summary header span { color: #64748b; font-size: .73rem; }
+.partner-statement__summary .partner-statement__balance-type { padding: 4px 7px; border-radius: 20px; background: #eaf2ff; color: #2859a5; text-transform: capitalize; }
+.partner-statement__summary dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin: 0; padding: 13px 14px; }
+.partner-statement__summary dl div { min-width: 0; }
+.partner-statement__summary dt { color: #64748b; font-size: .72rem; }
+.partner-statement__summary dd { margin: 3px 0 0; color: #334155; font-size: .82rem; font-weight: 600; overflow-wrap: anywhere; }
+.partner-statement__summary footer { padding: 11px 14px; border-top: 1px solid #edf0f4; color: #334155; font-size: .8rem; }
+.partner-statement__summary footer strong { color: #0f172a; font-size: .9rem; }
+.partner-statement__table { min-width: 860px; }
+.partner-statement__table td { vertical-align: top; }
+.partner-statement__table td:nth-child(2) { min-width: 145px; }
+.partner-statement__table td:nth-child(2) small { display: block; margin-top: 3px; color: #64748b; }
+.partner-statement__source { display: flex; align-items: center; gap: 4px; margin-top: 5px; padding: 0; border: 0; background: none; color: #2563eb; cursor: pointer; font: inherit; font-size: .74rem; }
+.partner-statement__document-backdrop { position: fixed; z-index: 1200; inset: 0; display: grid; place-items: center; padding: 18px; background: rgb(15 23 42 / 48%); }
+.partner-statement__document { width: min(440px, 100%); border-radius: 12px; background: #fff; box-shadow: 0 24px 64px rgb(15 23 42 / 24%); }
+.partner-statement__document > header { display: flex; align-items: center; justify-content: space-between; padding: 15px 18px; border-bottom: 1px solid #e5eaf0; }
+.partner-statement__document > header h3 { margin: 0; color: #1e293b; font-size: 1rem; }
+.partner-statement__document > header button { border: 0; background: transparent; color: #64748b; font-size: 1.5rem; cursor: pointer; }
+.partner-statement__document dl { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0; padding: 18px; }
+.partner-statement__document dt { color: #64748b; font-size: .75rem; }
+.partner-statement__document dd { margin: 4px 0 0; color: #1e293b; font-weight: 600; }
+
+.partner-opening-page { gap: 18px; }
+.partner-opening-form-panel,
+.partner-opening-totals,
+.partner-opening-list { padding: 20px; }
+.partner-opening-section-heading,
+.partner-opening-list__toolbar,
+.partner-opening-list__controls,
+.partner-opening-form__actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.partner-opening-section-heading h2,
+.partner-opening-list__toolbar h2 { margin: 0; color: #1e293b; font-size: 1rem; }
+.partner-opening-section-heading p,
+.partner-opening-list__toolbar p { margin: 4px 0 0; color: #64748b; font-size: .8rem; }
+.partner-opening-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+.partner-opening-form .purchase-field select { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #1e293b; font: inherit; }
+.partner-opening-form .purchase-field select:focus { outline: 2px solid #93c5fd; outline-offset: 1px; }
+.partner-opening-form .purchase-field [aria-invalid="true"] { border-color: #dc2626; }
+.partner-opening-form__notes { grid-column: span 2; }
+.partner-opening-form__actions { grid-column: 1 / -1; padding-top: 4px; }
+.partner-opening-form__actions > span { color: #64748b; font-size: .82rem; }
+.partner-opening-duplicate { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; margin: 0; color: #9a3412; font-size: .82rem; }
+.partner-opening-total-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.partner-opening-total { display: grid; gap: 5px; padding: 14px; border: 1px solid #e2e8f0; border-left: 3px solid #2563eb; border-radius: 9px; background: #fbfdff; }
+.partner-opening-total--supplier { border-left-color: #d97706; }
+.partner-opening-total > span { color: #64748b; font-size: .78rem; }
+.partner-opening-total > strong { color: #0f172a; font-size: 1.08rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.partner-opening-total > small { color: #64748b; font-size: .72rem; }
+.partner-opening-loading { display: inline-flex; align-items: center; gap: 7px; color: #64748b; font-size: .78rem; }
+.partner-opening-loading .loading-spinner { width: 14px; height: 14px; }
+.partner-opening-list__toolbar { margin-bottom: 14px; }
+.partner-opening-list__controls { justify-content: flex-end; }
+.partner-opening-list__controls label { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: .78rem; }
+.partner-opening-list__controls select { min-height: 36px; padding: 6px 9px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: #334155; }
+.partner-opening-table { min-width: 760px; }
+.partner-opening-table td small { display: block; margin-top: 3px; color: #64748b; }
+.partner-opening-type { display: inline-block; padding: 4px 8px; border-radius: 20px; background: #eff6ff; color: #1d4ed8; font-size: .73rem; font-weight: 600; }
+.partner-opening-type--supplier { background: #fff7ed; color: #b45309; }
+@media (max-width: 900px) {
+  .partner-opening-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .partner-opening-total-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .partner-opening-form-panel,
+  .partner-opening-totals,
+  .partner-opening-list { padding: 15px; }
+  .partner-opening-form { grid-template-columns: 1fr; gap: 13px; }
+  .partner-opening-form__notes,
+  .partner-opening-form__actions,
+  .partner-opening-duplicate { grid-column: auto; }
+  .partner-opening-form__actions { align-items: stretch; flex-direction: column; }
+  .partner-opening-total-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .partner-opening-total { padding: 11px; }
+  .partner-opening-total > strong { font-size: .95rem; }
+  .partner-opening-list__toolbar { align-items: flex-start; flex-direction: column; }
+  .partner-opening-list__controls { width: 100%; justify-content: space-between; }
+  .partner-opening-list .purchases-pagination { align-items: flex-start; flex-direction: column; }
+  .partner-opening-list .purchases-pagination__controls { width: 100%; justify-content: space-between; }
+}
+
+.cash-transfers-page { width: 100%; max-width: 1440px; margin: 0 auto; color: #223128; }
+.cash-transfers-heading,
+.cash-transfers-list-heading,
+.cash-transfers-panel-heading,
+.cash-transfers-form-actions,
+.cash-transfers-pagination,
+.cash-transfers-pagination > div { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.cash-transfers-heading { margin-bottom: 22px; }
+.cash-transfers-heading h1 { margin: 5px 0 8px; color: #20352a; font-size: clamp(27px, 3vw, 36px); letter-spacing: -.035em; }
+.cash-transfers-heading p:last-child { margin: 0; color: #738078; font-size: 14px; }
+.cash-transfers-eyebrow { margin: 0; color: #548162; font-size: 11px; font-weight: 750; letter-spacing: .13em; }
+.cash-transfers-refresh,
+.cash-transfers-small-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 39px; padding: 8px 12px; border: 1px solid #dce5de; border-radius: 8px; background: #fff; color: #415347; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; }
+.cash-transfers-small-refresh { min-height: 34px; padding: 7px; }
+.cash-transfers-refresh:disabled,
+.cash-transfers-small-refresh:disabled { opacity: .55; cursor: default; }
+.cash-transfers-panel { margin-bottom: 18px; overflow: hidden; border: 1px solid #e6ece7; border-radius: 11px; background: #fff; box-shadow: 0 3px 12px rgb(34 55 38 / 3%); }
+.cash-transfers-panel-heading { justify-content: flex-start; padding: 18px 20px 0; }
+.cash-transfers-panel-heading > span { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 9px; background: #edf6ef; color: #3f7750; }
+.cash-transfers-panel-heading h2,
+.cash-transfers-list-heading h2 { margin: 0; color: #26392d; font-size: 16px; }
+.cash-transfers-panel-heading p,
+.cash-transfers-list-heading p { margin: 4px 0 0; color: #77847b; font-size: 12px; }
+.cash-transfers-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; padding: 18px 20px 20px; }
+.cash-transfers-form > label { display: grid; align-content: start; gap: 6px; color: #4a5a4e; font-size: 12px; font-weight: 650; }
+.cash-transfers-form label > span { display: flex; align-items: center; gap: 4px; }
+.cash-transfers-form label i { color: #dc6a5d; font-style: normal; }
+.cash-transfers-form label > input,
+.cash-transfers-form label > select,
+.cash-transfers-form label > textarea { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid #dce4dd; border-radius: 8px; outline: none; background: #fff; color: #27382c; font: inherit; font-size: 13px; font-weight: 450; }
+.cash-transfers-form label > textarea { min-height: 68px; resize: vertical; }
+.cash-transfers-form label > input:focus,
+.cash-transfers-form label > select:focus,
+.cash-transfers-form label > textarea:focus { border-color: #74a481; box-shadow: 0 0 0 3px rgb(95 148 109 / 12%); }
+.cash-transfers-form label [aria-invalid="true"] { border-color: #dc5f55; }
+.cash-transfer-field-error,
+.cash-transfers-field-error { color: #b42318; font-size: 11px; font-weight: 500; }
+.cash-transfers-number { display: grid; gap: 3px; padding: 9px 11px; border: 1px solid #e7eee9; border-radius: 8px; background: #f8fbf8; }
+.cash-transfers-number span { color: #6f7d72; font-size: 11px; font-weight: 650; }
+.cash-transfers-number strong { color: #304537; font-size: 13px; letter-spacing: .02em; }
+.cash-transfers-number small { color: #87938a; font-size: 10px; }
+.cash-transfers-description { grid-column: 1 / -1; }
+.cash-transfers-currency-note { grid-column: 1 / -1; margin: 0; padding: 9px 11px; border-radius: 7px; background: #f4f8f4; color: #657568; font-size: 12px; }
+.cash-transfers-currency-note strong { color: #314b38; }
+.cash-transfers-form-actions { grid-column: 1 / -1; padding-top: 2px; }
+.cash-transfers-form-actions > span { color: #78857b; font-size: 11px; }
+.cash-transfers-submit { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px; padding: 9px 15px; border: 0; border-radius: 8px; background: #35734a; color: #fff; cursor: pointer; font: inherit; font-size: 13px; font-weight: 650; }
+.cash-transfers-submit:disabled { opacity: .55; cursor: default; }
+.cash-transfers-success,
+.cash-transfers-alert { display: flex; align-items: center; gap: 9px; margin: 0 0 16px; padding: 11px 14px; border: 1px solid #b9dfc3; border-radius: 8px; background: #f0fbf2; color: #24713b; font-size: 13px; }
+.cash-transfers-alert { border-color: #f0c3a1; background: #fff7ed; color: #9a3412; }
+.cash-transfers-alert button { margin-left: auto; border: 0; background: none; color: inherit; cursor: pointer; font: inherit; font-weight: 650; }
+.cash-transfers-form-error { margin: 16px 20px 0; padding: 10px 12px; border-radius: 7px; background: #fff3f1; color: #ac3129; font-size: 12px; }
+.cash-transfers-list-heading { padding: 17px 20px; border-bottom: 1px solid #edf1ed; }
+.cash-transfers-table-scroll { overflow-x: auto; }
+.cash-transfers-table { width: 100%; border-collapse: collapse; text-align: left; }
+.cash-transfers-table th { padding: 11px 14px; background: #f7f9f7; color: #78857a; font-size: 10px; font-weight: 700; letter-spacing: .055em; text-transform: uppercase; white-space: nowrap; }
+.cash-transfers-table td { padding: 13px 14px; border-top: 1px solid #eef1ee; color: #4a594e; font-size: 12px; vertical-align: middle; }
+.cash-transfers-table td strong { color: #2b3e31; font-weight: 650; }
+.cash-transfers-table td small { display: block; max-width: 200px; margin-top: 4px; overflow: hidden; color: #849087; text-overflow: ellipsis; white-space: nowrap; }
+.cash-transfer-account { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.cash-transfer-account svg { color: #6d8b75; }
+.cash-transfer-currency { display: inline-block; padding: 4px 7px; border-radius: 20px; background: #edf5ef; color: #477052; font-size: 10px; font-weight: 700; }
+.cash-transfer-view { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: #3f7750; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.cash-transfers-pagination { padding: 13px 18px; color: #78857a; font-size: 11px; }
+.cash-transfers-pagination > div { justify-content: flex-end; }
+.cash-transfers-pagination button { display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px; border: 1px solid #e0e7e1; border-radius: 6px; background: #fff; color: #536257; cursor: pointer; font: inherit; }
+.cash-transfers-pagination button:disabled { opacity: .45; cursor: default; }
+.cash-transfers-state { display: flex; min-height: 100px; align-items: center; justify-content: center; gap: 9px; padding: 20px; color: #7b887e; font-size: 13px; }
+.cash-transfers-error { color: #ad3d35; }
+.cash-transfers-error button { border: 0; background: none; color: #9f322b; cursor: pointer; font: inherit; font-weight: 650; }
+.cash-transfers-empty { flex-direction: column; gap: 7px; }
+.cash-transfers-empty > span { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: #f0f5f1; color: #6b8a73; }
+.cash-transfers-empty strong { color: #4e5d51; font-size: 13px; }
+.cash-transfers-empty small { color: #869188; }
+.cash-transfer-modal-backdrop { position: fixed; z-index: 1200; inset: 0; display: grid; place-items: center; padding: 18px; background: rgb(15 23 42 / 48%); }
+.cash-transfer-modal { width: min(540px, 100%); overflow: hidden; border-radius: 12px; background: #fff; box-shadow: 0 24px 64px rgb(15 23 42 / 24%); }
+.cash-transfer-modal > header { display: flex; align-items: center; justify-content: space-between; padding: 17px 19px; border-bottom: 1px solid #e7ece8; }
+.cash-transfer-modal > header h2 { margin: 4px 0 0; color: #263a2d; font-size: 17px; }
+.cash-transfer-modal > header button { display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 7px; background: #f3f6f3; color: #68756b; cursor: pointer; }
+.cash-transfer-modal > dl { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 0; padding: 20px; }
+.cash-transfer-modal dt { color: #79867c; font-size: 11px; }
+.cash-transfer-modal dd { margin: 4px 0 0; color: #304235; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.cash-transfer-detail-notes { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .cash-transfers-heading { align-items: flex-start; }
+  .cash-transfers-form { grid-template-columns: 1fr; padding: 15px; }
+  .cash-transfers-number,
+  .cash-transfers-description,
+  .cash-transfers-currency-note,
+  .cash-transfers-form-actions { grid-column: auto; }
+  .cash-transfers-form-actions { align-items: stretch; flex-direction: column; }
+  .cash-transfers-submit { width: 100%; }
+  .cash-transfers-pagination { align-items: flex-start; flex-direction: column; }
+  .cash-transfers-pagination > div { width: 100%; justify-content: space-between; }
+}
+@media (max-width: 520px) {
+  .cash-transfers-heading { flex-direction: column; }
+  .cash-transfers-heading > button { width: 100%; }
+  .cash-transfer-modal-backdrop { align-items: flex-end; padding: 0; }
+  .cash-transfer-modal { width: 100%; max-height: 90vh; overflow-y: auto; border-radius: 14px 14px 0 0; }
+}
+@media (max-width: 640px) {
+  .partner-statement__heading { align-items: flex-start; }
+  .partner-statement__filters { display: grid; grid-template-columns: 1fr 1fr; }
+  .partner-statement__filters select { min-width: 0; width: 100%; }
+  .partner-statement__summary dl { grid-template-columns: 1fr 1fr; }
+  .partner-statement .purchases-pagination { align-items: flex-start; flex-direction: column; }
+  .partner-statement .purchases-pagination__controls { width: 100%; justify-content: space-between; }
+}
+
 /* Document management */
 .documents-page { display:grid; gap:18px; color:#35443a; }
 .documents-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }

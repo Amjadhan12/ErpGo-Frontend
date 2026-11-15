@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import PartnerStatement from "./PartnerStatement";
 
 interface Customer {
   id: number;
@@ -845,6 +846,7 @@ export default function Customers() {
                     <strong>Notes</strong>
                     <p>{customerDetails.notes || "—"}</p>
                   </div>
+                  <PartnerStatement partnerId={customerDetails.id} partnerType="Customer" />
                   <div className="customer-detail-actions">
                     <button
                       className="purchase-save-button"
