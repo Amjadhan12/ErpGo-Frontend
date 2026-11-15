@@ -6757,3 +6757,59 @@ input:focus-visible {
 .reports-aging-pagination button:disabled { opacity:.45; cursor:not-allowed; }
 @media(max-width:700px) { .reports-aging-filters { align-items:stretch; } .reports-aging-filters>label,.reports-aging-filters .reports-aging-search { min-width:calc(50% - 6px); flex:1; } .reports-aging-actions { align-self:flex-end; } }
 @media(max-width:540px) { .reports-aging-filters { flex-direction:column; align-items:stretch; } .reports-aging-filters>label,.reports-aging-filters .reports-aging-search { min-width:0; width:100%; } .reports-aging-actions button { flex:1; } .reports-aging-pagination { align-items:flex-start; flex-direction:column; } .reports-aging-pagination>div { width:100%; } .reports-aging-pagination button { flex:1; } }
+/* Customer and supplier self-service portals */
+.partner-portal-shell { min-height:100vh; background:#f5f8f5; color:#2b3d32; }
+.partner-portal-page { min-height:100vh; }
+.partner-portal-header { display:flex; min-height:68px; align-items:center; justify-content:space-between; gap:16px; padding:10px clamp(16px,5vw,64px); border-bottom:1px solid #e5ebe5; background:#fff; }
+.partner-portal-brand { display:flex; align-items:center; gap:10px; color:#2d4936; text-decoration:none; }
+.partner-portal-brand>span:last-child { display:flex; flex-direction:column; gap:2px; }
+.partner-portal-brand strong { font-size:16px; letter-spacing:.04em; }
+.partner-portal-brand small { color:#839087; font-size:10px; }
+.partner-portal-brand-icon,.partner-portal-profile-icon { display:grid; width:40px; height:40px; place-items:center; border-radius:12px; background:#edf5ef; color:#42764f; }
+.partner-portal-user { display:flex; align-items:center; gap:14px; color:#66746a; font-size:12px; }
+.partner-portal-user button,.partner-portal-refresh { display:inline-flex; min-height:37px; align-items:center; justify-content:center; gap:7px; border:1px solid #dfe7e0; border-radius:8px; background:#fff; padding:0 12px; color:#49634f; font:inherit; font-size:11px; font-weight:650; cursor:pointer; }
+.partner-portal-user button:disabled,.partner-portal-refresh:disabled { opacity:.55; cursor:wait; }
+.partner-portal-content { width:min(1180px,calc(100% - 36px)); margin:0 auto; padding:30px 0 42px; }
+.partner-portal-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin-bottom:20px; }
+.partner-portal-heading h1 { margin:0; color:#263b2d; font-size:clamp(26px,3vw,34px); letter-spacing:-.04em; }
+.partner-portal-heading p:last-child { margin:7px 0 0; color:#78857c; font-size:13px; }
+.partner-portal-profile,.partner-portal-section { margin-bottom:16px; border:1px solid #e3eae4; border-radius:13px; background:#fff; box-shadow:0 3px 15px rgb(35 58 42 / 3%); }
+.partner-portal-profile { display:flex; align-items:flex-start; gap:14px; padding:18px; }
+.partner-portal-profile h2 { margin:0; color:#2d4434; font-size:17px; }
+.partner-portal-profile p { margin:4px 0 0; color:#69786d; font-size:12px; }
+.partner-portal-contact { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:9px; color:#7e8981; font-size:11px; }
+.partner-portal-section { padding:17px; }
+.partner-portal-section>header { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:13px; }
+.partner-portal-section h2 { margin:0; color:#304337; font-size:15px; }
+.partner-portal-section>header p { margin:4px 0 0; color:#879188; font-size:10px; }
+.partner-portal-balances { display:grid; grid-template-columns:repeat(auto-fit,minmax(235px,1fr)); gap:11px; }
+.partner-portal-balances article { min-width:0; padding:14px; border:1px solid #e8eee8; border-radius:10px; background:#fbfcfb; }
+.partner-portal-currency { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.partner-portal-currency strong { border-radius:5px; background:#eaf4ec; padding:5px 8px; color:#39734a; font-size:11px; }
+.partner-portal-currency span { color:#839087; font-size:10px; text-align:right; }
+.partner-portal-balance-main { display:flex; flex-direction:column; gap:5px; padding:14px 0 10px; }
+.partner-portal-balance-main small { color:#859087; font-size:10px; }
+.partner-portal-balance-main strong { color:#2f4936; font-size:22px; letter-spacing:-.025em; }
+.partner-portal-balance-main span { color:#65776a; font-size:10px; }
+.partner-portal-balances dl { display:grid; gap:7px; margin:0; padding-top:9px; border-top:1px solid #e8eee8; }
+.partner-portal-balances dl>div { display:flex; justify-content:space-between; gap:10px; }
+.partner-portal-balances dt,.partner-portal-balances dd { margin:0; color:#78857c; font-size:10px; }
+.partner-portal-balances dd { color:#48594d; font-weight:650; text-align:right; }
+.partner-portal-empty { padding:25px 12px; color:#879188; font-size:12px; text-align:center; }
+.partner-portal-table-wrap { width:100%; overflow:auto; border:1px solid #e8eee9; border-radius:8px; }
+.partner-portal-table { width:100%; min-width:720px; border-collapse:collapse; text-align:left; }
+.partner-portal-table th { padding:10px 12px; background:#f7f9f7; color:#78847c; font-size:9px; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; }
+.partner-portal-table td { padding:10px 12px; border-top:1px solid #edf1ed; color:#536158; font-size:11px; }
+.partner-portal-table td strong { color:#34443a; }
+.partner-portal-pagination { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:12px; color:#78847c; font-size:10px; }
+.partner-portal-pagination>div { display:flex; gap:7px; }
+.partner-portal-pagination button { min-height:34px; border:1px solid #dfe7e0; border-radius:7px; background:#fff; padding:0 11px; color:#486150; font:inherit; font-size:10px; font-weight:650; cursor:pointer; }
+.partner-portal-pagination button:disabled { opacity:.45; cursor:not-allowed; }
+.partner-portal-state,.partner-portal-route-state { display:flex; min-height:180px; align-items:center; justify-content:center; gap:9px; color:#738078; font-size:12px; }
+.partner-portal-route-state { min-height:100vh; background:#f5f8f5; }
+.partner-portal-state--error { flex-wrap:wrap; color:#a33f32; }
+.partner-portal-state--error button { min-height:34px; border:1px solid #e3caca; border-radius:7px; background:#fff; padding:0 10px; color:#a33f32; font:inherit; cursor:pointer; }
+.partner-portal-spin { animation:partner-portal-rotate 1s linear infinite; }
+.partner-portal-footer { padding:16px; border-top:1px solid #e5ebe5; background:#fff; color:#929d95; font-size:10px; text-align:center; }
+@keyframes partner-portal-rotate { to { transform:rotate(360deg); } }
+@media(max-width:600px) { .partner-portal-header { align-items:flex-start; padding:10px 14px; } .partner-portal-user { align-items:flex-end; flex-direction:column; gap:5px; } .partner-portal-content { width:calc(100% - 24px); padding-top:20px; } .partner-portal-heading { align-items:stretch; flex-direction:column; } .partner-portal-refresh { align-self:flex-start; } .partner-portal-section { padding:12px; } .partner-portal-profile { padding:14px; } }

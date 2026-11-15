@@ -24,6 +24,7 @@ import {
   AuthProvider,
   getSignInError,
   portalLabels,
+  portalPaths,
   useAuth,
   type UserRole,
 } from "@/auth/AuthContext";
@@ -53,6 +54,7 @@ import Documents from "@/app/Documents";
 import SettingsPage from "@/app/Settings";
 import FinancialAccounts from "@/app/FinancialAccounts";
 import OpeningBalances from "@/app/OpeningBalances";
+import { CustomerPortalLayout, PortalIndex, SupplierPortalLayout } from "@/app/PartnerPortalLayout";
 import CashBook from "@/app/CashBook";
 import CashTransfers from "@/app/CashTransfers";
 import SaleReturns from "@/app/SaleReturns";
@@ -135,8 +137,8 @@ function LoginExperience() {
   const routeNotice = getRouteNotice(location.state);
 
   useEffect(() => {
-    if (!isCheckingSession && user?.role === "Secretary") {
-      navigate("/secretary", { replace: true, state: null });
+    if (!isCheckingSession && user) {
+      navigate(portalPaths[user.role], { replace: true, state: null });
     }
   }, [isCheckingSession, navigate, user]);
 
@@ -467,7 +469,7 @@ function ProtectedSecretaryRoute() {
   }
 
   if (user.role !== "Secretary") {
-    return <Navigate to="/" replace state={{ secretaryAccessDenied: true }} />;
+    return <Navigate to={portalPaths[user.role]} replace />;
   }
 
   return <SecretaryLayout />;
@@ -479,6 +481,12 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<LoginExperience />} />
+          <Route path="/customer" element={<CustomerPortalLayout />}>
+            <Route index element={<PortalIndex role="Customer" />} />
+          </Route>
+          <Route path="/supplier" element={<SupplierPortalLayout />}>
+            <Route index element={<PortalIndex role="Supplier" />} />
+          </Route>
           <Route path="/secretary" element={<ProtectedSecretaryRoute />}>
             <Route index element={<SecretaryOverview />} />
             <Route path="purchases" element={<PurchaseList />} />
