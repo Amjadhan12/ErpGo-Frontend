@@ -15,6 +15,7 @@ type InventoryRow = { id: number; warehouse: string; product: string; sku: strin
 type InventoryReport = { rows: InventoryRow[]; totalValue: number; productCount: number; lowStock: number; outOfStock: number };
 type PartnerBalance = { id: number; name: string; partnerType: string; balances: { currency: string; balance: number; balanceType: string }[] };
 type PurchaseSummary = { count: number; byCurrency: { code: string; count: number; amount: number }[]; returnsNote: string | null };
+type PeriodMode = "custom" | "monthly" | "yearly";
 
 function currencyParser(value: unknown): Currency {
   if (!isRecord(value) || typeof value.code !== "string" || typeof value.name !== "string") throw new Error("The currency list contains an incomplete record.");
@@ -122,6 +123,10 @@ export default function Reports() {
   const [toDraft, setToDraft] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("custom");
+  const [periodYear, setPeriodYear] = useState(() => new Date().getFullYear());
+  const [periodMonth, setPeriodMonth] = useState(() => new Date().getMonth() + 1);
+  const [periodLabel, setPeriodLabel] = useState("All dates");
   const [dateError, setDateError] = useState<string | null>(null);
   const [financialCurrency, setFinancialCurrency] = useState("");
   const [cashFlowCurrency, setCashFlowCurrency] = useState("");
@@ -174,15 +179,37 @@ export default function Reports() {
     if (!partnerCurrency && partnerCurrencies.length > 0) setPartnerCurrency(partnerCurrencies[0]);
   }, [partnerCurrency, partnerCurrencies]);
 
-  function applyDates() {
-    if (fromDraft && toDraft && toDraft < fromDraft) { setDateError("To date must be on or after the from date."); return; }
-    setDateError(null); setFromDate(fromDraft); setToDate(toDraft);
+  function applyPeriod() {
+    let nextFrom = "";
+    let nextTo = "";
+    let nextLabel = "All dates";
+    if (periodMode === "custom") {
+      if (fromDraft && toDraft && toDraft < fromDraft) { setDateError("To date must be on or after the from date."); return; }
+      nextFrom = fromDraft; nextTo = toDraft;
+      nextLabel = nextFrom || nextTo ? `Custom range: ${nextFrom || "Any date"} – ${nextTo || "Any date"}` : "All dates";
+    } else if (periodMode === "monthly") {
+      if (!Number.isInteger(periodYear) || periodYear < 1 || periodYear > 9999 || !Number.isInteger(periodMonth) || periodMonth < 1 || periodMonth > 12) {
+        setDateError("Choose a valid month and year."); return;
+      }
+      nextFrom = `${String(periodYear).padStart(4, "0")}-${String(periodMonth).padStart(2, "0")}-01`;
+      const leapYear = periodYear % 4 === 0 && (periodYear % 100 !== 0 || periodYear % 400 === 0);
+      const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      const lastDay = daysInMonth[periodMonth - 1];
+      nextTo = `${String(periodYear).padStart(4, "0")}-${String(periodMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      nextLabel = `Monthly: ${new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2000, periodMonth - 1, 1))} ${periodYear}`;
+    } else {
+      if (!Number.isInteger(periodYear) || periodYear < 1 || periodYear > 9999) { setDateError("Choose a valid year."); return; }
+      nextFrom = `${String(periodYear).padStart(4, "0")}-01-01`;
+      nextTo = `${String(periodYear).padStart(4, "0")}-12-31`;
+      nextLabel = `Yearly: ${periodYear}`;
+    }
+    setDateError(null); setFromDraft(nextFrom); setToDraft(nextTo); setFromDate(nextFrom); setToDate(nextTo); setPeriodLabel(nextLabel);
   }
-  function resetDates() { setFromDraft(""); setToDraft(""); setFromDate(""); setToDate(""); setDateError(null); }
+  function resetDates() { setPeriodMode("custom"); setFromDraft(""); setToDraft(""); setFromDate(""); setToDate(""); setPeriodLabel("All dates"); setDateError(null); }
 
   return <div className="reports-page">
     <header className="reports-heading"><div><p className="reports-eyebrow">ANALYTICS</p><h1>Reports</h1><p>Explore financial performance, cash movement, inventory, partners, and purchases.</p></div><button className="reports-refresh" type="button" onClick={() => { financial.reload(); profitLoss.reload(); cashFlow.reload(); inventory.reload(); partners.reload(); purchases.reload(); }}><RefreshCw size={16} /> Refresh reports</button></header>
-    <section className="reports-date-filter"><div><strong>Report period</strong><span>Applies only to reports that support date filtering.</span></div><label>From<input type="date" value={fromDraft} max={toDraft || undefined} onChange={(event) => setFromDraft(event.target.value)} /></label><label>To<input type="date" value={toDraft} min={fromDraft || undefined} onChange={(event) => setToDraft(event.target.value)} /></label><div className="reports-filter-buttons"><button type="button" className="reports-reset" onClick={resetDates}>Reset</button><button type="button" className="reports-apply" onClick={applyDates}>Apply period</button></div>{dateError && <span className="reports-date-error" role="alert">{dateError}</span>}</section>
+    <section className="reports-date-filter"><div className="reports-period-copy"><strong>Report period</strong><span>Applies to Profit & Loss, Cash Flow, and Purchase Summary.</span><small>Applied: {periodLabel}</small></div><label>Period<select value={periodMode} onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}><option value="custom">Custom Range</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>{periodMode === "custom" ? <><label>From<input type="date" value={fromDraft} max={toDraft || undefined} onChange={(event) => setFromDraft(event.target.value)} /></label><label>To<input type="date" value={toDraft} min={fromDraft || undefined} onChange={(event) => setToDraft(event.target.value)} /></label></> : <>{periodMode === "monthly" && <label>Month<select value={periodMonth} onChange={(event) => setPeriodMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2020, index, 1))}</option>)}</select></label>}<label>Year<input type="number" min="1" max="9999" value={periodYear} onChange={(event) => setPeriodYear(Number(event.target.value))} /></label></>}<div className="reports-filter-buttons"><button type="button" className="reports-reset" onClick={resetDates}>Reset</button><button type="button" className="reports-apply" onClick={applyPeriod}>Apply period</button></div>{dateError && <span className="reports-date-error" role="alert">{dateError}</span>}</section>
     {optionsError && <div className="reports-options-error" role="alert">Some filter options could not be loaded: {optionsError}</div>}
 
     <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><Wallet size={19} /></div><div><h2>Financial summary</h2><p>Balances grouped by currency. Amounts are never combined across currencies.</p></div><label className="reports-compact-filter">Currency<select value={financialCurrency} onChange={(event) => setFinancialCurrency(event.target.value)}><option value="">All currencies</option>{currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code}</option>)}</select></label></div>
