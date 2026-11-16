@@ -9,11 +9,17 @@ interface DatePeriodFilterProps {
   className?: string;
   applyLabel?: string;
   showReset?: boolean;
+  translate?: (text: string) => string;
+  locale?: string;
 }
 
-function periodLabel(fromDate: string, toDate: string): string {
-  if (!fromDate && !toDate) return "All dates";
-  return `${fromDate || "Any date"} – ${toDate || "Any date"}`;
+function periodLabel(
+  fromDate: string,
+  toDate: string,
+  translate: (text: string) => string,
+): string {
+  if (!fromDate && !toDate) return translate("All dates");
+  return `${fromDate || translate("Any date")} – ${toDate || translate("Any date")}`;
 }
 
 export default function DatePeriodFilter({
@@ -23,6 +29,8 @@ export default function DatePeriodFilter({
   className = "",
   applyLabel = "Apply period",
   showReset = true,
+  translate = (text) => text,
+  locale,
 }: DatePeriodFilterProps) {
   const today = new Date();
   const [mode, setMode] = useState<PeriodMode>("custom");
@@ -42,14 +50,14 @@ export default function DatePeriodFilter({
     let nextTo = "";
     if (mode === "custom") {
       if (draftFrom && draftTo && draftTo < draftFrom) {
-        setError("To date must be on or after the from date.");
+        setError(translate("To date must be on or after the from date."));
         return;
       }
       nextFrom = draftFrom;
       nextTo = draftTo;
     } else if (mode === "monthly") {
       if (!Number.isInteger(year) || year < 1 || year > 9999 || !Number.isInteger(month) || month < 1 || month > 12) {
-        setError("Choose a valid month and year.");
+        setError(translate("Choose a valid month and year."));
         return;
       }
       const monthText = String(month).padStart(2, "0");
@@ -60,7 +68,7 @@ export default function DatePeriodFilter({
       nextTo = `${yearText}-${monthText}-${String(daysInMonth[month - 1]).padStart(2, "0")}`;
     } else {
       if (!Number.isInteger(year) || year < 1 || year > 9999) {
-        setError("Choose a valid year.");
+        setError(translate("Choose a valid year."));
         return;
       }
       const yearText = String(year).padStart(4, "0");
@@ -85,16 +93,16 @@ export default function DatePeriodFilter({
 
   return (
     <div className={`date-period-filter ${className}`.trim()}>
-      <div className="date-period-applied"><span>Applied period</span><strong>{periodLabel(fromDate, toDate)}</strong></div>
-      <label><span>Period</span><select value={mode} onChange={(event) => { setMode(event.target.value as PeriodMode); setError(null); }}><option value="custom">Custom Range</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
+      <div className="date-period-applied"><span>{translate("Applied period")}</span><strong>{periodLabel(fromDate, toDate, translate)}</strong></div>
+      <label><span>{translate("Period")}</span><select value={mode} onChange={(event) => { setMode(event.target.value as PeriodMode); setError(null); }}><option value="custom">{translate("Custom Range")}</option><option value="monthly">{translate("Monthly")}</option><option value="yearly">{translate("Yearly")}</option></select></label>
       {mode === "custom" ? <>
-        <label><span>From date</span><input type="date" value={draftFrom} max={draftTo || undefined} onChange={(event) => setDraftFrom(event.target.value)} /></label>
-        <label><span>To date</span><input type="date" value={draftTo} min={draftFrom || undefined} onChange={(event) => setDraftTo(event.target.value)} /></label>
+        <label><span>{translate("From date")}</span><input type="date" value={draftFrom} max={draftTo || undefined} onChange={(event) => setDraftFrom(event.target.value)} /></label>
+        <label><span>{translate("To date")}</span><input type="date" value={draftTo} min={draftFrom || undefined} onChange={(event) => setDraftTo(event.target.value)} /></label>
       </> : <>
-        {mode === "monthly" && <label><span>Month</span><select value={month} onChange={(event) => setMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2020, index, 1))}</option>)}</select></label>}
-        <label><span>Year</span><input type="number" min="1" max="9999" step="1" value={year} onChange={(event) => setYear(Number(event.target.value))} /></label>
+        {mode === "monthly" && <label><span>{translate("Month")}</span><select value={month} onChange={(event) => setMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(2020, index, 1))}</option>)}</select></label>}
+        <label><span>{translate("Year")}</span><input type="number" min="1" max="9999" step="1" value={year} onChange={(event) => setYear(Number(event.target.value))} /></label>
       </>}
-      <div className="date-period-actions">{showReset && <button type="button" className="date-period-reset" onClick={reset}>Reset</button>}<button type="button" className="date-period-apply" onClick={apply}>{applyLabel}</button></div>
+      <div className="date-period-actions">{showReset && <button type="button" className="date-period-reset" onClick={reset}>{translate("Reset")}</button>}<button type="button" className="date-period-apply" onClick={apply}>{translate(applyLabel)}</button></div>
       {error && <span className="date-period-error" role="alert">{error}</span>}
     </div>
   );

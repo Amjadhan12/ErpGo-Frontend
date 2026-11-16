@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useLocale } from "@/lib/locale";
 
 interface ProductCategory {
   id: number;
@@ -24,6 +25,7 @@ interface UnitOption {
   id: number;
   name: string;
   shortName: string | null;
+  description: string | null;
   isActive: boolean;
 }
 
@@ -132,6 +134,7 @@ function parseUnit(value: unknown): UnitOption {
     id: parseId(value.id, "unit ID"),
     name: value.name,
     shortName: optionalText(value.short_name),
+    description: optionalText(value.description),
     isActive: value.is_active,
   };
 }
@@ -272,13 +275,14 @@ function getCategoryValidationErrors(error: unknown): {
   return { fields: result.fields, message: result.message };
 }
 
-function formatStock(value: number): string {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(
-    value,
-  );
+function formatStock(value: number, language: "en" | "ps"): string {
+  return new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US", {
+    maximumFractionDigits: 4,
+  }).format(value);
 }
 
 export default function Products() {
+  const { t, language } = useLocale();
   const [products, setProducts] = useState<ProductPage | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -308,9 +312,10 @@ export default function Products() {
   );
   const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailSuccess, setDetailSuccess] = useState<string | null>(null);
   const [detailRetry, setDetailRetry] = useState(0);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
-  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isUpdatingProductStatus, setIsUpdatingProductStatus] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [categoryFormMode, setCategoryFormMode] = useState<
     "create" | "edit" | null
@@ -322,8 +327,10 @@ export default function Products() {
     useState<CategoryForm>(emptyCategoryForm);
   const [categoryFields, setCategoryFields] = useState<FieldErrors>({});
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [categorySuccess, setCategorySuccess] = useState<string | null>(null);
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryStatusUpdatingId, setCategoryStatusUpdatingId] = useState<number | null>(null);
   const [unitsOpen, setUnitsOpen] = useState(false);
   const [unitFormMode, setUnitFormMode] = useState<"create" | "edit" | null>(
     null,
@@ -332,8 +339,10 @@ export default function Products() {
   const [unitForm, setUnitForm] = useState<UnitForm>(emptyUnitForm);
   const [unitFields, setUnitFields] = useState<FieldErrors>({});
   const [unitError, setUnitError] = useState<string | null>(null);
+  const [unitSuccess, setUnitSuccess] = useState<string | null>(null);
   const [unitLoading, setUnitLoading] = useState(false);
   const [unitSaving, setUnitSaving] = useState(false);
+  const [unitStatusUpdatingId, setUnitStatusUpdatingId] = useState<number | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -428,6 +437,7 @@ export default function Products() {
     const controller = new AbortController();
     setIsDetailLoading(true);
     setDetailError(null);
+    setDetailSuccess(null);
     setProductDetails(null);
     api
       .get<unknown>(`/api/products/${selectedProductId}`, {
@@ -575,31 +585,44 @@ export default function Products() {
     }
   }
 
-  async function deactivateProduct() {
-    if (!productDetails || !productDetails.isActive || isDeactivating) return;
-    if (
-      !window.confirm(
-        `Deactivate ${productDetails.name}? This will make it unavailable in new transactions.`,
-      )
-    ) {
+  async function updateProductStatus(isActive: boolean) {
+    if (!productDetails || isUpdatingProductStatus || productDetails.isActive === isActive) return;
+    if (!isActive && !window.confirm(
+      `${t("Deactivate")} ${productDetails.name}? ${t("This will make it unavailable in new transactions.")}`,
+    )) {
       return;
     }
-    setIsDeactivating(true);
+    setIsUpdatingProductStatus(true);
     setDetailError(null);
     try {
-      const { data } = await api.patch<unknown>(
-        `/api/products/${productDetails.id}/deactivate`,
+      const payload: Record<string, string | number | boolean | null> = {
+        product_category_id: productDetails.productCategoryId,
+        sku: productDetails.sku,
+        name: productDetails.name,
+        unit: productDetails.unit,
+        description: productDetails.description,
+        minimum_stock: productDetails.minimumStock,
+        is_active: isActive,
+      };
+      if (productDetails.productType !== null) {
+        payload.product_type = productDetails.productType;
+      }
+      const { data } = await api.put<unknown>(
+        `/api/products/${productDetails.id}`,
+        payload,
       );
       if (!isRecord(data) || !("data" in data))
-        throw new Error("The product deactivation response was incomplete.");
+        throw new Error("The product status response was incomplete.");
       const updatedProduct = parseProduct(data.data);
       setProductDetails(updatedProduct);
-      setSuccess("Product deactivated successfully.");
+      const message = isActive ? "Product activated successfully." : "Product deactivated successfully.";
+      setSuccess(message);
+      setDetailSuccess(message);
       setListRetry((current) => current + 1);
     } catch (error: unknown) {
       setDetailError(getErrorMessage(error));
     } finally {
-      setIsDeactivating(false);
+      setIsUpdatingProductStatus(false);
     }
   }
 
@@ -610,6 +633,7 @@ export default function Products() {
     setCategoryForm(emptyCategoryForm);
     setCategoryFields({});
     setCategoryError(null);
+    setCategorySuccess(null);
   }
 
   function startCreateCategory() {
@@ -617,6 +641,7 @@ export default function Products() {
     setCategoryForm(emptyCategoryForm);
     setCategoryFields({});
     setCategoryError(null);
+    setCategorySuccess(null);
     setCategoryFormMode("create");
   }
 
@@ -625,6 +650,7 @@ export default function Products() {
     setSelectedCategoryId(category.id);
     setCategoryFields({});
     setCategoryError(null);
+    setCategorySuccess(null);
     setCategoryLoading(true);
     try {
       const { data } = await api.get<unknown>(
@@ -698,6 +724,11 @@ export default function Products() {
           ? "Category created successfully."
           : "Category updated successfully.",
       );
+      setCategorySuccess(
+        categoryFormMode === "create"
+          ? "Category created successfully."
+          : "Category updated successfully.",
+      );
     } catch (error: unknown) {
       const result = getCategoryValidationErrors(error);
       setCategoryFields(result.fields);
@@ -711,19 +742,35 @@ export default function Products() {
     setCatalogRetry((current) => current + 1);
   }
 
-  async function deactivateCategory(category: ProductCategory) {
-    if (!category.isActive) return;
-    if (!window.confirm(`Deactivate the category "${category.name}"?`)) return;
+  async function updateCategoryStatus(category: ProductCategory, isActive: boolean) {
+    if (categoryStatusUpdatingId !== null || category.isActive === isActive) return;
+    if (!isActive && !window.confirm(`${t("Deactivate")} ${t("Category")}: ${category.name}?`)) return;
+    setCategoryStatusUpdatingId(category.id);
+    setCategoryError(null);
+    setCategorySuccess(null);
     try {
-      await api.patch(`/api/product-categories/${category.id}/deactivate`);
-      if (form.productCategoryId === String(category.id)) {
+      const { data } = await api.put<unknown>(`/api/product-categories/${category.id}`, {
+        name: category.name,
+        description: category.description,
+        is_active: isActive,
+      });
+      if (!isRecord(data) || !("data" in data)) {
+        throw new Error("The category status response was incomplete.");
+      }
+      const updatedCategory = parseCategory(data.data);
+      setCategories((current) => current.map((item) =>
+        item.id === updatedCategory.id ? updatedCategory : item,
+      ));
+      if (!isActive && form.productCategoryId === String(category.id)) {
         setForm((current) => ({ ...current, productCategoryId: "" }));
       }
       setCatalogRetry((current) => current + 1);
       setCategoryFormMode(null);
-      setCategoryError(null);
+      setCategorySuccess(isActive ? "Category activated successfully." : "Category deactivated successfully.");
     } catch (error: unknown) {
       setCategoryError(getErrorMessage(error));
+    } finally {
+      setCategoryStatusUpdatingId(null);
     }
   }
 
@@ -733,6 +780,7 @@ export default function Products() {
     setCategoryFormMode(null);
     setSelectedCategoryId(null);
     setCategoryError(null);
+    setCategorySuccess(null);
   }
 
   function openUnits() {
@@ -742,6 +790,7 @@ export default function Products() {
     setUnitForm(emptyUnitForm);
     setUnitFields({});
     setUnitError(null);
+    setUnitSuccess(null);
   }
 
   function startCreateUnit() {
@@ -749,6 +798,7 @@ export default function Products() {
     setUnitForm(emptyUnitForm);
     setUnitFields({});
     setUnitError(null);
+    setUnitSuccess(null);
     setUnitFormMode("create");
   }
 
@@ -757,6 +807,7 @@ export default function Products() {
     setSelectedUnitId(unit.id);
     setUnitFields({});
     setUnitError(null);
+    setUnitSuccess(null);
     setUnitLoading(true);
     try {
       const { data } = await api.get<unknown>(`/api/units/${unit.id}`);
@@ -834,6 +885,11 @@ export default function Products() {
           ? "Unit created successfully."
           : "Unit updated successfully.",
       );
+      setUnitSuccess(
+        unitFormMode === "create"
+          ? "Unit created successfully."
+          : "Unit updated successfully.",
+      );
     } catch (error: unknown) {
       const result = getValidationErrors(error);
       setUnitFields(result.fields);
@@ -843,19 +899,36 @@ export default function Products() {
     }
   }
 
-  async function deactivateUnit(unit: UnitOption) {
-    if (!unit.isActive) return;
-    if (!window.confirm(`Deactivate the unit "${unit.name}"?`)) return;
+  async function updateUnitStatus(unit: UnitOption, isActive: boolean) {
+    if (unitStatusUpdatingId !== null || unit.isActive === isActive) return;
+    if (!isActive && !window.confirm(`${t("Deactivate")} ${t("Unit")}: ${unit.name}?`)) return;
+    setUnitStatusUpdatingId(unit.id);
+    setUnitError(null);
+    setUnitSuccess(null);
     try {
-      await api.patch(`/api/units/${unit.id}/deactivate`);
-      if (form.unit === unit.name) {
+      const { data } = await api.put<unknown>(`/api/units/${unit.id}`, {
+        name: unit.name,
+        short_name: unit.shortName,
+        description: unit.description,
+        is_active: isActive,
+      });
+      if (!isRecord(data) || !("data" in data)) {
+        throw new Error("The unit status response was incomplete.");
+      }
+      const updatedUnit = parseUnit(data.data);
+      setUnits((current) => current.map((item) =>
+        item.id === updatedUnit.id ? updatedUnit : item,
+      ));
+      if (!isActive && form.unit === unit.name) {
         setForm((current) => ({ ...current, unit: "" }));
       }
       setCatalogRetry((current) => current + 1);
       setUnitFormMode(null);
-      setUnitError(null);
+      setUnitSuccess(isActive ? "Unit activated successfully." : "Unit deactivated successfully.");
     } catch (error: unknown) {
       setUnitError(getErrorMessage(error));
+    } finally {
+      setUnitStatusUpdatingId(null);
     }
   }
 
@@ -865,6 +938,7 @@ export default function Products() {
     setUnitFormMode(null);
     setSelectedUnitId(null);
     setUnitError(null);
+    setUnitSuccess(null);
   }
 
   function updateFilter(setter: (value: string) => void, value: string) {
@@ -894,10 +968,10 @@ export default function Products() {
     <div className="purchases-page products-page">
       <header className="purchases-heading">
         <div>
-          <p className="overview-eyebrow">INVENTORY</p>
-          <h1>Products</h1>
+          <p className="overview-eyebrow">{t("INVENTORY")}</p>
+          <h1>{t("Products")}</h1>
           <p className="overview-heading__description">
-            Manage product details, units, and categories.
+            {t("Manage product details, units, and categories.")}
           </p>
         </div>
         <button
@@ -907,13 +981,13 @@ export default function Products() {
           disabled={formMode !== null}
         >
           <Plus size={16} aria-hidden="true" />
-          <span>New Product</span>
+          <span>{t("New Product")}</span>
         </button>
       </header>
 
       {success && (
         <p className="purchase-success-message products-success" role="status">
-          {success}
+          {t(success)}
         </p>
       )}
 
@@ -924,7 +998,7 @@ export default function Products() {
         >
           <header className="products-form-heading">
             <h2 id="product-form-title">
-              {formMode === "create" ? "Create Product" : "Edit Product"}
+              {formMode === "create" ? t("Create Product") : t("Edit Product")}
             </h2>
             <button
               type="button"
@@ -932,7 +1006,7 @@ export default function Products() {
               onClick={closeProductForm}
               disabled={isSaving}
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </header>
           {formError && (
@@ -940,7 +1014,7 @@ export default function Products() {
               className="create-purchase-alert products-form-alert"
               role="alert"
             >
-              {formError}
+              {t(formError)}
             </p>
           )}
           <form
@@ -951,7 +1025,7 @@ export default function Products() {
             <div className="purchase-field">
               <label htmlFor="product-category">
                 <span>
-                  Category <i>*</i>
+                  {t("Category")} <i>*</i>
                 </span>
               </label>
               <div className="products-category-select">
@@ -966,10 +1040,10 @@ export default function Products() {
                 >
                   <option value="">
                     {categoriesLoading
-                      ? "Loading categories..."
+                      ? t("Loading categories…")
                       : activeCategories.length
-                        ? "Select category"
-                        : "No active categories"}
+                        ? t("Select category")
+                        : t("No active categories")}
                   </option>
                   {formCategories.map((category) => (
                     <option
@@ -978,7 +1052,7 @@ export default function Products() {
                       disabled={!category.isActive}
                     >
                       {category.name}
-                      {category.isActive ? "" : " (inactive)"}
+                      {category.isActive ? "" : ` (${t("Inactive")})`}
                     </option>
                   ))}
                 </select>
@@ -986,32 +1060,32 @@ export default function Products() {
                   type="button"
                   className="purchase-view-button"
                   onClick={openCategories}
-                  aria-label="Manage product categories"
+                  aria-label={t("Manage product categories")}
                 >
-                  Manage
+                  {t("Manage")}
                 </button>
               </div>
               {categoriesError && (
                 <small className="purchase-field__error">
-                  {categoriesError}{" "}
+                  {t(categoriesError)}{" "}
                   <button
                     type="button"
                     onClick={() => setCatalogRetry((current) => current + 1)}
                   >
-                    Retry
+                    {t("Retry")}
                   </button>
                 </small>
               )}
               {formFields.productCategoryId && (
                 <small className="purchase-field__error">
-                  {formFields.productCategoryId}
+                  {t(formFields.productCategoryId)}
                 </small>
               )}
             </div>
 
             <label className="purchase-field">
               <span>
-                Name <i>*</i>
+                {t("Name")} <i>*</i>
               </span>
               <input
                 value={form.name}
@@ -1023,13 +1097,13 @@ export default function Products() {
               />
               {formFields.name && (
                 <small className="purchase-field__error">
-                  {formFields.name}
+                  {t(formFields.name)}
                 </small>
               )}
             </label>
 
             <label className="purchase-field">
-              <span>SKU</span>
+              <span>{t("SKU")}</span>
               <input
                 value={form.sku}
                 onChange={(event) => setProductField("sku", event.target.value)}
@@ -1038,13 +1112,13 @@ export default function Products() {
               />
               {formFields.sku && (
                 <small className="purchase-field__error">
-                  {formFields.sku}
+                  {t(formFields.sku)}
                 </small>
               )}
             </label>
 
             <label className="purchase-field">
-              <span>Product Type</span>
+              <span>{t("Product Type")}</span>
               <input
                 value={form.productType}
                 onChange={(event) =>
@@ -1055,7 +1129,7 @@ export default function Products() {
               />
               {formFields.productType && (
                 <small className="purchase-field__error">
-                  {formFields.productType}
+                  {t(formFields.productType)}
                 </small>
               )}
             </label>
@@ -1063,7 +1137,7 @@ export default function Products() {
             <div className="purchase-field">
               <label htmlFor="product-unit">
                 <span>
-                  Unit <i>*</i>
+                  {t("Unit")} <i>*</i>
                 </span>
               </label>
               <div className="products-category-select">
@@ -1078,15 +1152,15 @@ export default function Products() {
                 >
                   <option value="">
                     {unitsLoading
-                      ? "Loading units..."
+                      ? t("Loading units…")
                       : activeUnits.length
-                        ? "Select unit"
-                        : "No active units"}
+                        ? t("Select unit")
+                        : t("No active units")}
                   </option>
                   {formMode === "edit" &&
                     form.unit &&
                     !activeUnits.some((unit) => unit.name === form.unit) && (
-                      <option value={form.unit}>{form.unit} (current)</option>
+                      <option value={form.unit}>{form.unit} ({t("current")})</option>
                     )}
                   {activeUnits.map((unit) => (
                     <option key={unit.id} value={unit.name}>
@@ -1099,34 +1173,34 @@ export default function Products() {
                   type="button"
                   className="purchase-view-button"
                   onClick={openUnits}
-                  aria-label="Manage units"
+                  aria-label={t("Manage units")}
                 >
-                  Manage
+                  {t("Manage")}
                 </button>
               </div>
               {unitsLoading && (
-                <small className="purchase-field__hint">Loading units...</small>
+                <small className="purchase-field__hint">{t("Loading units…")}</small>
               )}
               {unitsError && (
                 <small className="purchase-field__error">
-                  {unitsError}{" "}
+                  {t(unitsError)}{" "}
                   <button
                     type="button"
                     onClick={() => setCatalogRetry((current) => current + 1)}
                   >
-                    Retry
+                    {t("Retry")}
                   </button>
                 </small>
               )}
               {formFields.unit && (
                 <small className="purchase-field__error">
-                  {formFields.unit}
+                  {t(formFields.unit)}
                 </small>
               )}
             </div>
 
             <label className="purchase-field">
-              <span>Minimum Stock</span>
+              <span>{t("Minimum Stock")}</span>
               <input
                 type="number"
                 min="0"
@@ -1139,13 +1213,13 @@ export default function Products() {
               />
               {formFields.minimumStock && (
                 <small className="purchase-field__error">
-                  {formFields.minimumStock}
+                  {t(formFields.minimumStock)}
                 </small>
               )}
             </label>
 
             <label className="purchase-field products-form-wide">
-              <span>Description</span>
+              <span>{t("Description")}</span>
               <textarea
                 rows={3}
                 value={form.description}
@@ -1156,7 +1230,7 @@ export default function Products() {
               />
               {formFields.description && (
                 <small className="purchase-field__error">
-                  {formFields.description}
+                  {t(formFields.description)}
                 </small>
               )}
             </label>
@@ -1168,7 +1242,7 @@ export default function Products() {
                 onClick={closeProductForm}
                 disabled={isSaving}
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="submit"
@@ -1178,17 +1252,17 @@ export default function Products() {
                 }
               >
                 {isSaving
-                  ? "Saving…"
+                  ? t("Saving…")
                   : formMode === "create"
-                    ? "Create Product"
-                    : "Save Changes"}
+                    ? t("Create Product")
+                    : t("Save Changes")}
               </button>
             </div>
           </form>
         </section>
       )}
 
-      <section className="purchases-panel" aria-label="Product list">
+      <section className="purchases-panel" aria-label={t("Product list")}>
         <div className="products-toolbar">
           <label className="products-search">
             <Search size={16} aria-hidden="true" />
@@ -1196,51 +1270,51 @@ export default function Products() {
               type="search"
               value={search}
               onChange={(event) => updateFilter(setSearch, event.target.value)}
-              placeholder="Search name or SKU"
-              aria-label="Search products by name or SKU"
+              placeholder={t("Search name or SKU")}
+              aria-label={t("Search products by name or SKU")}
             />
           </label>
           <label className="products-filter">
-            <span>Category</span>
+            <span>{t("Category")}</span>
             <select
               value={categoryFilter}
               onChange={(event) =>
                 updateFilter(setCategoryFilter, event.target.value)
               }
-              aria-label="Filter by category"
+              aria-label={t("Filter by category")}
             >
-              <option value="">All categories</option>
+              <option value="">{t("All categories")}</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
-                  {category.isActive ? "" : " (inactive)"}
+                  {category.isActive ? "" : ` (${t("Inactive")})`}
                 </option>
               ))}
             </select>
           </label>
           <label className="products-filter products-type-filter">
-            <span>Product Type</span>
+            <span>{t("Product Type")}</span>
             <input
               value={productTypeFilter}
               onChange={(event) =>
                 updateFilter(setProductTypeFilter, event.target.value)
               }
-              placeholder="All types"
-              aria-label="Filter by product type"
+              placeholder={t("All types")}
+              aria-label={t("Filter by product type")}
             />
           </label>
           <label className="products-filter">
-            <span>Status</span>
+            <span>{t("Status")}</span>
             <select
               value={statusFilter}
               onChange={(event) =>
                 updateFilter(setStatusFilter, event.target.value)
               }
-              aria-label="Filter by status"
+              aria-label={t("Filter by status")}
             >
-              <option value="all">All statuses</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="all">{t("All statuses")}</option>
+              <option value="true">{t("Active")}</option>
+              <option value="false">{t("Inactive")}</option>
             </select>
           </label>
           <button
@@ -1248,31 +1322,31 @@ export default function Products() {
             type="button"
             onClick={() => setListRetry((current) => current + 1)}
             disabled={isLoading}
-            aria-label="Refresh products"
+            aria-label={t("Refresh products")}
           >
             <RefreshCw
               size={16}
               className={isLoading ? "overview-refresh__spinning" : ""}
               aria-hidden="true"
             />
-            <span>Refresh</span>
+            <span>{t("Refresh")}</span>
           </button>
         </div>
 
         {isLoading ? (
           <div className="purchases-state" role="status">
-            <span className="loading-spinner" /> Loading products…
+            <span className="loading-spinner" /> {t("Loading products…")}
           </div>
         ) : listError ? (
           <div className="purchases-state purchases-state--error" role="alert">
             <AlertCircle size={20} aria-hidden="true" />
-            <span>{listError}</span>
+            <span>{t(listError)}</span>
             <button
               type="button"
               className="purchases-retry"
               onClick={() => setListRetry((current) => current + 1)}
             >
-              Try again
+              {t("Try again")}
             </button>
           </div>
         ) : products && products.data.length === 0 ? (
@@ -1285,16 +1359,16 @@ export default function Products() {
               debouncedProductType ||
               categoryFilter ||
               statusFilter !== "all"
-                ? "No products match these filters"
-                : "No products yet"}
+                ? t("No products match these filters")
+                : t("No products yet")}
             </strong>
             <span>
               {debouncedSearch ||
               debouncedProductType ||
               categoryFilter ||
               statusFilter !== "all"
-                ? "Adjust the search or filters and try again."
-                : "Create a product to see it listed here."}
+                ? t("Adjust the search or filters and try again.")
+                : t("Create a product to see it listed here.")}
             </span>
           </div>
         ) : products ? (
@@ -1303,47 +1377,47 @@ export default function Products() {
               <table className="purchases-table products-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>SKU</th>
-                    <th>Category</th>
-                    <th>Type</th>
-                    <th>Unit</th>
-                    <th className="purchases-table__numeric">Minimum Stock</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>{t("Name")}</th>
+                    <th>{t("SKU")}</th>
+                    <th>{t("Category")}</th>
+                    <th>{t("Type")}</th>
+                    <th>{t("Unit")}</th>
+                    <th className="purchases-table__numeric">{t("Minimum Stock")}</th>
+                    <th>{t("Status")}</th>
+                    <th>{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {products.data.map((product) => (
                     <tr key={product.id}>
-                      <td>
+                      <td data-label={t("Name")}>
                         <strong className="purchases-number">
                           {product.name}
                         </strong>
                       </td>
-                      <td>{product.sku || "—"}</td>
-                      <td>{product.category?.name || "—"}</td>
-                      <td>{product.productType || "—"}</td>
-                      <td>{product.unit}</td>
-                      <td className="purchases-table__numeric">
-                        {formatStock(product.minimumStock)}
+                      <td data-label={t("SKU")}>{product.sku || "—"}</td>
+                      <td data-label={t("Category")}>{product.category?.name || "—"}</td>
+                      <td data-label={t("Type")}>{product.productType || "—"}</td>
+                      <td data-label={t("Unit")}>{product.unit}</td>
+                      <td data-label={t("Minimum Stock")} className="purchases-table__numeric">
+                        {formatStock(product.minimumStock, language)}
                       </td>
-                      <td>
+                      <td data-label={t("Status")}>
                         <span
                           className={`product-status ${product.isActive ? "product-status--active" : "product-status--inactive"}`}
                         >
-                          {product.isActive ? "Active" : "Inactive"}
+                          {product.isActive ? t("Active") : t("Inactive")}
                         </span>
                       </td>
-                      <td>
+                      <td data-label={t("Actions")}>
                         <button
                           className="purchase-view-button"
                           type="button"
                           onClick={() => setSelectedProductId(product.id)}
-                          aria-label={`View ${product.name}`}
+                          aria-label={`${t("View")} ${product.name}`}
                         >
                           <Eye size={15} aria-hidden="true" />
-                          <span>Details</span>
+                          <span>{t("Details")}</span>
                         </button>
                       </td>
                     </tr>
@@ -1353,20 +1427,20 @@ export default function Products() {
             </div>
             <footer className="purchases-pagination">
               <span>
-                Showing {startRecord}–{endRecord} of{" "}
-                {new Intl.NumberFormat().format(products.total)} products
+                {t("Showing")} {startRecord}–{endRecord} {t("of")}{" "}
+                {new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US").format(products.total)} {t("products")}
               </span>
               <div className="purchases-pagination__controls">
                 <button
                   type="button"
                   onClick={() => setPage(products.currentPage - 1)}
                   disabled={isLoading || products.currentPage <= 1}
-                  aria-label="Previous page"
+                  aria-label={t("Previous page")}
                 >
-                  <ChevronLeft size={16} aria-hidden="true" /> Previous
+                  <ChevronLeft size={16} aria-hidden="true" /> {t("Previous")}
                 </button>
                 <span>
-                  Page <strong>{products.currentPage}</strong> of{" "}
+                  {t("Page")} <strong>{products.currentPage}</strong> {t("of")}{" "}
                   <strong>{products.lastPage}</strong>
                 </span>
                 <button
@@ -1375,9 +1449,9 @@ export default function Products() {
                   disabled={
                     isLoading || products.currentPage >= products.lastPage
                   }
-                  aria-label="Next page"
+                  aria-label={t("Next page")}
                 >
-                  Next <ChevronRight size={16} aria-hidden="true" />
+                  {t("Next")} <ChevronRight size={16} aria-hidden="true" />
                 </button>
               </div>
             </footer>
@@ -1401,17 +1475,17 @@ export default function Products() {
           >
             <header className="purchase-modal__header">
               <div>
-                <p className="overview-eyebrow">PRODUCT DETAILS</p>
+                <p className="overview-eyebrow">{t("PRODUCT DETAILS")}</p>
                 <h2 id="product-detail-title">
-                  {productDetails?.name ?? "Product"}
+                  {productDetails?.name ?? t("Product")}
                 </h2>
-                {productDetails && <p>Product #{productDetails.id}</p>}
+                {productDetails && <p>{t("Product")} #{productDetails.id}</p>}
               </div>
               <button
                 type="button"
                 className="purchase-modal__close"
                 onClick={() => setSelectedProductId(null)}
-                aria-label="Close details"
+                aria-label={t("Close details")}
               >
                 <X size={19} aria-hidden="true" />
               </button>
@@ -1419,7 +1493,7 @@ export default function Products() {
             <div className="purchase-modal__body">
               {isDetailLoading ? (
                 <div className="purchases-state" role="status">
-                  <span className="loading-spinner" /> Loading product details…
+                  <span className="loading-spinner" /> {t("Loading product details…")}
                 </div>
               ) : detailError ? (
                 <div
@@ -1427,74 +1501,84 @@ export default function Products() {
                   role="alert"
                 >
                   <AlertCircle size={20} aria-hidden="true" />
-                  <span>{detailError}</span>
+                  <span>{t(detailError)}</span>
                   <button
                     type="button"
                     className="purchases-retry"
                     onClick={() => setDetailRetry((current) => current + 1)}
                   >
-                    Try again
+                    {t("Try again")}
                   </button>
                 </div>
               ) : productDetails ? (
                 <>
+                  {detailSuccess && (
+                    <p className="purchase-success-message products-success" role="status">
+                      {t(detailSuccess)}
+                    </p>
+                  )}
                   <dl className="purchase-detail-grid product-detail-grid">
                     <div>
-                      <dt>Name</dt>
+                      <dt>{t("Name")}</dt>
                       <dd>{productDetails.name}</dd>
                     </div>
                     <div>
-                      <dt>SKU</dt>
+                      <dt>{t("SKU")}</dt>
                       <dd>{productDetails.sku || "—"}</dd>
                     </div>
                     <div>
-                      <dt>Category</dt>
+                      <dt>{t("Category")}</dt>
                       <dd>{productDetails.category?.name || "—"}</dd>
                     </div>
                     <div>
-                      <dt>Product Type</dt>
+                      <dt>{t("Product Type")}</dt>
                       <dd>{productDetails.productType || "—"}</dd>
                     </div>
                     <div>
-                      <dt>Unit</dt>
+                      <dt>{t("Unit")}</dt>
                       <dd>{productDetails.unit}</dd>
                     </div>
                     <div>
-                      <dt>Minimum Stock</dt>
-                      <dd>{formatStock(productDetails.minimumStock)}</dd>
+                      <dt>{t("Minimum Stock")}</dt>
+                      <dd>{formatStock(productDetails.minimumStock, language)}</dd>
                     </div>
                     <div>
-                      <dt>Status</dt>
-                      <dd>{productDetails.isActive ? "Active" : "Inactive"}</dd>
+                      <dt>{t("Status")}</dt>
+                      <dd>
+                        <span className={`product-status ${productDetails.isActive ? "product-status--active" : "product-status--inactive"}`}>
+                          {productDetails.isActive ? t("Active") : t("Inactive")}
+                        </span>
+                      </dd>
                     </div>
                   </dl>
                   <div className="product-detail-description">
-                    <strong>Description</strong>
+                    <strong>{t("Description")}</strong>
                     <p>{productDetails.description || "—"}</p>
                   </div>
                   {detailError && (
                     <p className="form-alert form-alert--error" role="alert">
-                      {detailError}
+                      {t(detailError)}
                     </p>
                   )}
                   <div className="product-detail-actions">
                     <button
-                      className="purchase-view-button"
+                      className="product-edit-button"
                       type="button"
                       onClick={() => openEditForm(productDetails)}
+                      disabled={isUpdatingProductStatus}
                     >
-                      <Pencil size={15} aria-hidden="true" /> Edit Product
+                      <Pencil size={15} aria-hidden="true" /> {t("Edit Product")}
                     </button>
-                    {productDetails.isActive && (
                       <button
-                        className="product-deactivate-button"
+                      className={productDetails.isActive ? "product-deactivate-button" : "product-activate-button"}
                         type="button"
-                        onClick={() => void deactivateProduct()}
-                        disabled={isDeactivating}
+                      onClick={() => void updateProductStatus(!productDetails.isActive)}
+                      disabled={isUpdatingProductStatus}
                       >
-                        {isDeactivating ? "Deactivating..." : "Deactivate"}
-                      </button>
-                    )}
+                      {isUpdatingProductStatus
+                        ? t(productDetails.isActive ? "Deactivating…" : "Activating…")
+                        : t(productDetails.isActive ? "Deactivate" : "Activate")}
+                    </button>
                   </div>
                 </>
               ) : null}
@@ -1518,14 +1602,14 @@ export default function Products() {
           >
             <header className="purchase-modal__header">
               <div>
-                <p className="overview-eyebrow">PRODUCT SETUP</p>
-                <h2 id="product-category-title">Product Categories</h2>
+                <p className="overview-eyebrow">{t("PRODUCT SETUP")}</p>
+                <h2 id="product-category-title">{t("Product Categories")}</h2>
               </div>
               <button
                 type="button"
                 className="purchase-modal__close"
                 onClick={closeCategories}
-                aria-label="Close categories"
+                aria-label={t("Close categories")}
               >
                 <X size={19} aria-hidden="true" />
               </button>
@@ -1551,7 +1635,12 @@ export default function Products() {
                   className="create-purchase-alert products-form-alert"
                   role="alert"
                 >
-                  {categoryError}
+                  {t(categoryError)}
+                </p>
+              )}
+              {categorySuccess && (
+                <p className="purchase-success-message products-success" role="status">
+                  {t(categorySuccess)}
                 </p>
               )}
               {categoryFormMode ? (
@@ -1562,18 +1651,18 @@ export default function Products() {
                 >
                   <h3>
                     {categoryFormMode === "create"
-                      ? "New Category"
-                      : "Edit Category"}
+                      ? t("New Category")
+                      : t("Edit Category")}
                   </h3>
                   {categoryLoading ? (
                     <div className="purchases-state" role="status">
-                      <span className="loading-spinner" /> Loading category…
+                      <span className="loading-spinner" /> {t("Loading category…")}
                     </div>
                   ) : (
                     <>
                       <label className="purchase-field">
                         <span>
-                          Name <i>*</i>
+                          {t("Name")} <i>*</i>
                         </span>
                         <input
                           value={categoryForm.name}
@@ -1585,12 +1674,12 @@ export default function Products() {
                         />
                         {categoryFields.name && (
                           <small className="purchase-field__error">
-                            {categoryFields.name}
+                            {t(categoryFields.name)}
                           </small>
                         )}
                       </label>
                       <label className="purchase-field">
-                        <span>Description</span>
+                        <span>{t("Description")}</span>
                         <textarea
                           rows={2}
                           value={categoryForm.description}
@@ -1606,14 +1695,14 @@ export default function Products() {
                           onClick={() => setCategoryFormMode(null)}
                           disabled={categorySaving}
                         >
-                          Back
+                          {t("Back")}
                         </button>
                         <button
                           type="submit"
                           className="purchase-save-button"
                           disabled={categorySaving}
                         >
-                          {categorySaving ? "Saving…" : "Save Category"}
+                          {categorySaving ? t("Saving…") : t("Save Category")}
                         </button>
                       </div>
                     </>
@@ -1622,22 +1711,22 @@ export default function Products() {
               ) : (
                 <>
                   <div className="product-category-toolbar">
-                    <span>{categories.length} categories</span>
+                    <span>{new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US").format(categories.length)} {t("categories")}</span>
                     <button
                       className="purchase-create-button"
                       type="button"
                       onClick={startCreateCategory}
                     >
-                      <Plus size={15} aria-hidden="true" /> New Category
+                      <Plus size={15} aria-hidden="true" /> {t("New Category")}
                     </button>
                   </div>
                   {categoriesLoading ? (
                     <div className="purchases-state" role="status">
-                      <span className="loading-spinner" /> Loading categories…
+                      <span className="loading-spinner" /> {t("Loading categories…")}
                     </div>
                   ) : categories.length === 0 ? (
                     <div className="purchases-state purchases-state--empty">
-                      <strong>No categories yet</strong>
+                      <strong>{t("No categories yet")}</strong>
                     </div>
                   ) : (
                     <div className="product-category-list">
@@ -1646,31 +1735,32 @@ export default function Products() {
                           <div>
                             <strong>{category.name}</strong>
                             <span>
-                              {category.description || "No description"}
+                              {category.description || t("No description")}
                             </span>
                           </div>
                           <span
                             className={`product-status ${category.isActive ? "product-status--active" : "product-status--inactive"}`}
                           >
-                            {category.isActive ? "Active" : "Inactive"}
+                            {category.isActive ? t("Active") : t("Inactive")}
                           </span>
                           <button
                             className="purchase-view-button"
                             type="button"
                             onClick={() => void startEditCategory(category)}
-                            aria-label={`Edit ${category.name}`}
+                            aria-label={`${t("Edit")} ${category.name}`}
                           >
                             <Pencil size={14} aria-hidden="true" />
                           </button>
-                          {category.isActive && (
-                            <button
-                              className="product-deactivate-button"
-                              type="button"
-                              onClick={() => void deactivateCategory(category)}
-                            >
-                              Deactivate
-                            </button>
-                          )}
+                          <button
+                            className={category.isActive ? "product-deactivate-button" : "product-activate-button"}
+                            type="button"
+                            onClick={() => void updateCategoryStatus(category, !category.isActive)}
+                            disabled={categoryStatusUpdatingId !== null || categoryLoading || categorySaving}
+                          >
+                            {categoryStatusUpdatingId === category.id
+                              ? t(category.isActive ? "Deactivating…" : "Activating…")
+                              : t(category.isActive ? "Deactivate" : "Activate")}
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -1682,7 +1772,7 @@ export default function Products() {
                   className="purchases-state purchases-state--error"
                   role="alert"
                 >
-                  {categoryError}
+                  {t(categoryError)}
                 </div>
               )}
             </div>
@@ -1705,14 +1795,14 @@ export default function Products() {
           >
             <header className="purchase-modal__header">
               <div>
-                <p className="overview-eyebrow">PRODUCT SETUP</p>
-                <h2 id="product-unit-title">Units</h2>
+                <p className="overview-eyebrow">{t("PRODUCT SETUP")}</p>
+                <h2 id="product-unit-title">{t("Units")}</h2>
               </div>
               <button
                 type="button"
                 className="purchase-modal__close"
                 onClick={closeUnits}
-                aria-label="Close units"
+                aria-label={t("Close units")}
               >
                 <X size={19} aria-hidden="true" />
               </button>
@@ -1723,7 +1813,12 @@ export default function Products() {
                   className="create-purchase-alert products-form-alert"
                   role="alert"
                 >
-                  {unitError}
+                  {t(unitError)}
+                </p>
+              )}
+              {unitSuccess && (
+                <p className="purchase-success-message products-success" role="status">
+                  {t(unitSuccess)}
                 </p>
               )}
               {unitFormMode ? (
@@ -1733,17 +1828,17 @@ export default function Products() {
                   noValidate
                 >
                   <h3>
-                    {unitFormMode === "create" ? "New Unit" : "Edit Unit"}
+                    {unitFormMode === "create" ? t("New Unit") : t("Edit Unit")}
                   </h3>
                   {unitLoading ? (
                     <div className="purchases-state" role="status">
-                      <span className="loading-spinner" /> Loading unit…
+                      <span className="loading-spinner" /> {t("Loading unit…")}
                     </div>
                   ) : (
                     <>
                       <label className="purchase-field">
                         <span>
-                          Name <i>*</i>
+                          {t("Name")} <i>*</i>
                         </span>
                         <input
                           value={unitForm.name}
@@ -1755,12 +1850,12 @@ export default function Products() {
                         />
                         {unitFields.name && (
                           <small className="purchase-field__error">
-                            {unitFields.name}
+                            {t(unitFields.name)}
                           </small>
                         )}
                       </label>
                       <label className="purchase-field">
-                        <span>Short Name</span>
+                        <span>{t("Short Name")}</span>
                         <input
                           value={unitForm.shortName}
                           onChange={(event) =>
@@ -1771,12 +1866,12 @@ export default function Products() {
                         />
                         {unitFields.shortName && (
                           <small className="purchase-field__error">
-                            {unitFields.shortName}
+                            {t(unitFields.shortName)}
                           </small>
                         )}
                       </label>
                       <label className="purchase-field">
-                        <span>Description</span>
+                        <span>{t("Description")}</span>
                         <textarea
                           rows={2}
                           maxLength={2000}
@@ -1788,7 +1883,7 @@ export default function Products() {
                         />
                         {unitFields.description && (
                           <small className="purchase-field__error">
-                            {unitFields.description}
+                            {t(unitFields.description)}
                           </small>
                         )}
                       </label>
@@ -1799,14 +1894,14 @@ export default function Products() {
                           onClick={() => setUnitFormMode(null)}
                           disabled={unitSaving}
                         >
-                          Back
+                          {t("Back")}
                         </button>
                         <button
                           type="submit"
                           className="purchase-save-button"
                           disabled={unitSaving}
                         >
-                          {unitSaving ? "Saving…" : "Save Unit"}
+                          {unitSaving ? t("Saving…") : t("Save Unit")}
                         </button>
                       </div>
                     </>
@@ -1815,22 +1910,22 @@ export default function Products() {
               ) : (
                 <>
                   <div className="product-category-toolbar">
-                    <span>{units.length} units</span>
+                    <span>{new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US").format(units.length)} {t("units")}</span>
                     <button
                       className="purchase-create-button"
                       type="button"
                       onClick={startCreateUnit}
                     >
-                      <Plus size={15} aria-hidden="true" /> New Unit
+                      <Plus size={15} aria-hidden="true" /> {t("New Unit")}
                     </button>
                   </div>
                   {unitsLoading ? (
                     <div className="purchases-state" role="status">
-                      <span className="loading-spinner" /> Loading units…
+                      <span className="loading-spinner" /> {t("Loading units…")}
                     </div>
                   ) : units.length === 0 ? (
                     <div className="purchases-state purchases-state--empty">
-                      <strong>No units yet</strong>
+                      <strong>{t("No units yet")}</strong>
                     </div>
                   ) : (
                     <div className="product-category-list">
@@ -1843,32 +1938,33 @@ export default function Products() {
                             </strong>
                             <span>
                               {unit.isActive
-                                ? "Available for products"
-                                : "Inactive"}
+                                ? t("Available for products")
+                                : t("Inactive")}
                             </span>
                           </div>
                           <span
                             className={`product-status ${unit.isActive ? "product-status--active" : "product-status--inactive"}`}
                           >
-                            {unit.isActive ? "Active" : "Inactive"}
+                            {unit.isActive ? t("Active") : t("Inactive")}
                           </span>
                           <button
                             className="purchase-view-button"
                             type="button"
                             onClick={() => void startEditUnit(unit)}
-                            aria-label={`Edit ${unit.name}`}
+                            aria-label={`${t("Edit")} ${unit.name}`}
                           >
                             <Pencil size={14} aria-hidden="true" />
                           </button>
-                          {unit.isActive && (
-                            <button
-                              className="product-deactivate-button"
-                              type="button"
-                              onClick={() => void deactivateUnit(unit)}
-                            >
-                              Deactivate
-                            </button>
-                          )}
+                          <button
+                            className={unit.isActive ? "product-deactivate-button" : "product-activate-button"}
+                            type="button"
+                            onClick={() => void updateUnitStatus(unit, !unit.isActive)}
+                            disabled={unitStatusUpdatingId !== null || unitLoading || unitSaving}
+                          >
+                            {unitStatusUpdatingId === unit.id
+                              ? t(unit.isActive ? "Deactivating…" : "Activating…")
+                              : t(unit.isActive ? "Deactivate" : "Activate")}
+                          </button>
                         </div>
                       ))}
                     </div>

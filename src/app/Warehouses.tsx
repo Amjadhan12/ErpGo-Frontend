@@ -5,13 +5,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  MapPin,
   Pencil,
   Plus,
+  Power,
   RefreshCw,
   Search,
-  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useLocale } from "@/lib/locale";
 
 interface Warehouse {
   id: number;
@@ -37,12 +39,109 @@ interface WarehouseForm {
 }
 
 type FieldErrors = Record<string, string>;
+type WarehouseFormMode = "create" | "edit";
 
 const emptyForm: WarehouseForm = {
   name: "",
   location: "",
   description: "",
 };
+
+interface WarehouseEditorProps {
+  form: WarehouseForm;
+  fields: FieldErrors;
+  mode: WarehouseFormMode;
+  isSaving: boolean;
+  translate: (text: string) => string;
+  onChange: (field: keyof WarehouseForm, value: string) => void;
+  onCancel: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}
+
+function WarehouseEditor({
+  form,
+  fields,
+  mode,
+  isSaving,
+  translate,
+  onChange,
+  onCancel,
+  onSubmit,
+}: WarehouseEditorProps) {
+  return (
+    <form className="warehouses-form" onSubmit={onSubmit} noValidate>
+      <label className="purchase-field">
+        <span>
+          {translate("Name")} <i>*</i>
+        </span>
+        <input
+          value={form.name}
+          onChange={(event) => onChange("name", event.target.value)}
+          placeholder={translate("Warehouse name")}
+          maxLength={150}
+          aria-invalid={Boolean(fields.name)}
+        />
+        {fields.name && (
+          <small className="purchase-field__error">
+            {translate(fields.name)}
+          </small>
+        )}
+      </label>
+      <label className="purchase-field">
+        <span>{translate("Location")}</span>
+        <input
+          value={form.location}
+          onChange={(event) => onChange("location", event.target.value)}
+          placeholder={translate("Warehouse location")}
+          maxLength={255}
+          aria-invalid={Boolean(fields.location)}
+        />
+        {fields.location && (
+          <small className="purchase-field__error">
+            {translate(fields.location)}
+          </small>
+        )}
+      </label>
+      <label className="purchase-field warehouses-form-wide">
+        <span>{translate("Description")}</span>
+        <textarea
+          rows={3}
+          maxLength={2000}
+          value={form.description}
+          placeholder={translate("Optional warehouse description")}
+          onChange={(event) => onChange("description", event.target.value)}
+          aria-invalid={Boolean(fields.description)}
+        />
+        {fields.description && (
+          <small className="purchase-field__error">
+            {translate(fields.description)}
+          </small>
+        )}
+      </label>
+      <div className="warehouses-form-actions">
+        <button
+          type="button"
+          className="purchase-cancel-button"
+          onClick={onCancel}
+          disabled={isSaving}
+        >
+          {translate("Cancel")}
+        </button>
+        <button
+          type="submit"
+          className="purchase-save-button"
+          disabled={isSaving}
+        >
+          {isSaving
+            ? translate("Saving…")
+            : mode === "create"
+              ? translate("Create Warehouse")
+              : translate("Save Changes")}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -145,6 +244,7 @@ function getValidationErrors(error: unknown): {
 }
 
 export default function Warehouses() {
+  const { t } = useLocale();
   const [warehouses, setWarehouses] = useState<WarehousePage | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -154,7 +254,7 @@ export default function Warehouses() {
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [formMode, setFormMode] = useState<"create" | "edit" | null>(null);
+  const [formMode, setFormMode] = useState<WarehouseFormMode | null>(null);
   const [form, setForm] = useState<WarehouseForm>(emptyForm);
   const [formFields, setFormFields] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -168,7 +268,7 @@ export default function Warehouses() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailRetry, setDetailRetry] = useState(0);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
-  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isChangingStatus, setIsChangingStatus] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -230,15 +330,6 @@ export default function Warehouses() {
   }, [selectedWarehouseId, detailRetry]);
 
   useEffect(() => {
-    if (selectedWarehouseId === null) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedWarehouseId(null);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedWarehouseId]);
-
-  useEffect(() => {
     if (!success) return;
     const timer = window.setTimeout(() => setSuccess(null), 6000);
     return () => window.clearTimeout(timer);
@@ -259,7 +350,6 @@ export default function Warehouses() {
     });
     setFormFields({});
     setFormError(null);
-    setSelectedWarehouseId(null);
     setFormMode("edit");
   }
 
@@ -269,6 +359,15 @@ export default function Warehouses() {
     setForm(emptyForm);
     setFormFields({});
     setFormError(null);
+  }
+
+  function closeDetails() {
+    if (isSaving) return;
+    setFormMode(null);
+    setForm(emptyForm);
+    setFormFields({});
+    setFormError(null);
+    setSelectedWarehouseId(null);
   }
 
   function setField(field: keyof WarehouseForm, value: string) {
@@ -313,7 +412,18 @@ export default function Warehouses() {
       } else {
         if (!warehouseDetails)
           throw new Error("Warehouse details are not available for editing.");
-        await api.put(`/api/warehouses/${warehouseDetails.id}`, payload);
+        const { data } = await api.put<unknown>(
+          `/api/warehouses/${warehouseDetails.id}`,
+          payload,
+        );
+        if (!isRecord(data) || !("data" in data))
+          throw new Error("The warehouse details response was incomplete.");
+        const updatedWarehouse = parseWarehouse(data.data);
+        setWarehouseDetails({
+          ...updatedWarehouse,
+          inventoryBalanceRecords:
+            warehouseDetails.inventoryBalanceRecords,
+        });
         setSuccess("Warehouse updated successfully.");
       }
       setFormMode(null);
@@ -329,31 +439,50 @@ export default function Warehouses() {
     }
   }
 
-  async function deactivateWarehouse() {
-    if (!warehouseDetails || !warehouseDetails.isActive || isDeactivating)
-      return;
+  async function changeWarehouseStatus(activate: boolean) {
     if (
-      !window.confirm(
-        `Deactivate ${warehouseDetails.name}? Warehouses with stock cannot be deactivated.`,
-      )
-    ) {
+      !warehouseDetails ||
+      warehouseDetails.isActive === activate ||
+      isChangingStatus
+    )
+      return;
+    const confirmation = `${t(activate ? "Activate" : "Deactivate")} ${warehouseDetails.name}?${activate ? "" : ` ${t("Warehouses with stock cannot be deactivated.")}`}`;
+    if (!window.confirm(confirmation)) {
       return;
     }
-    setIsDeactivating(true);
+    setIsChangingStatus(true);
     setDetailError(null);
     try {
-      const { data } = await api.patch<unknown>(
-        `/api/warehouses/${warehouseDetails.id}/deactivate`,
-      );
+      const { data } = activate
+        ? await api.put<unknown>(
+            `/api/warehouses/${warehouseDetails.id}`,
+            {
+              name: warehouseDetails.name,
+              location: warehouseDetails.location,
+              description: warehouseDetails.description,
+              is_active: true,
+            },
+          )
+        : await api.patch<unknown>(
+            `/api/warehouses/${warehouseDetails.id}/deactivate`,
+          );
       if (!isRecord(data) || !("data" in data))
-        throw new Error("The warehouse deactivation response was incomplete.");
-      setWarehouseDetails(parseWarehouse(data.data));
-      setSuccess("Warehouse deactivated successfully.");
+        throw new Error("The warehouse status response was incomplete.");
+          const updatedWarehouse = parseWarehouse(data.data);
+          setWarehouseDetails({
+            ...updatedWarehouse,
+            inventoryBalanceRecords: warehouseDetails.inventoryBalanceRecords,
+          });
+      setSuccess(
+        activate
+          ? "Warehouse activated successfully."
+          : "Warehouse deactivated successfully.",
+      );
       setListRetry((current) => current + 1);
     } catch (error: unknown) {
       setDetailError(getErrorMessage(error));
     } finally {
-      setIsDeactivating(false);
+      setIsChangingStatus(false);
     }
   }
 
@@ -378,10 +507,10 @@ export default function Warehouses() {
     <div className="purchases-page warehouses-page">
       <header className="purchases-heading">
         <div>
-          <p className="overview-eyebrow">INVENTORY</p>
-          <h1>Warehouses</h1>
+          <p className="overview-eyebrow">{t("INVENTORY")}</p>
+          <h1>{t("Warehouses")}</h1>
           <p className="overview-heading__description">
-            Manage warehouse locations and availability.
+            {t("Manage warehouse locations and availability.")}
           </p>
         </div>
         <button
@@ -391,7 +520,7 @@ export default function Warehouses() {
           disabled={formMode !== null}
         >
           <Plus size={16} aria-hidden="true" />
-          <span>New Warehouse</span>
+          <span>{t("New Warehouse")}</span>
         </button>
       </header>
 
@@ -400,18 +529,18 @@ export default function Warehouses() {
           className="purchase-success-message warehouses-success"
           role="status"
         >
-          {success}
+          {t(success)}
         </p>
       )}
 
-      {formMode && (
+      {formMode === "create" && (
         <section
           className="purchases-panel warehouses-form-panel"
           aria-labelledby="warehouse-form-title"
         >
           <header className="warehouses-form-heading">
             <h2 id="warehouse-form-title">
-              {formMode === "create" ? "Create Warehouse" : "Edit Warehouse"}
+              {t("Create Warehouse")}
             </h2>
             <button
               type="button"
@@ -419,7 +548,7 @@ export default function Warehouses() {
               onClick={closeForm}
               disabled={isSaving}
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </header>
           {formError && (
@@ -427,87 +556,23 @@ export default function Warehouses() {
               className="create-purchase-alert warehouses-form-alert"
               role="alert"
             >
-              {formError}
+              {t(formError)}
             </p>
           )}
-          <form
-            className="warehouses-form"
+          <WarehouseEditor
+            form={form}
+            fields={formFields}
+            mode="create"
+            isSaving={isSaving}
+            translate={t}
+            onChange={setField}
+            onCancel={closeForm}
             onSubmit={(event) => void submitForm(event)}
-            noValidate
-          >
-            <label className="purchase-field">
-              <span>
-                Name <i>*</i>
-              </span>
-              <input
-                value={form.name}
-                onChange={(event) => setField("name", event.target.value)}
-                maxLength={150}
-                aria-invalid={Boolean(formFields.name)}
-              />
-              {formFields.name && (
-                <small className="purchase-field__error">
-                  {formFields.name}
-                </small>
-              )}
-            </label>
-            <label className="purchase-field">
-              <span>Location</span>
-              <input
-                value={form.location}
-                onChange={(event) => setField("location", event.target.value)}
-                maxLength={255}
-                aria-invalid={Boolean(formFields.location)}
-              />
-              {formFields.location && (
-                <small className="purchase-field__error">
-                  {formFields.location}
-                </small>
-              )}
-            </label>
-            <label className="purchase-field warehouses-form-wide">
-              <span>Description</span>
-              <textarea
-                rows={3}
-                maxLength={2000}
-                value={form.description}
-                onChange={(event) =>
-                  setField("description", event.target.value)
-                }
-                aria-invalid={Boolean(formFields.description)}
-              />
-              {formFields.description && (
-                <small className="purchase-field__error">
-                  {formFields.description}
-                </small>
-              )}
-            </label>
-            <div className="warehouses-form-actions">
-              <button
-                type="button"
-                className="purchase-cancel-button"
-                onClick={closeForm}
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="purchase-save-button"
-                disabled={isSaving}
-              >
-                {isSaving
-                  ? "Saving…"
-                  : formMode === "create"
-                    ? "Create Warehouse"
-                    : "Save Changes"}
-              </button>
-            </div>
-          </form>
+          />
         </section>
       )}
 
-      <section className="purchases-panel" aria-label="Warehouse list">
+      <section className="purchases-panel" aria-label={t("Warehouse list")}>
         <div className="warehouses-toolbar">
           <label className="warehouses-search">
             <Search size={16} aria-hidden="true" />
@@ -515,22 +580,22 @@ export default function Warehouses() {
               type="search"
               value={search}
               onChange={(event) => updateFilter(setSearch, event.target.value)}
-              placeholder="Search name or location"
-              aria-label="Search warehouses by name or location"
+              placeholder={t("Search name or location")}
+              aria-label={t("Search warehouses by name or location")}
             />
           </label>
           <label className="warehouses-status-filter">
-            <span>Status</span>
+            <span>{t("Status")}</span>
             <select
               value={statusFilter}
               onChange={(event) =>
                 updateFilter(setStatusFilter, event.target.value)
               }
-              aria-label="Filter warehouses by status"
+              aria-label={t("Filter warehouses by status")}
             >
-              <option value="all">All statuses</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="all">{t("All statuses")}</option>
+              <option value="true">{t("Active")}</option>
+              <option value="false">{t("Inactive")}</option>
             </select>
           </label>
           <button
@@ -538,31 +603,31 @@ export default function Warehouses() {
             type="button"
             onClick={() => setListRetry((current) => current + 1)}
             disabled={isLoading}
-            aria-label="Refresh warehouses"
+            aria-label={t("Refresh warehouses")}
           >
             <RefreshCw
               size={16}
               className={isLoading ? "overview-refresh__spinning" : ""}
               aria-hidden="true"
             />
-            <span>Refresh</span>
+            <span>{t("Refresh")}</span>
           </button>
         </div>
 
         {isLoading ? (
           <div className="purchases-state" role="status">
-            <span className="loading-spinner" /> Loading warehouses…
+            <span className="loading-spinner" /> {t("Loading warehouses…")}
           </div>
         ) : listError ? (
           <div className="purchases-state purchases-state--error" role="alert">
             <AlertCircle size={20} aria-hidden="true" />
-            <span>{listError}</span>
+            <span>{t(listError)}</span>
             <button
               type="button"
               className="purchases-retry"
               onClick={() => setListRetry((current) => current + 1)}
             >
-              Try again
+              {t("Try again")}
             </button>
           </div>
         ) : warehouses && warehouses.data.length === 0 ? (
@@ -572,13 +637,13 @@ export default function Warehouses() {
             </span>
             <strong>
               {debouncedSearch || statusFilter !== "all"
-                ? "No warehouses match these filters"
-                : "No warehouses yet"}
+                ? t("No warehouses match these filters")
+                : t("No warehouses yet")}
             </strong>
             <span>
               {debouncedSearch || statusFilter !== "all"
-                ? "Adjust the search or status filter and try again."
-                : "Create a warehouse to see it listed here."}
+                ? t("Adjust the search or status filter and try again.")
+                : t("Create a warehouse to see it listed here.")}
             </span>
           </div>
         ) : warehouses ? (
@@ -587,43 +652,52 @@ export default function Warehouses() {
               <table className="purchases-table warehouses-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Location</th>
-                    <th>Balance Records</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>{t("Name")}</th>
+                    <th>{t("Location")}</th>
+                    <th>{t("Balance Records")}</th>
+                    <th>{t("Status")}</th>
+                    <th>{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {warehouses.data.map((warehouse) => (
                     <tr key={warehouse.id}>
-                      <td>
+                      <td data-label={t("Name")}>
                         <strong className="purchases-number">
                           {warehouse.name}
                         </strong>
                       </td>
-                      <td>{warehouse.location || "—"}</td>
-                      <td>
+                      <td data-label={t("Location")}>
+                        {warehouse.location ? (
+                          <span className="warehouse-location">
+                            <MapPin size={14} aria-hidden="true" />
+                            {warehouse.location}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td data-label={t("Balance Records")}>
                         {new Intl.NumberFormat().format(
                           warehouse.inventoryBalanceRecords,
                         )}
                       </td>
-                      <td>
+                      <td data-label={t("Status")}>
                         <span
                           className={`product-status ${warehouse.isActive ? "product-status--active" : "product-status--inactive"}`}
                         >
-                          {warehouse.isActive ? "Active" : "Inactive"}
+                          {t(warehouse.isActive ? "Active" : "Inactive")}
                         </span>
                       </td>
-                      <td>
+                      <td data-label={t("Actions")}>
                         <button
                           className="purchase-view-button"
                           type="button"
                           onClick={() => setSelectedWarehouseId(warehouse.id)}
-                          aria-label={`View ${warehouse.name}`}
+                          aria-label={`${t("Details")}: ${warehouse.name}`}
                         >
                           <Eye size={15} aria-hidden="true" />
-                          <span>Details</span>
+                          <span>{t("Details")}</span>
                         </button>
                       </td>
                     </tr>
@@ -633,20 +707,22 @@ export default function Warehouses() {
             </div>
             <footer className="purchases-pagination">
               <span>
-                Showing {startRecord}–{endRecord} of{" "}
-                {new Intl.NumberFormat().format(warehouses.total)} warehouses
+                {t("Showing")} {startRecord}–{endRecord} {t("of")}{" "}
+                {new Intl.NumberFormat().format(warehouses.total)}{" "}
+                {t("warehouses")}
               </span>
               <div className="purchases-pagination__controls">
                 <button
                   type="button"
                   onClick={() => setPage(warehouses.currentPage - 1)}
                   disabled={isLoading || warehouses.currentPage <= 1}
-                  aria-label="Previous page"
+                  aria-label={t("Previous page")}
                 >
-                  <ChevronLeft size={16} aria-hidden="true" /> Previous
+                  <ChevronLeft size={16} aria-hidden="true" /> {t("Previous")}
                 </button>
                 <span>
-                  Page <strong>{warehouses.currentPage}</strong> of{" "}
+                  {t("Page")} <strong>{warehouses.currentPage}</strong>{" "}
+                  {t("of")}{" "}
                   <strong>{warehouses.lastPage}</strong>
                 </span>
                 <button
@@ -655,9 +731,9 @@ export default function Warehouses() {
                   disabled={
                     isLoading || warehouses.currentPage >= warehouses.lastPage
                   }
-                  aria-label="Next page"
+                  aria-label={t("Next page")}
                 >
-                  Next <ChevronRight size={16} aria-hidden="true" />
+                  {t("Next")} <ChevronRight size={16} aria-hidden="true" />
                 </button>
               </div>
             </footer>
@@ -666,13 +742,7 @@ export default function Warehouses() {
       </section>
 
       {selectedWarehouseId !== null && (
-        <div
-          className="purchase-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget)
-              setSelectedWarehouseId(null);
-          }}
-        >
+        <div className="purchase-modal-backdrop">
           <section
             className="purchase-modal warehouse-details-modal"
             role="dialog"
@@ -681,26 +751,43 @@ export default function Warehouses() {
           >
             <header className="purchase-modal__header">
               <div>
-                <p className="overview-eyebrow">WAREHOUSE DETAILS</p>
+                <p className="overview-eyebrow">{t("WAREHOUSE DETAILS")}</p>
                 <h2 id="warehouse-detail-title">
-                  {warehouseDetails?.name ?? "Warehouse"}
+                  {warehouseDetails?.name ?? t("Warehouse")}
                 </h2>
-                {warehouseDetails && <p>Warehouse #{warehouseDetails.id}</p>}
+                {warehouseDetails && (
+                  <p>
+                    {t("Warehouse")} #{warehouseDetails.id}
+                  </p>
+                )}
               </div>
-              <button
-                type="button"
-                className="purchase-modal__close"
-                onClick={() => setSelectedWarehouseId(null)}
-                aria-label="Close details"
-              >
-                <X size={19} aria-hidden="true" />
-              </button>
             </header>
             <div className="purchase-modal__body">
-              {isDetailLoading ? (
+              {formMode === "edit" ? (
+                <>
+                  {formError && (
+                    <p
+                      className="create-purchase-alert warehouses-form-alert"
+                      role="alert"
+                    >
+                      {t(formError)}
+                    </p>
+                  )}
+                  <WarehouseEditor
+                    form={form}
+                    fields={formFields}
+                    mode="edit"
+                    isSaving={isSaving}
+                    translate={t}
+                    onChange={setField}
+                    onCancel={closeDetails}
+                    onSubmit={(event) => void submitForm(event)}
+                  />
+                </>
+              ) : isDetailLoading ? (
                 <div className="purchases-state" role="status">
-                  <span className="loading-spinner" /> Loading warehouse
-                  details…
+                  <span className="loading-spinner" />{" "}
+                  {t("Loading warehouse details…")}
                 </div>
               ) : detailError && !warehouseDetails ? (
                 <div
@@ -708,33 +795,50 @@ export default function Warehouses() {
                   role="alert"
                 >
                   <AlertCircle size={20} aria-hidden="true" />
-                  <span>{detailError}</span>
+                  <span>{t(detailError)}</span>
                   <button
                     type="button"
                     className="purchases-retry"
                     onClick={() => setDetailRetry((current) => current + 1)}
                   >
-                    Try again
+                    {t("Try again")}
                   </button>
                 </div>
               ) : warehouseDetails ? (
                 <>
+                  {success && (
+                    <p
+                      className="purchase-success-message warehouses-success"
+                      role="status"
+                    >
+                      {t(success)}
+                    </p>
+                  )}
                   {detailError && (
                     <p className="form-alert form-alert--error" role="alert">
-                      {detailError}
+                      {t(detailError)}
                     </p>
                   )}
                   <dl className="purchase-detail-grid warehouse-detail-grid">
                     <div>
-                      <dt>Name</dt>
+                      <dt>{t("Name")}</dt>
                       <dd>{warehouseDetails.name}</dd>
                     </div>
                     <div>
-                      <dt>Location</dt>
-                      <dd>{warehouseDetails.location || "—"}</dd>
+                      <dt>{t("Location")}</dt>
+                      <dd>
+                        {warehouseDetails.location ? (
+                          <span className="warehouse-location">
+                            <MapPin size={14} aria-hidden="true" />
+                            {warehouseDetails.location}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </dd>
                     </div>
                     <div>
-                      <dt>Balance Records</dt>
+                      <dt>{t("Balance Records")}</dt>
                       <dd>
                         {new Intl.NumberFormat().format(
                           warehouseDetails.inventoryBalanceRecords,
@@ -742,14 +846,18 @@ export default function Warehouses() {
                       </dd>
                     </div>
                     <div>
-                      <dt>Status</dt>
+                      <dt>{t("Status")}</dt>
                       <dd>
-                        {warehouseDetails.isActive ? "Active" : "Inactive"}
+                        <span
+                          className={`product-status ${warehouseDetails.isActive ? "product-status--active" : "product-status--inactive"}`}
+                        >
+                          {t(warehouseDetails.isActive ? "Active" : "Inactive")}
+                        </span>
                       </dd>
                     </div>
                   </dl>
                   <div className="warehouse-detail-description">
-                    <strong>Description</strong>
+                    <strong>{t("Description")}</strong>
                     <p>{warehouseDetails.description || "—"}</p>
                   </div>
                   <div className="warehouse-detail-actions">
@@ -758,22 +866,41 @@ export default function Warehouses() {
                       type="button"
                       onClick={() => openEditForm(warehouseDetails)}
                     >
-                      <Pencil size={15} aria-hidden="true" /> Edit Warehouse
+                      <Pencil size={15} aria-hidden="true" />{" "}
+                      {t("Edit Warehouse")}
                     </button>
-                    {warehouseDetails.isActive && (
-                      <button
-                        className="product-deactivate-button"
-                        type="button"
-                        onClick={() => void deactivateWarehouse()}
-                        disabled={isDeactivating}
-                      >
-                        {isDeactivating ? "Deactivating..." : "Deactivate"}
-                      </button>
-                    )}
+                    <button
+                      className={`warehouse-status-action ${warehouseDetails.isActive ? "warehouse-status-action--deactivate" : "warehouse-status-action--activate"}`}
+                      type="button"
+                      onClick={() =>
+                        void changeWarehouseStatus(!warehouseDetails.isActive)
+                      }
+                      disabled={isChangingStatus}
+                    >
+                      <Power size={15} aria-hidden="true" />
+                      {isChangingStatus
+                        ? t("Updating status…")
+                        : t(
+                            warehouseDetails.isActive
+                              ? "Deactivate"
+                              : "Activate",
+                          )}
+                    </button>
                   </div>
                 </>
               ) : null}
             </div>
+            {formMode !== "edit" && (
+              <footer className="warehouse-modal-footer">
+                <button
+                  className="purchase-cancel-button"
+                  type="button"
+                  onClick={closeDetails}
+                >
+                  {t("Cancel")}
+                </button>
+              </footer>
+            )}
           </section>
         </div>
       )}

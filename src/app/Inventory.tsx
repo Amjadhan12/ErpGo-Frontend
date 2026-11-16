@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import DatePeriodFilter from "@/app/DatePeriodFilter";
+import { useLocale } from "@/lib/locale";
 import {
   formatCurrency,
   formatQuantity,
@@ -243,14 +244,15 @@ function formatMovementType(value: string): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, locale: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? value
-    : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+    : new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
 }
 
 export default function Inventory() {
+  const { t, language } = useLocale();
   const [tab, setTab] = useState<InventoryTab>("balances");
   const [balances, setBalances] = useState<InventoryBalanceRow[]>([]);
   const [inventorySummary, setInventorySummary] =
@@ -410,10 +412,10 @@ export default function Inventory() {
     <div className="purchases-page inventory-page">
       <header className="purchases-heading">
         <div>
-          <p className="overview-eyebrow">INVENTORY</p>
-          <h1>Inventory</h1>
+          <p className="overview-eyebrow">{t("INVENTORY")}</p>
+          <h1>{t("Inventory")}</h1>
           <p className="overview-heading__description">
-            Stock balances, valuation, and movement history.
+            {t("Stock balances, valuation, and movement history.")}
           </p>
         </div>
         <button
@@ -421,41 +423,44 @@ export default function Inventory() {
           type="button"
           onClick={() => setRetry((current) => current + 1)}
           disabled={isLoading}
-          aria-label="Refresh inventory"
+          aria-label={t("Refresh inventory")}
         >
           <RefreshCw
             size={16}
             className={isLoading ? "overview-refresh__spinning" : ""}
             aria-hidden="true"
           />
-          <span>Refresh</span>
+          <span>{t("Refresh")}</span>
         </button>
       </header>
 
       {inventorySummary && tab === "balances" && (
-        <section className="inventory-summary" aria-label="Inventory summary">
+        <section
+          className="inventory-summary"
+          aria-label={t("Inventory summary")}
+        >
           <div>
-            <span>Balance records</span>
+            <span>{t("Balance records")}</span>
             <strong>{formatQuantity(inventorySummary.productsCount)}</strong>
           </div>
           <div>
-            <span>Stock value</span>
+            <span>{t("Stock value")}</span>
             <strong>
               {formatCurrency(inventorySummary.totalStockValueAfn)}
             </strong>
           </div>
           <div>
-            <span>In stock</span>
+            <span>{t("In stock")}</span>
             <strong>{formatQuantity(inventorySummary.inStockCount)}</strong>
           </div>
           <div>
-            <span>Low stock</span>
+            <span>{t("Low stock")}</span>
             <strong className="inventory-summary__low">
               {formatQuantity(inventorySummary.lowStockCount)}
             </strong>
           </div>
           <div>
-            <span>Out of stock</span>
+            <span>{t("Out of stock")}</span>
             <strong className="inventory-summary__out">
               {formatQuantity(inventorySummary.outOfStockCount)}
             </strong>
@@ -465,12 +470,12 @@ export default function Inventory() {
 
       <section
         className="purchases-panel inventory-panel"
-        aria-label="Inventory records"
+        aria-label={t("Inventory records")}
       >
         <div
           className="inventory-tabs"
           role="tablist"
-          aria-label="Inventory views"
+          aria-label={t("Inventory views")}
         >
           <button
             type="button"
@@ -483,7 +488,7 @@ export default function Inventory() {
             }
             onClick={() => setTab("balances")}
           >
-            Stock Balances
+            {t("Stock Balances")}
           </button>
           <button
             type="button"
@@ -496,7 +501,7 @@ export default function Inventory() {
             }
             onClick={() => setTab("movements")}
           >
-            Movement History
+            {t("Movement History")}
           </button>
         </div>
 
@@ -509,21 +514,21 @@ export default function Inventory() {
               onChange={(event) => updateFilter(setSearch, event.target.value)}
               placeholder={
                 tab === "balances"
-                  ? "Search product or warehouse"
-                  : "Search loaded movement records"
+                  ? t("Search product or warehouse")
+                  : t("Search loaded movement records")
               }
-              aria-label="Search inventory records"
+              aria-label={t("Search inventory records")}
             />
           </label>
           <label className="inventory-filter">
-            <span>Warehouse</span>
+            <span>{t("Warehouse")}</span>
             <select
               value={warehouseId}
               onChange={(event) =>
                 updateFilter(setWarehouseId, event.target.value)
               }
             >
-              <option value="">All warehouses</option>
+              <option value="">{t("All warehouses")}</option>
               {warehouses.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.name}
@@ -532,14 +537,14 @@ export default function Inventory() {
             </select>
           </label>
           <label className="inventory-filter">
-            <span>Product</span>
+            <span>{t("Product")}</span>
             <select
               value={productId}
               onChange={(event) =>
                 updateFilter(setProductId, event.target.value)
               }
             >
-              <option value="">All products</option>
+              <option value="">{t("All products")}</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name}
@@ -551,17 +556,17 @@ export default function Inventory() {
           {tab === "movements" && (
             <>
               <label className="inventory-filter">
-                <span>Movement Type</span>
+                <span>{t("Movement Type")}</span>
                 <select
                   value={movementType}
                   onChange={(event) =>
                     updateFilter(setMovementType, event.target.value)
                   }
                 >
-                  <option value="">All types</option>
+                  <option value="">{t("All types")}</option>
                   {movementTypes.map((type) => (
                     <option key={type} value={type}>
-                      {formatMovementType(type)}
+                      {t(formatMovementType(type))}
                     </option>
                   ))}
                 </select>
@@ -570,6 +575,8 @@ export default function Inventory() {
                 className="inventory-period-filter"
                 fromDate={fromDate}
                 toDate={toDate}
+                translate={t}
+                locale={language === "ps" ? "ps-AF" : "en"}
                 onApply={(nextFromDate, nextToDate) => {
                   setFromDate(nextFromDate);
                   setToDate(nextToDate);
@@ -582,24 +589,24 @@ export default function Inventory() {
 
         {optionsError && (
           <p className="inventory-inline-error" role="alert">
-            Filter options could not be loaded: {optionsError}
+            {t("Filter options could not be loaded:")} {t(optionsError)}
           </p>
         )}
         {error ? (
           <div className="purchases-state purchases-state--error" role="alert">
             <AlertCircle size={20} aria-hidden="true" />
-            <span>{error}</span>
+            <span>{t(error)}</span>
             <button
               type="button"
               className="purchases-retry"
               onClick={() => setRetry((current) => current + 1)}
             >
-              Try again
+              {t("Try again")}
             </button>
           </div>
         ) : isLoading ? (
           <div className="purchases-state" role="status">
-            <span className="loading-spinner" /> Loading inventory...
+            <span className="loading-spinner" /> {t("Loading inventory…")}
           </div>
         ) : pageRows.length === 0 ? (
           <div className="purchases-state purchases-state--empty">
@@ -610,10 +617,10 @@ export default function Inventory() {
               movementType ||
               fromDate ||
               toDate
-                ? "No records match these filters"
-                : "No inventory records"}
+                ? t("No records match these filters")
+                : t("No inventory records")}
             </strong>
-            <span>Adjust the filters or check inventory activity.</span>
+            <span>{t("Adjust the filters or check inventory activity.")}</span>
           </div>
         ) : tab === "balances" ? (
           <>
@@ -621,14 +628,20 @@ export default function Inventory() {
               <table className="purchases-table inventory-balance-table">
                 <thead>
                   <tr>
-                    <th>Product</th>
-                    <th>SKU</th>
-                    <th>Category</th>
-                    <th>Warehouse</th>
-                    <th className="purchases-table__numeric">Quantity</th>
-                    <th className="purchases-table__numeric">Average Cost</th>
-                    <th className="purchases-table__numeric">Stock Value</th>
-                    <th>Status</th>
+                    <th>{t("Product")}</th>
+                    <th>{t("SKU")}</th>
+                    <th>{t("Category")}</th>
+                    <th>{t("Warehouse")}</th>
+                    <th className="purchases-table__numeric">
+                      {t("Quantity")}
+                    </th>
+                    <th className="purchases-table__numeric">
+                      {t("Average Cost")}
+                    </th>
+                    <th className="purchases-table__numeric">
+                      {t("Stock Value")}
+                    </th>
+                    <th>{t("Status")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -636,7 +649,7 @@ export default function Inventory() {
                     if (!("stockStatus" in row)) return null;
                     return (
                       <tr key={row.id}>
-                        <td>
+                        <td data-label={t("Product")}>
                           <strong className="purchases-number">
                             {row.product.name}
                           </strong>
@@ -644,23 +657,44 @@ export default function Inventory() {
                             {row.product.unit}
                           </small>
                         </td>
-                        <td>{row.product.sku || "—"}</td>
-                        <td>{row.product.category || "—"}</td>
-                        <td>{row.warehouse.name}</td>
-                        <td className="purchases-table__numeric">
+                        <td data-label={t("SKU")}>
+                          {row.product.sku || "—"}
+                        </td>
+                        <td data-label={t("Category")}>
+                          {row.product.category || "—"}
+                        </td>
+                        <td data-label={t("Warehouse")}>
+                          {row.warehouse.name}
+                        </td>
+                        <td
+                          className="purchases-table__numeric"
+                          data-label={t("Quantity")}
+                        >
                           {formatQuantity(row.quantity)} {row.product.unit}
                         </td>
-                        <td className="purchases-table__numeric">
+                        <td
+                          className="purchases-table__numeric"
+                          data-label={t("Average Cost")}
+                        >
                           {formatCurrency(row.averageUnitCostAfn)}
                         </td>
-                        <td className="purchases-table__numeric purchases-total">
+                        <td
+                          className="purchases-table__numeric purchases-total"
+                          data-label={t("Stock Value")}
+                        >
                           {formatCurrency(row.stockValueAfn)}
                         </td>
-                        <td>
+                        <td data-label={t("Status")}>
                           <span
                             className={`product-status product-status--${row.stockStatus}`}
                           >
-                            {formatMovementType(row.stockStatus)}
+                            {t(
+                              row.stockStatus === "in_stock"
+                                ? "In stock"
+                                : row.stockStatus === "low_stock"
+                                  ? "Low stock"
+                                  : "Out of stock",
+                            )}
                           </span>
                         </td>
                       </tr>
@@ -676,6 +710,7 @@ export default function Inventory() {
               page={page}
               lastPage={lastPage}
               setPage={setPage}
+              translate={t}
             />
           </>
         ) : (
@@ -683,16 +718,18 @@ export default function Inventory() {
             {movementSummary && (
               <div className="inventory-movement-summary">
                 <span>
-                  {formatQuantity(movementSummary.totalMovements)} movements
+                  {formatQuantity(movementSummary.totalMovements)}{" "}
+                  {t("movements")}
                 </span>
                 <span>
-                  In {formatQuantity(movementSummary.totalQuantityIn)}
+                  {t("In")} {formatQuantity(movementSummary.totalQuantityIn)}
                 </span>
                 <span>
-                  Out {formatQuantity(movementSummary.totalQuantityOut)}
+                  {t("Out")} {formatQuantity(movementSummary.totalQuantityOut)}
                 </span>
                 <span>
-                  Inbound cost {formatCurrency(movementSummary.totalCostIn)}
+                  {t("Inbound cost")}{" "}
+                  {formatCurrency(movementSummary.totalCostIn)}
                 </span>
               </div>
             )}
@@ -700,16 +737,20 @@ export default function Inventory() {
               <table className="purchases-table inventory-movement-table">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Product</th>
-                    <th>Warehouse</th>
-                    <th className="purchases-table__numeric">In</th>
-                    <th className="purchases-table__numeric">Out</th>
-                    <th className="purchases-table__numeric">Unit Cost</th>
-                    <th className="purchases-table__numeric">Total Cost</th>
-                    <th>Reference</th>
-                    <th>Notes</th>
+                    <th>{t("Date")}</th>
+                    <th>{t("Type")}</th>
+                    <th>{t("Product")}</th>
+                    <th>{t("Warehouse")}</th>
+                    <th className="purchases-table__numeric">{t("In")}</th>
+                    <th className="purchases-table__numeric">{t("Out")}</th>
+                    <th className="purchases-table__numeric">
+                      {t("Unit Cost")}
+                    </th>
+                    <th className="purchases-table__numeric">
+                      {t("Total Cost")}
+                    </th>
+                    <th>{t("Reference")}</th>
+                    <th>{t("Notes")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -717,9 +758,16 @@ export default function Inventory() {
                     if (!("movementType" in row)) return null;
                     return (
                       <tr key={row.id}>
-                        <td>{formatDate(row.movementDate)}</td>
-                        <td>{formatMovementType(row.movementType)}</td>
-                        <td>
+                        <td data-label={t("Date")}>
+                          {formatDate(
+                            row.movementDate,
+                            language === "ps" ? "ps-AF" : "en",
+                          )}
+                        </td>
+                        <td data-label={t("Type")}>
+                          {t(formatMovementType(row.movementType))}
+                        </td>
+                        <td data-label={t("Product")}>
                           <strong>{row.product}</strong>
                           {row.sku && (
                             <small className="inventory-unit">
@@ -727,33 +775,48 @@ export default function Inventory() {
                             </small>
                           )}
                         </td>
-                        <td>{row.warehouse}</td>
-                        <td className="purchases-table__numeric">
+                        <td data-label={t("Warehouse")}>{row.warehouse}</td>
+                        <td
+                          className="purchases-table__numeric"
+                          data-label={t("In")}
+                        >
                           {row.quantityIn
                             ? formatQuantity(row.quantityIn)
                             : "—"}
                         </td>
-                        <td className="purchases-table__numeric">
+                        <td
+                          className="purchases-table__numeric"
+                          data-label={t("Out")}
+                        >
                           {row.quantityOut
                             ? formatQuantity(row.quantityOut)
                             : "—"}
                         </td>
-                        <td className="purchases-table__numeric">
+                        <td
+                          className="purchases-table__numeric"
+                          data-label={t("Unit Cost")}
+                        >
                           {row.unitCost === null
                             ? "—"
                             : formatCurrency(row.unitCost)}
                         </td>
-                        <td className="purchases-table__numeric">
+                        <td
+                          className="purchases-table__numeric"
+                          data-label={t("Total Cost")}
+                        >
                           {row.totalCost === null
                             ? "—"
                             : formatCurrency(row.totalCost)}
                         </td>
-                        <td>
+                        <td data-label={t("Reference")}>
                           {row.referenceType
                             ? `${row.referenceType.split("\\").pop()} #${row.referenceId ?? "—"}`
                             : "—"}
                         </td>
-                        <td className="inventory-notes-cell">
+                        <td
+                          className="inventory-notes-cell"
+                          data-label={t("Notes")}
+                        >
                           {row.notes || "—"}
                         </td>
                       </tr>
@@ -769,6 +832,7 @@ export default function Inventory() {
               page={page}
               lastPage={lastPage}
               setPage={setPage}
+              translate={t}
             />
           </>
         )}
@@ -784,6 +848,7 @@ function Pagination({
   page,
   lastPage,
   setPage,
+  translate,
 }: {
   start: number;
   end: number;
@@ -791,31 +856,34 @@ function Pagination({
   page: number;
   lastPage: number;
   setPage: (page: number) => void;
+  translate: (text: string) => string;
 }) {
   return (
     <footer className="purchases-pagination">
       <span>
-        Showing {start}-{end} of {new Intl.NumberFormat().format(total)} records
+        {translate("Showing")} {start}-{end} {translate("of")}{" "}
+        {new Intl.NumberFormat().format(total)} {translate("records")}
       </span>
       <div className="purchases-pagination__controls">
         <button
           type="button"
           onClick={() => setPage(page - 1)}
           disabled={page <= 1}
-          aria-label="Previous page"
+          aria-label={translate("Previous page")}
         >
-          <ChevronLeft size={16} aria-hidden="true" /> Previous
+          <ChevronLeft size={16} aria-hidden="true" /> {translate("Previous")}
         </button>
         <span>
-          Page <strong>{page}</strong> of <strong>{lastPage}</strong>
+          {translate("Page")} <strong>{page}</strong> {translate("of")}{" "}
+          <strong>{lastPage}</strong>
         </span>
         <button
           type="button"
           onClick={() => setPage(page + 1)}
           disabled={page >= lastPage}
-          aria-label="Next page"
+          aria-label={translate("Next page")}
         >
-          Next <ChevronRight size={16} aria-hidden="true" />
+          {translate("Next")} <ChevronRight size={16} aria-hidden="true" />
         </button>
       </div>
     </footer>
