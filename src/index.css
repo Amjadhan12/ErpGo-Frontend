@@ -1380,6 +1380,12 @@ input:focus-visible {
   }
 }
 
+@media (max-width: 900px) {
+  .overview-page .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 480px) {
   .purchase-form-grid,
   .purchase-line-grid,
@@ -7531,3 +7537,562 @@ html[dir="rtl"] .recharts-wrapper {
    margin-left: 0;
  }
 }
+
+ .overview-page {
+   gap: 30px;
+   color: #172b3a;
+ }
+
+ .overview-page .overview-heading {
+   align-items: center;
+   padding: 2px 0 4px;
+ }
+
+ .overview-page .overview-eyebrow {
+   margin-bottom: 8px;
+   color: #567186;
+   font-size: 12px;
+   letter-spacing: 0.14em;
+ }
+
+ .overview-page .overview-heading h1 {
+   color: #142b3b;
+   font-size: clamp(26px, 2.2vw, 30px);
+   font-weight: 700;
+   letter-spacing: -0.035em;
+ }
+
+ .overview-page .overview-heading__description {
+   max-width: 620px;
+   margin-top: 7px;
+   color: #627587;
+   font-size: 14px;
+ }
+
+ .overview-page .overview-refresh {
+   min-height: 42px;
+   padding: 0 15px;
+   border-color: #cbd9e4;
+   border-radius: 10px;
+   color: #185b82;
+   background: #fff;
+   box-shadow: 0 2px 5px rgb(23 53 73 / 5%);
+   font-size: 14px;
+   font-weight: 650;
+ }
+
+ .overview-page .overview-refresh:hover:not(:disabled) {
+   border-color: #8fb7d0;
+   color: #114968;
+   background: #f3f9fc;
+ }
+
+ .overview-page .overview-refresh:focus-visible {
+   outline: 3px solid rgb(37 115 158 / 25%);
+   outline-offset: 2px;
+ }
+
+ .overview-page .overview-section {
+   gap: 15px;
+ }
+
+ .overview-page .overview-section__heading {
+   align-items: center;
+ }
+
+ .overview-page .overview-section__heading h2 {
+   color: #1c3445;
+   font-size: 20px;
+   font-weight: 700;
+ }
+
+ .overview-page .overview-section__heading p {
+   color: #6b7e8d;
+   font-size: 13px;
+ }
+
+ .overview-page .overview-cards {
+   grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr));
+   align-items: stretch;
+   gap: 14px;
+ }
+
+ .overview-page .overview-card,
+ .overview-page .overview-panel {
+   min-width: 0;
+   border: 1px solid #dfe8ee;
+   border-radius: 14px;
+   background: #fff;
+   box-shadow: 0 5px 16px rgb(23 53 73 / 5%);
+ }
+
+ .overview-page .overview-card {
+   min-height: 176px;
+   padding: 18px;
+   border-top: 3px solid var(--overview-accent);
+   transition:
+     border-color 150ms ease,
+     box-shadow 150ms ease,
+     transform 150ms ease;
+ }
+
+ .overview-page .overview-card:hover {
+   border-color: color-mix(in srgb, var(--overview-accent) 32%, #dfe8ee);
+   border-top-color: var(--overview-accent);
+   box-shadow: 0 10px 24px rgb(23 53 73 / 9%);
+   transform: translateY(-2px);
+ }
+
+ .overview-page .overview-card--blue {
+   --overview-accent: #2563eb;
+ }
+
+ .overview-page .overview-card--amber {
+   --overview-accent: #ea7a13;
+ }
+
+ .overview-page .overview-card--green {
+   --overview-accent: #16834a;
+ }
+
+ .overview-page .overview-card--indigo {
+   --overview-accent: #4f46b8;
+ }
+
+ .overview-page .overview-card--violet {
+   --overview-accent: #7c3aed;
+ }
+
+ .overview-page .overview-card__heading {
+   display: flex;
+   min-height: 40px;
+   align-items: center;
+   gap: 11px;
+   margin-bottom: 16px;
+ }
+
+ .overview-page .overview-card__icon {
+   width: 40px;
+   height: 40px;
+   flex: 0 0 40px;
+   border-radius: 12px;
+ }
+
+ .overview-page .overview-card__icon--blue {
+   color: #1d4ed8;
+   background: #eff6ff;
+ }
+
+ .overview-page .overview-card__icon--amber {
+   color: #c45c0b;
+   background: #fff4e8;
+ }
+
+ .overview-page .overview-card__icon--green {
+   color: #167447;
+   background: #eaf7ef;
+ }
+
+ .overview-page .overview-card__icon--indigo {
+   color: #4338a5;
+   background: #f0efff;
+ }
+
+ .overview-page .overview-card__icon--violet {
+   color: #6d28d9;
+   background: #f5f0ff;
+ }
+
+ .overview-page .overview-card h2 {
+   min-width: 0;
+   margin: 0;
+   color: #344b5c;
+   font-size: 16px;
+   font-weight: 680;
+   line-height: 1.4;
+ }
+
+ .overview-page .overview-amount-list {
+   gap: 9px;
+ }
+
+ .overview-page .overview-amount-list li {
+   min-width: 0;
+   align-items: center;
+   gap: 10px;
+   color: #5e7384;
+   font-size: 13px;
+ }
+
+ .overview-page .overview-amount-list__currency {
+   flex: 0 0 auto;
+   color: #647a8b;
+   font-size: 12px;
+   font-weight: 650;
+ }
+
+ .overview-page .overview-amount-list strong {
+   min-width: 0;
+   color: #1e3444;
+   font-size: clamp(16px, 1.35vw, 20px);
+   font-weight: 720;
+   overflow-wrap: anywhere;
+ }
+
+ .overview-page .overview-card__message,
+ .overview-page .overview-card__note {
+   color: #65798a;
+   font-size: 13px;
+   line-height: 1.55;
+ }
+
+ .overview-page .overview-card__message--error {
+   color: #b42318;
+ }
+
+ .overview-page .overview-card__total-count {
+   margin-bottom: 12px;
+   padding-bottom: 10px;
+   border-bottom: 1px solid #edf1f4;
+   color: #607586;
+   font-size: 13px;
+ }
+
+ .overview-page .overview-card__total-count strong {
+   color: #263d4d;
+   font-size: 16px;
+   font-variant-numeric: tabular-nums;
+ }
+
+ .overview-page .overview-card__note {
+   margin-top: 12px;
+   padding-top: 9px;
+   border-top: 1px solid #edf1f4;
+ }
+
+ .overview-page .overview-skeleton {
+   height: 18px;
+   border-radius: 6px;
+   background: linear-gradient(90deg, #edf2f5 25%, #f7f9fa 50%, #edf2f5 75%);
+   background-size: 200% 100%;
+ }
+
+ .overview-page .overview-grid {
+   gap: 16px;
+ }
+
+ .overview-page .overview-panel {
+   min-height: 250px;
+   padding: 20px;
+ }
+
+ .overview-page .overview-panel__header {
+   gap: 12px;
+   padding-bottom: 16px;
+   border-color: #e8eef2;
+ }
+
+ .overview-page .overview-panel__icon {
+   width: 40px;
+   height: 40px;
+   border-radius: 12px;
+   color: #27617f;
+   background: #edf6fa;
+ }
+
+ .overview-page .overview-panel--inventory .overview-panel__icon {
+   color: #087c91;
+   background: #e8f8fa;
+ }
+
+ .overview-page .overview-panel--sales .overview-panel__icon {
+   color: #2563a6;
+   background: #edf5ff;
+ }
+
+ .overview-page .overview-panel--profit .overview-panel__icon {
+   color: #487044;
+   background: #eef7eb;
+ }
+
+ .overview-page .overview-panel__header h2 {
+   color: #20394a;
+   font-size: 20px;
+   font-weight: 700;
+ }
+
+ .overview-page .overview-panel__header p {
+   color: #687d8c;
+   font-size: 13px;
+ }
+
+ .overview-page .overview-panel__loading,
+ .overview-page .overview-empty {
+   color: #627788;
+   font-size: 14px;
+ }
+
+ .overview-page .overview-empty--error {
+   color: #b42318;
+ }
+
+ .overview-page .inventory-overview {
+   display: grid;
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+   gap: 12px;
+   padding-top: 16px;
+ }
+
+ .overview-page .inventory-overview__value {
+   min-height: 76px;
+   align-items: flex-start;
+   flex-direction: column;
+   justify-content: center;
+   gap: 5px;
+   padding: 12px 14px;
+   border: 1px solid #e3eef0;
+   border-radius: 11px;
+   color: #607888;
+   background: #f7fbfc;
+   font-size: 13px;
+ }
+
+ .overview-page .inventory-overview__value strong {
+   color: #087c91;
+   font-size: 21px;
+   font-weight: 730;
+   text-align: start;
+ }
+
+ .overview-page .inventory-overview__value--stock-value {
+   border-color: #cbecef;
+   background: #effafb;
+ }
+
+ .overview-page .inventory-overview__value--stock-value strong {
+   font-size: clamp(18px, 1.8vw, 23px);
+   white-space: nowrap;
+ }
+
+ .overview-page .inventory-status-list {
+   grid-column: 1 / -1;
+   gap: 9px;
+   margin-top: 2px;
+   padding-top: 12px;
+   border-color: #e8eef2;
+ }
+
+ .overview-page .inventory-status-list__item {
+   grid-template-columns: 8px minmax(0, 1fr);
+   gap: 5px 7px;
+   padding: 9px 8px;
+   border: 1px solid #e8eef2;
+   border-radius: 9px;
+   color: #576e7e;
+   font-size: 13px;
+   line-height: 1.35;
+ }
+
+ .overview-page .inventory-status-list__item--in {
+   border-color: #d3eadc;
+   background: #f1faf4;
+ }
+
+ .overview-page .inventory-status-list__item--low {
+   border-color: #f2e3bf;
+   background: #fffaf0;
+ }
+
+ .overview-page .inventory-status-list__item--out {
+   border-color: #f1d8d5;
+   background: #fff6f5;
+ }
+
+ .overview-page .inventory-status-list__item strong {
+   color: #087c91;
+   font-size: 15px;
+   font-weight: 720;
+ }
+
+ .overview-page .inventory-status-dot {
+   width: 8px;
+   height: 8px;
+ }
+
+ .overview-page .inventory-status-dot--in {
+   background: #21864b;
+ }
+
+ .overview-page .inventory-status-dot--low {
+   background: #d38a0b;
+ }
+
+ .overview-page .inventory-status-dot--out {
+   background: #d14343;
+ }
+
+ .overview-page .overview-report-values {
+   gap: 0;
+   padding-top: 10px;
+ }
+
+ .overview-page .overview-report-values > div {
+   min-height: 42px;
+   gap: 12px;
+   border-color: #edf1f4;
+   color: #586f7f;
+   font-size: 14px;
+ }
+
+ .overview-page .overview-report-values strong {
+   min-width: 0;
+   color: #243d4e;
+   font-size: clamp(16px, 1.45vw, 20px);
+   font-weight: 700;
+   overflow-wrap: anywhere;
+ }
+
+ .overview-page .overview-report-values__income strong,
+ .overview-page .overview-report-values__highlight strong {
+   color: #16834a;
+ }
+
+ .overview-page .overview-report-values__returns strong,
+ .overview-page .overview-report-values__expense strong {
+   color: #c45c0b;
+ }
+
+ .overview-page .overview-report-values__wastage strong {
+   color: #c2413b;
+ }
+
+ .overview-page .overview-report-values__highlight {
+   margin-top: 5px;
+   padding: 7px 10px;
+   border: 0 !important;
+   border-radius: 9px;
+   color: #314c5b !important;
+   background: #f1f7f3;
+   font-weight: 700;
+ }
+
+ .overview-page .overview-report-values__highlight strong {
+   font-size: clamp(18px, 1.6vw, 22px);
+ }
+
+ .overview-page .financial-value--positive {
+   color: #16834a !important;
+ }
+
+ .overview-page .financial-value--negative {
+   color: #c62828 !important;
+ }
+
+ .overview-page .financial-value--neutral {
+   color: #64748b !important;
+ }
+
+ .overview-page .overview-footnote {
+   margin: -12px 0 0;
+   color: #687d8c;
+   font-size: 13px;
+ }
+
+ @media (max-width: 1100px) {
+   .overview-page .overview-cards {
+     grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
+   }
+ }
+
+ @media (max-width: 760px) {
+   .overview-page {
+     gap: 24px;
+   }
+
+   .overview-page .overview-heading {
+     align-items: flex-start;
+     gap: 14px;
+   }
+
+   .overview-page .overview-heading__description {
+     max-width: 440px;
+     font-size: 14px;
+   }
+
+   .overview-page .overview-section__heading {
+     align-items: flex-start;
+     flex-direction: column;
+     gap: 5px;
+   }
+
+   .overview-page .overview-cards {
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+     gap: 11px;
+   }
+
+   .overview-page .overview-card {
+     min-height: 164px;
+     padding: 15px;
+   }
+
+   .overview-page .overview-grid {
+     grid-template-columns: minmax(0, 1fr);
+     gap: 13px;
+   }
+
+   .overview-page .overview-panel {
+     min-height: 0;
+     padding: 17px;
+   }
+
+   .overview-page .overview-footnote {
+     margin-top: -8px;
+   }
+ }
+
+ @media (max-width: 480px) {
+   .overview-page .overview-heading {
+     align-items: flex-start;
+   }
+
+   .overview-page .overview-refresh {
+     min-height: 38px;
+     padding: 0 10px;
+     font-size: 13px;
+   }
+
+   .overview-page .overview-cards {
+     grid-template-columns: minmax(0, 1fr);
+   }
+
+   .overview-page .overview-card {
+     min-height: 0;
+     padding: 16px;
+   }
+
+   .overview-page .overview-card__heading {
+     margin-bottom: 13px;
+   }
+
+   .overview-page .inventory-overview {
+     grid-template-columns: minmax(0, 1fr);
+   }
+
+   .overview-page .inventory-status-list {
+     grid-template-columns: minmax(0, 1fr);
+   }
+
+   .overview-page .inventory-status-list__item {
+     grid-template-columns: 8px minmax(0, 1fr) auto;
+   }
+
+   .overview-page .inventory-status-list__item strong {
+     grid-column: 3;
+     grid-row: 1;
+   }
+
+   .overview-page .overview-report-values > div {
+     min-height: 44px;
+     font-size: 13px;
+   }
+ }

@@ -77,7 +77,7 @@ interface AmountRow {
 interface SummaryCardProps {
   title: string
   icon: typeof Wallet
-  color: 'green' | 'amber' | 'blue' | 'violet'
+  color: 'green' | 'amber' | 'blue' | 'indigo' | 'violet'
   resource: Resource<AmountRow[]>
   emptyMessage: string
   totalCount?: number
@@ -333,11 +333,13 @@ function SummaryCard({
   const { t } = useLocale()
 
   return (
-    <article className="overview-card">
-      <div className={`overview-card__icon overview-card__icon--${color}`}>
-        <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+    <article className={`overview-card overview-card--${color}`}>
+      <div className="overview-card__heading">
+        <div className={`overview-card__icon overview-card__icon--${color}`}>
+          <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+        </div>
+        <h2>{t(title)}</h2>
       </div>
-      <h2>{t(title)}</h2>
       {resource.status === 'loading' ? (
         <div className="overview-skeleton" aria-label={`${t("Loading")} ${t(title).toLowerCase()}`} />
       ) : resource.status === 'error' ? (
@@ -358,8 +360,8 @@ function SummaryCard({
             <ul className="overview-amount-list">
               {resource.data.map(({ currency, amount }, index) => (
                 <li key={`${currency}-${index}`}>
-                  <span>{currency}</span>
-                  <strong>{formatCurrencyAmount(amount, currency)}</strong>
+                  <span className="overview-amount-list__currency" dir="ltr">{currency}</span>
+                  <strong dir="ltr">{formatCurrencyAmount(amount, currency)}</strong>
                 </li>
               ))}
             </ul>
@@ -375,19 +377,21 @@ function ReportPanel({
   title,
   description,
   icon: Icon,
+  variant,
   resource,
   children,
 }: {
   title: string
   description: string
   icon: typeof Boxes
+  variant: 'inventory' | 'sales' | 'profit'
   resource: Resource<unknown>
   children: ReactNode
 }) {
   const { t } = useLocale()
 
   return (
-    <section className="overview-panel">
+    <section className={`overview-panel overview-panel--${variant}`}>
       <div className="overview-panel__header">
         <span className="overview-panel__icon"><Icon size={18} aria-hidden="true" /></span>
         <div>
@@ -516,14 +520,14 @@ export default function SecretaryOverview() {
           <SummaryCard
             title="Cash Balance"
             icon={Wallet}
-            color="blue"
+            color="green"
             resource={cashBalance}
             emptyMessage="No accounts categorized as cash."
           />
           <SummaryCard
             title="Bank Balance"
             icon={Banknote}
-            color="violet"
+            color="indigo"
             resource={bankBalance}
             emptyMessage="No accounts categorized as bank."
           />
@@ -544,22 +548,35 @@ export default function SecretaryOverview() {
           title="Inventory"
           description="Stock counts and valuation"
           icon={Boxes}
+          variant="inventory"
           resource={overview.inventory}
         >
           {inventory && (
             <div className="inventory-overview">
-              <div className="inventory-overview__value">
+              <div className="inventory-overview__value inventory-overview__value--count">
                 <span>{t("Inventory records")}</span>
                 <strong>{formatNumber(inventory.inventoryRecords)}</strong>
               </div>
-              <div className="inventory-overview__value">
+              <div className="inventory-overview__value inventory-overview__value--stock-value">
                 <span>{t("Stock value")}</span>
-                <strong>{formatCurrencyAmount(inventory.totalStockValueAfn, 'AFN')}</strong>
+                <strong dir="ltr">{formatCurrencyAmount(inventory.totalStockValueAfn, 'AFN')}</strong>
               </div>
               <div className="inventory-status-list">
-                <div><span className="inventory-status-dot inventory-status-dot--in" /> {t("In stock")} <strong>{formatNumber(inventory.inStockCount)}</strong></div>
-                <div><span className="inventory-status-dot inventory-status-dot--low" /> {t("Low stock")} <strong>{formatNumber(inventory.lowStockCount)}</strong></div>
-                <div><span className="inventory-status-dot inventory-status-dot--out" /> {t("Out of stock")} <strong>{formatNumber(inventory.outOfStockCount)}</strong></div>
+                <div className="inventory-status-list__item inventory-status-list__item--in">
+                  <span className="inventory-status-dot inventory-status-dot--in" />
+                  <span>{t("In stock")}</span>
+                  <strong dir="ltr">{formatNumber(inventory.inStockCount)}</strong>
+                </div>
+                <div className="inventory-status-list__item inventory-status-list__item--low">
+                  <span className="inventory-status-dot inventory-status-dot--low" />
+                  <span>{t("Low stock")}</span>
+                  <strong dir="ltr">{formatNumber(inventory.lowStockCount)}</strong>
+                </div>
+                <div className="inventory-status-list__item inventory-status-list__item--out">
+                  <span className="inventory-status-dot inventory-status-dot--out" />
+                  <span>{t("Out of stock")}</span>
+                  <strong dir="ltr">{formatNumber(inventory.outOfStockCount)}</strong>
+                </div>
               </div>
             </div>
           )}
@@ -569,21 +586,22 @@ export default function SecretaryOverview() {
           title="Sales"
           description="Sales from the all-time profit and loss report"
           icon={ShoppingBasket}
+          variant="sales"
           resource={overview.profitLoss}
         >
           {profitLoss && (
             <div className="overview-report-values">
-              <div>
+              <div className="overview-report-values__income">
                 <span>{t("Gross sales")}</span>
-                <strong>{formatCurrencyAmount(profitLoss.grossSales, profitLoss.currency)}</strong>
+                <strong dir="ltr">{formatCurrencyAmount(profitLoss.grossSales, profitLoss.currency)}</strong>
               </div>
-              <div>
+              <div className="overview-report-values__returns">
                 <span>{t("Sales returns")}</span>
-                <strong>{formatCurrencyAmount(profitLoss.salesReturns, profitLoss.currency)}</strong>
+                <strong dir="ltr">{formatCurrencyAmount(profitLoss.salesReturns, profitLoss.currency)}</strong>
               </div>
               <div className="overview-report-values__highlight">
                 <span>{t("Net revenue")}</span>
-                <strong>{formatCurrencyAmount(profitLoss.netRevenue, profitLoss.currency)}</strong>
+                <strong dir="ltr">{formatCurrencyAmount(profitLoss.netRevenue, profitLoss.currency)}</strong>
               </div>
             </div>
           )}
@@ -593,25 +611,26 @@ export default function SecretaryOverview() {
           title="Profit & Loss"
           description="All-time results · AFN"
           icon={TrendingUp}
+          variant="profit"
           resource={overview.profitLoss}
         >
           {profitLoss && (
             <div className="overview-report-values">
               <div>
                 <span>{t("Gross profit")}</span>
-                <strong className={financialValueClass(profitLoss.grossProfit, "income")}>{formatCurrencyAmount(profitLoss.grossProfit, profitLoss.currency)}</strong>
+                <strong className={financialValueClass(profitLoss.grossProfit, "income")} dir="ltr">{formatCurrencyAmount(profitLoss.grossProfit, profitLoss.currency)}</strong>
               </div>
-              <div>
+              <div className="overview-report-values__expense">
                 <span>{t("Operating expenses")}</span>
-                <strong>{formatCurrencyAmount(profitLoss.operatingExpenses, profitLoss.currency)}</strong>
+                <strong dir="ltr">{formatCurrencyAmount(profitLoss.operatingExpenses, profitLoss.currency)}</strong>
               </div>
-              <div>
+              <div className="overview-report-values__wastage">
                 <span>{t("Stock wastage cost")}</span>
-                <strong>{formatCurrencyAmount(profitLoss.stockWastageCost, profitLoss.currency)}</strong>
+                <strong dir="ltr">{formatCurrencyAmount(profitLoss.stockWastageCost, profitLoss.currency)}</strong>
               </div>
               <div className="overview-report-values__highlight">
                 <span>{t("Net profit")}</span>
-                <strong className={financialValueClass(profitLoss.netProfit, "income")}>{formatCurrencyAmount(profitLoss.netProfit, profitLoss.currency)}</strong>
+                <strong className={financialValueClass(profitLoss.netProfit, "income")} dir="ltr">{formatCurrencyAmount(profitLoss.netProfit, profitLoss.currency)}</strong>
               </div>
             </div>
           )}
