@@ -7,11 +7,14 @@ import {
   Eye,
   Pencil,
   Plus,
+  Power,
   RefreshCw,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useLocale } from "@/lib/locale";
 import PartnerStatement from "./PartnerStatement";
 
 interface Supplier {
@@ -23,6 +26,7 @@ interface Supplier {
   businessName: string | null;
   taxNumber: string | null;
   notes: string | null;
+  isActive: boolean;
 }
 
 interface SupplierPage {
@@ -83,7 +87,8 @@ function parseSupplier(value: unknown): Supplier {
   if (
     !isRecord(value) ||
     value.partner_type !== "Supplier" ||
-    typeof value.name !== "string"
+    typeof value.name !== "string" ||
+    typeof value.is_active !== "boolean"
   ) {
     throw new Error("The server returned an incomplete supplier record.");
   }
@@ -97,6 +102,7 @@ function parseSupplier(value: unknown): Supplier {
     businessName: optionalText(value.business_name),
     taxNumber: optionalText(value.tax_number),
     notes: optionalText(value.notes),
+    isActive: value.is_active,
   };
 }
 
@@ -161,6 +167,7 @@ function getValidationErrors(error: unknown): {
 }
 
 export default function Suppliers() {
+  const { t } = useLocale();
   const [suppliers, setSuppliers] = useState<SupplierPage | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -181,6 +188,8 @@ export default function Suppliers() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailRetry, setDetailRetry] = useState(0);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [isPartnerActionProcessing, setIsPartnerActionProcessing] = useState(false);
+  const [partnerActionError, setPartnerActionError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -241,15 +250,6 @@ export default function Suppliers() {
       });
     return () => controller.abort();
   }, [selectedSupplierId, detailRetry]);
-
-  useEffect(() => {
-    if (selectedSupplierId === null) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedSupplierId(null);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedSupplierId]);
 
   useEffect(() => {
     if (!success) return;
@@ -367,6 +367,50 @@ export default function Suppliers() {
     return supplierDetails;
   }
 
+  async function toggleSupplierStatus(supplier: Supplier) {
+    if (isPartnerActionProcessing) return;
+    setIsPartnerActionProcessing(true);
+    setPartnerActionError(null);
+    try {
+      await api.patch(`/api/business-partners/${supplier.id}`, {
+        is_active: !supplier.isActive,
+      });
+      setSuccess(
+        supplier.isActive
+          ? "Supplier deactivated successfully."
+          : "Supplier activated successfully.",
+      );
+      setDetailRetry((current) => current + 1);
+      setListRetry((current) => current + 1);
+    } catch (error: unknown) {
+      setPartnerActionError(getErrorMessage(error));
+    } finally {
+      setIsPartnerActionProcessing(false);
+    }
+  }
+
+  async function deleteSupplier(supplier: Supplier) {
+    if (isPartnerActionProcessing) return;
+    const confirmed = window.confirm(
+      `${t("Delete supplier")} "${supplier.name}"?\n\n${t("This partner will be archived from the active list. Historical financial records will be preserved.")}`,
+    );
+    if (!confirmed) return;
+
+    setIsPartnerActionProcessing(true);
+    setPartnerActionError(null);
+    try {
+      await api.delete(`/api/business-partners/${supplier.id}`);
+      setSuccess("Supplier deleted successfully.");
+      setSelectedSupplierId(null);
+      setPage(1);
+      setListRetry((current) => current + 1);
+    } catch (error: unknown) {
+      setPartnerActionError(getErrorMessage(error));
+    } finally {
+      setIsPartnerActionProcessing(false);
+    }
+  }
+
   const startRecord =
     suppliers && suppliers.total > 0
       ? (suppliers.currentPage - 1) * suppliers.perPage + 1
@@ -382,10 +426,10 @@ export default function Suppliers() {
     <div className="purchases-page suppliers-page">
       <header className="purchases-heading">
         <div>
-          <p className="overview-eyebrow">PARTNERS</p>
-          <h1>Suppliers</h1>
+          <p className="overview-eyebrow">{t("PARTNERS")}</p>
+          <h1>{t("Suppliers")}</h1>
           <p className="overview-heading__description">
-            Manage supplier contact details and accounts.
+            {t("Manage supplier contact details and accounts.")}
           </p>
         </div>
         <button
@@ -395,13 +439,13 @@ export default function Suppliers() {
           disabled={formMode !== null}
         >
           <Plus size={16} aria-hidden="true" />
-          <span>New Supplier</span>
+          <span>{t("New Supplier")}</span>
         </button>
       </header>
 
       {success && (
         <p className="purchase-success-message suppliers-success" role="status">
-          {success}
+          {t(success)}
         </p>
       )}
 
@@ -412,7 +456,7 @@ export default function Suppliers() {
         >
           <header className="suppliers-form-heading">
             <h2 id="supplier-form-title">
-              {formMode === "create" ? "Create Supplier" : "Edit Supplier"}
+              {formMode === "create" ? t("Create Supplier") : t("Edit Supplier")}
             </h2>
             <button
               type="button"
@@ -420,7 +464,7 @@ export default function Suppliers() {
               onClick={closeForm}
               disabled={isSaving}
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </header>
           {formError && (
@@ -428,7 +472,7 @@ export default function Suppliers() {
               className="create-purchase-alert suppliers-form-alert"
               role="alert"
             >
-              {formError}
+              {t(formError)}
             </p>
           )}
           <form
@@ -438,7 +482,7 @@ export default function Suppliers() {
           >
             <label className="purchase-field">
               <span>
-                Name <i>*</i>
+                {t("Name")} <i>*</i>
               </span>
               <input
                 value={form.name}
@@ -448,7 +492,7 @@ export default function Suppliers() {
               />
               {formFields.name && (
                 <small className="purchase-field__error">
-                  {formFields.name}
+                  {t(formFields.name)}
                 </small>
               )}
             </label>
@@ -456,7 +500,7 @@ export default function Suppliers() {
             {formMode === "create" ? (
               <label className="purchase-field">
                 <span>
-                  Email <i>*</i>
+                  {t("Email")} <i>*</i>
                 </span>
                 <input
                   type="email"
@@ -468,18 +512,18 @@ export default function Suppliers() {
                 />
                 {formFields.email && (
                   <small className="purchase-field__error">
-                    {formFields.email}
+                    {t(formFields.email)}
                   </small>
                 )}
               </label>
             ) : (
               <label className="purchase-field">
-                <span>Email</span>
+                <span>{t("Email")}</span>
                 <input
                   type="email"
                   value={form.email}
                   disabled
-                  aria-label="Supplier login email, read only"
+                  aria-label={t("Supplier login email, read only")}
                 />
               </label>
             )}
@@ -488,7 +532,7 @@ export default function Suppliers() {
               <>
                 <label className="purchase-field">
                   <span>
-                    Password <i>*</i>
+                    {t("Password")} <i>*</i>
                   </span>
                   <input
                     type="password"
@@ -502,13 +546,13 @@ export default function Suppliers() {
                   />
                   {formFields.password && (
                     <small className="purchase-field__error">
-                      {formFields.password}
+                      {t(formFields.password)}
                     </small>
                   )}
                 </label>
                 <label className="purchase-field">
                   <span>
-                    Confirm Password <i>*</i>
+                    {t("Confirm Password")} <i>*</i>
                   </span>
                   <input
                     type="password"
@@ -521,7 +565,7 @@ export default function Suppliers() {
                   />
                   {formFields.passwordConfirmation && (
                     <small className="purchase-field__error">
-                      {formFields.passwordConfirmation}
+                      {t(formFields.passwordConfirmation)}
                     </small>
                   )}
                 </label>
@@ -529,7 +573,7 @@ export default function Suppliers() {
             )}
 
             <label className="purchase-field">
-              <span>Phone</span>
+              <span>{t("Phone")}</span>
               <input
                 value={form.phone}
                 onChange={(event) => setField("phone", event.target.value)}
@@ -538,12 +582,12 @@ export default function Suppliers() {
               />
               {formFields.phone && (
                 <small className="purchase-field__error">
-                  {formFields.phone}
+                  {t(formFields.phone)}
                 </small>
               )}
             </label>
             <label className="purchase-field">
-              <span>Business Name</span>
+              <span>{t("Business Name")}</span>
               <input
                 value={form.businessName}
                 onChange={(event) =>
@@ -554,12 +598,12 @@ export default function Suppliers() {
               />
               {formFields.businessName && (
                 <small className="purchase-field__error">
-                  {formFields.businessName}
+                  {t(formFields.businessName)}
                 </small>
               )}
             </label>
             <label className="purchase-field">
-              <span>Address</span>
+              <span>{t("Address")}</span>
               <input
                 value={form.address}
                 onChange={(event) => setField("address", event.target.value)}
@@ -568,12 +612,12 @@ export default function Suppliers() {
               />
               {formFields.address && (
                 <small className="purchase-field__error">
-                  {formFields.address}
+                  {t(formFields.address)}
                 </small>
               )}
             </label>
             <label className="purchase-field">
-              <span>Tax Number</span>
+              <span>{t("Tax Number")}</span>
               <input
                 value={form.taxNumber}
                 onChange={(event) => setField("taxNumber", event.target.value)}
@@ -582,12 +626,12 @@ export default function Suppliers() {
               />
               {formFields.taxNumber && (
                 <small className="purchase-field__error">
-                  {formFields.taxNumber}
+                  {t(formFields.taxNumber)}
                 </small>
               )}
             </label>
             <label className="purchase-field suppliers-form-wide">
-              <span>Notes</span>
+              <span>{t("Notes")}</span>
               <textarea
                 rows={3}
                 maxLength={5000}
@@ -597,7 +641,7 @@ export default function Suppliers() {
               />
               {formFields.notes && (
                 <small className="purchase-field__error">
-                  {formFields.notes}
+                  {t(formFields.notes)}
                 </small>
               )}
             </label>
@@ -608,7 +652,7 @@ export default function Suppliers() {
                 onClick={closeForm}
                 disabled={isSaving}
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="submit"
@@ -616,17 +660,17 @@ export default function Suppliers() {
                 disabled={isSaving}
               >
                 {isSaving
-                  ? "Saving…"
+                  ? t("Saving…")
                   : formMode === "create"
-                    ? "Create Supplier"
-                    : "Save Changes"}
+                    ? t("Create Supplier")
+                    : t("Save Changes")}
               </button>
             </div>
           </form>
         </section>
       )}
 
-      <section className="purchases-panel" aria-label="Supplier list">
+      <section className="purchases-panel" aria-label={t("Supplier list")}>
         <div className="suppliers-toolbar">
           <label className="suppliers-search">
             <Search size={16} aria-hidden="true" />
@@ -637,8 +681,8 @@ export default function Suppliers() {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Search name, phone, or business"
-              aria-label="Search suppliers by name, phone, or business name"
+              placeholder={t("Search name, phone, or business")}
+              aria-label={t("Search suppliers by name, phone, or business name")}
             />
           </label>
           <button
@@ -646,31 +690,31 @@ export default function Suppliers() {
             type="button"
             onClick={() => setListRetry((current) => current + 1)}
             disabled={isLoading}
-            aria-label="Refresh suppliers"
+            aria-label={t("Refresh suppliers")}
           >
             <RefreshCw
               size={16}
               className={isLoading ? "overview-refresh__spinning" : ""}
               aria-hidden="true"
             />
-            <span>Refresh</span>
+            <span>{t("Refresh")}</span>
           </button>
         </div>
 
         {isLoading ? (
           <div className="purchases-state" role="status">
-            <span className="loading-spinner" /> Loading suppliers…
+            <span className="loading-spinner" /> {t("Loading suppliers…")}
           </div>
         ) : listError ? (
           <div className="purchases-state purchases-state--error" role="alert">
             <AlertCircle size={20} aria-hidden="true" />
-            <span>{listError}</span>
+            <span>{t(listError)}</span>
             <button
               type="button"
               className="purchases-retry"
               onClick={() => setListRetry((current) => current + 1)}
             >
-              Try again
+              {t("Try again")}
             </button>
           </div>
         ) : suppliers && suppliers.data.length === 0 ? (
@@ -680,13 +724,13 @@ export default function Suppliers() {
             </span>
             <strong>
               {debouncedSearch
-                ? "No suppliers match your search"
-                : "No suppliers yet"}
+                ? t("No suppliers match your search")
+                : t("No suppliers yet")}
             </strong>
             <span>
               {debouncedSearch
-                ? "Try another name, phone number, or business name."
-                : "Create a supplier to see it listed here."}
+                ? t("Try another name, phone number, or business name.")
+                : t("Create a supplier to see it listed here.")}
             </span>
           </div>
         ) : suppliers ? (
@@ -695,33 +739,48 @@ export default function Suppliers() {
               <table className="purchases-table suppliers-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Business Name</th>
-                    <th>Phone</th>
-                    <th>Email</th>
-                    <th>Actions</th>
+                    <th>{t("Name")}</th>
+                    <th>{t("Business Name")}</th>
+                    <th>{t("Phone")}</th>
+                    <th>{t("Email")}</th>
+                    <th>{t("Account Status")}</th>
+                    <th>{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {suppliers.data.map((supplier) => (
                     <tr key={supplier.id}>
-                      <td>
+                      <td data-label={t("Name")}>
                         <strong className="purchases-number">
                           {supplier.name}
                         </strong>
                       </td>
-                      <td>{supplier.businessName || "—"}</td>
-                      <td>{supplier.phone || "—"}</td>
-                      <td>{supplier.email || "—"}</td>
-                      <td>
+                      <td data-label={t("Business Name")}>{supplier.businessName || "—"}</td>
+                      <td data-label={t("Phone")}>{supplier.phone || "—"}</td>
+                      <td data-label={t("Email")} dir="ltr">{supplier.email || "—"}</td>
+                      <td data-label={t("Account Status")}>
+                        <span className={`partner-status-badge ${supplier.isActive ? "is-active" : "is-inactive"}`}>
+                          {t(supplier.isActive ? "Active" : "Inactive")}
+                        </span>
+                      </td>
+                      <td data-label={t("Actions")}>
                         <button
                           className="purchase-view-button"
                           type="button"
                           onClick={() => setSelectedSupplierId(supplier.id)}
-                          aria-label={`View ${supplier.name}`}
+                          aria-label={`${t("View supplier")} ${supplier.name}`}
                         >
                           <Eye size={15} aria-hidden="true" />
-                          <span>Details</span>
+                          <span>{t("Details")}</span>
+                        </button>
+                        <button
+                          className="partner-table-edit"
+                          type="button"
+                          onClick={() => openEditForm(supplier)}
+                          aria-label={`${t("Edit Supplier")} ${supplier.name}`}
+                        >
+                          <Pencil size={15} aria-hidden="true" />
+                          <span>{t("Edit")}</span>
                         </button>
                       </td>
                     </tr>
@@ -730,21 +789,21 @@ export default function Suppliers() {
               </table>
             </div>
             <footer className="purchases-pagination">
-              <span>
-                Showing {startRecord}–{endRecord} of{" "}
-                {new Intl.NumberFormat().format(suppliers.total)} suppliers
+              <span className="partner-pagination-count">
+                {t("Showing")} {startRecord}–{endRecord} {t("of")}{" "}
+                {new Intl.NumberFormat().format(suppliers.total)} {t("suppliers")}
               </span>
               <div className="purchases-pagination__controls">
                 <button
                   type="button"
                   onClick={() => setPage(suppliers.currentPage - 1)}
                   disabled={isLoading || suppliers.currentPage <= 1}
-                  aria-label="Previous page"
+                  aria-label={t("Previous page")}
                 >
-                  <ChevronLeft size={16} aria-hidden="true" /> Previous
+                  <ChevronLeft size={16} aria-hidden="true" /> {t("Previous")}
                 </button>
                 <span>
-                  Page <strong>{suppliers.currentPage}</strong> of{" "}
+                  {t("Page")} <strong>{suppliers.currentPage}</strong> {t("of")}{" "}
                   <strong>{suppliers.lastPage}</strong>
                 </span>
                 <button
@@ -753,9 +812,9 @@ export default function Suppliers() {
                   disabled={
                     isLoading || suppliers.currentPage >= suppliers.lastPage
                   }
-                  aria-label="Next page"
+                  aria-label={t("Next page")}
                 >
-                  Next <ChevronRight size={16} aria-hidden="true" />
+                  {t("Next")} <ChevronRight size={16} aria-hidden="true" />
                 </button>
               </div>
             </footer>
@@ -765,11 +824,7 @@ export default function Suppliers() {
 
       {selectedSupplierId !== null && (
         <div
-          className="purchase-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget)
-              setSelectedSupplierId(null);
-          }}
+          className="purchase-modal-backdrop partner-detail-backdrop"
         >
           <section
             className="purchase-modal supplier-modal"
@@ -779,17 +834,24 @@ export default function Suppliers() {
           >
             <header className="purchase-modal__header">
               <div>
-                <p className="overview-eyebrow">SUPPLIER DETAILS</p>
+                <p className="overview-eyebrow">{t("SUPPLIER DETAILS")}</p>
                 <h2 id="supplier-detail-title">
-                  {supplierDetails?.name ?? "Supplier"}
+                  {supplierDetails?.name ?? t("Supplier")}
                 </h2>
-                {supplierDetails && <p>Supplier #{supplierDetails.id}</p>}
+                {supplierDetails && (
+                  <p className="partner-detail-id" dir="ltr">
+                    {t("Supplier")} #{supplierDetails.id}
+                    <span className={`partner-status-badge ${supplierDetails.isActive ? "is-active" : "is-inactive"}`}>
+                      {t(supplierDetails.isActive ? "Active" : "Inactive")}
+                    </span>
+                  </p>
+                )}
               </div>
               <button
                 type="button"
                 className="purchase-modal__close"
                 onClick={() => setSelectedSupplierId(null)}
-                aria-label="Close details"
+                aria-label={t("Close details")}
               >
                 <X size={19} aria-hidden="true" />
               </button>
@@ -797,7 +859,7 @@ export default function Suppliers() {
             <div className="purchase-modal__body">
               {isDetailLoading ? (
                 <div className="purchases-state" role="status">
-                  <span className="loading-spinner" /> Loading supplier details…
+                  <span className="loading-spinner" /> {t("Loading supplier details…")}
                 </div>
               ) : detailError ? (
                 <div
@@ -805,55 +867,93 @@ export default function Suppliers() {
                   role="alert"
                 >
                   <AlertCircle size={20} aria-hidden="true" />
-                  <span>{detailError}</span>
+                  <span>{t(detailError)}</span>
                   <button
                     type="button"
                     className="purchases-retry"
                     onClick={() => setDetailRetry((current) => current + 1)}
                   >
-                    Try again
+                    {t("Try again")}
                   </button>
                 </div>
               ) : supplierDetails ? (
                 <>
-                  <dl className="purchase-detail-grid supplier-detail-grid">
-                    <div>
-                      <dt>Name</dt>
-                      <dd>{supplierDetails.name}</dd>
-                    </div>
-                    <div>
-                      <dt>Business Name</dt>
-                      <dd>{supplierDetails.businessName || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Phone</dt>
-                      <dd>{supplierDetails.phone || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Email</dt>
-                      <dd>{supplierDetails.email || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Address</dt>
-                      <dd>{supplierDetails.address || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Tax Number</dt>
-                      <dd>{supplierDetails.taxNumber || "—"}</dd>
-                    </div>
-                  </dl>
-                  <div className="supplier-detail-notes">
-                    <strong>Notes</strong>
-                    <p>{supplierDetails.notes || "—"}</p>
+                  <div className="partner-detail-contact">
+                    <span><strong>{t("Phone")}</strong> {supplierDetails.phone || "—"}</span>
+                    <span dir="ltr"><strong>{t("Email")}</strong> {supplierDetails.email || "—"}</span>
+                    <span><strong>{t("Address")}</strong> {supplierDetails.address || "—"}</span>
+                  </div>
+                  {partnerActionError && (
+                    <p className="partner-action-feedback is-error" role="alert">
+                      {t(partnerActionError)}
+                    </p>
+                  )}
+                  {success && (
+                    <p className="partner-action-feedback is-success" role="status">
+                      {t(success)}
+                    </p>
+                  )}
+                  <div className="partner-profile-sections">
+                    <section className="partner-profile-section">
+                      <h3>{t("Personal / Partner Information")}</h3>
+                      <dl className="purchase-detail-grid supplier-detail-grid">
+                        <div><dt>{t("Name")}</dt><dd>{supplierDetails.name}</dd></div>
+                        <div><dt>{t("Partner ID")}</dt><dd dir="ltr">#{supplierDetails.id}</dd></div>
+                        <div><dt>{t("Account Status")}</dt><dd>{t(supplierDetails.isActive ? "Active" : "Inactive")}</dd></div>
+                      </dl>
+                    </section>
+                    <section className="partner-profile-section">
+                      <h3>{t("Business Information")}</h3>
+                      <dl className="purchase-detail-grid supplier-detail-grid">
+                        <div><dt>{t("Business Name")}</dt><dd>{supplierDetails.businessName || "—"}</dd></div>
+                      </dl>
+                    </section>
+                    <section className="partner-profile-section">
+                      <h3>{t("Contact Information")}</h3>
+                      <dl className="purchase-detail-grid supplier-detail-grid">
+                        <div><dt>{t("Phone")}</dt><dd dir="ltr">{supplierDetails.phone || "—"}</dd></div>
+                        <div><dt>{t("Email")}</dt><dd dir="ltr">{supplierDetails.email || "—"}</dd></div>
+                        <div><dt>{t("Address")}</dt><dd>{supplierDetails.address || "—"}</dd></div>
+                      </dl>
+                    </section>
+                    <section className="partner-profile-section">
+                      <h3>{t("Tax Information")}</h3>
+                      <dl className="purchase-detail-grid supplier-detail-grid">
+                        <div><dt>{t("Tax Number")}</dt><dd dir="ltr">{supplierDetails.taxNumber || "—"}</dd></div>
+                      </dl>
+                    </section>
+                    <section className="partner-profile-section">
+                      <h3>{t("Notes")}</h3>
+                      <p className="partner-detail-notes">{supplierDetails.notes || "—"}</p>
+                    </section>
                   </div>
                   <PartnerStatement partnerId={supplierDetails.id} partnerType="Supplier" />
-                  <div className="supplier-detail-actions">
+                  <div className="supplier-detail-actions partner-detail-actions">
                     <button
                       className="purchase-save-button"
                       type="button"
                       onClick={() => openEditForm(supplierDetails)}
+                      disabled={isPartnerActionProcessing}
                     >
-                      <Pencil size={15} aria-hidden="true" /> Edit Supplier
+                      <Pencil size={15} aria-hidden="true" /> {t("Edit Supplier")}
+                    </button>
+                    <button
+                      className="partner-toggle-button"
+                      type="button"
+                      onClick={() => void toggleSupplierStatus(supplierDetails)}
+                      disabled={isPartnerActionProcessing}
+                    >
+                      <Power size={15} aria-hidden="true" />
+                      {t(supplierDetails.isActive ? "Deactivate" : "Activate")}
+                    </button>
+                    <button
+                      className="partner-delete-button"
+                      type="button"
+                      onClick={() => void deleteSupplier(supplierDetails)}
+                      disabled={isPartnerActionProcessing}
+                    >
+                      <Trash2 size={15} aria-hidden="true" />
+                      {t("Delete")}
                     </button>
                   </div>
                 </>

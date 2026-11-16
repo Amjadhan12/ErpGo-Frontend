@@ -7,11 +7,14 @@ import {
   Eye,
   Pencil,
   Plus,
+  Power,
   RefreshCw,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useLocale } from "@/lib/locale";
 import PartnerStatement from "./PartnerStatement";
 
 interface Customer {
@@ -23,6 +26,7 @@ interface Customer {
   businessName: string | null;
   taxNumber: string | null;
   notes: string | null;
+  isActive: boolean;
 }
 
 interface CustomerPage {
@@ -83,7 +87,8 @@ function parseCustomer(value: unknown): Customer {
   if (
     !isRecord(value) ||
     value.partner_type !== "Customer" ||
-    typeof value.name !== "string"
+    typeof value.name !== "string" ||
+    typeof value.is_active !== "boolean"
   ) {
     throw new Error("The server returned an incomplete customer record.");
   }
@@ -97,6 +102,7 @@ function parseCustomer(value: unknown): Customer {
     businessName: optionalText(value.business_name),
     taxNumber: optionalText(value.tax_number),
     notes: optionalText(value.notes),
+    isActive: value.is_active,
   };
 }
 
@@ -161,6 +167,7 @@ function getValidationErrors(error: unknown): {
 }
 
 export default function Customers() {
+  const { t } = useLocale();
   const [customers, setCustomers] = useState<CustomerPage | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -181,6 +188,8 @@ export default function Customers() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailRetry, setDetailRetry] = useState(0);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [isPartnerActionProcessing, setIsPartnerActionProcessing] = useState(false);
+  const [partnerActionError, setPartnerActionError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -241,15 +250,6 @@ export default function Customers() {
       });
     return () => controller.abort();
   }, [selectedCustomerId, detailRetry]);
-
-  useEffect(() => {
-    if (selectedCustomerId === null) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedCustomerId(null);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedCustomerId]);
 
   useEffect(() => {
     if (!success) return;
@@ -367,6 +367,50 @@ export default function Customers() {
     return customerDetails;
   }
 
+  async function toggleCustomerStatus(customer: Customer) {
+    if (isPartnerActionProcessing) return;
+    setIsPartnerActionProcessing(true);
+    setPartnerActionError(null);
+    try {
+      await api.patch(`/api/business-partners/${customer.id}`, {
+        is_active: !customer.isActive,
+      });
+      setSuccess(
+        customer.isActive
+          ? "Customer deactivated successfully."
+          : "Customer activated successfully.",
+      );
+      setDetailRetry((current) => current + 1);
+      setListRetry((current) => current + 1);
+    } catch (error: unknown) {
+      setPartnerActionError(getErrorMessage(error));
+    } finally {
+      setIsPartnerActionProcessing(false);
+    }
+  }
+
+  async function deleteCustomer(customer: Customer) {
+    if (isPartnerActionProcessing) return;
+    const confirmed = window.confirm(
+      `${t("Delete customer")} "${customer.name}"?\n\n${t("This partner will be archived from the active list. Historical financial records will be preserved.")}`,
+    );
+    if (!confirmed) return;
+
+    setIsPartnerActionProcessing(true);
+    setPartnerActionError(null);
+    try {
+      await api.delete(`/api/business-partners/${customer.id}`);
+      setSuccess("Customer deleted successfully.");
+      setSelectedCustomerId(null);
+      setPage(1);
+      setListRetry((current) => current + 1);
+    } catch (error: unknown) {
+      setPartnerActionError(getErrorMessage(error));
+    } finally {
+      setIsPartnerActionProcessing(false);
+    }
+  }
+
   const startRecord =
     customers && customers.total > 0
       ? (customers.currentPage - 1) * customers.perPage + 1
@@ -382,10 +426,10 @@ export default function Customers() {
     <div className="purchases-page customers-page">
       <header className="purchases-heading">
         <div>
-          <p className="overview-eyebrow">PARTNERS</p>
-          <h1>Customers</h1>
+          <p className="overview-eyebrow">{t("PARTNERS")}</p>
+          <h1>{t("Customers")}</h1>
           <p className="overview-heading__description">
-            Manage customer contact details and accounts.
+            {t("Manage customer contact details and accounts.")}
           </p>
         </div>
         <button
@@ -395,13 +439,13 @@ export default function Customers() {
           disabled={formMode !== null}
         >
           <Plus size={16} aria-hidden="true" />
-          <span>New Customer</span>
+          <span>{t("New Customer")}</span>
         </button>
       </header>
 
       {success && (
         <p className="purchase-success-message customers-success" role="status">
-          {success}
+          {t(success)}
         </p>
       )}
 
@@ -412,7 +456,7 @@ export default function Customers() {
         >
           <header className="customers-form-heading">
             <h2 id="customer-form-title">
-              {formMode === "create" ? "Create Customer" : "Edit Customer"}
+              {formMode === "create" ? t("Create Customer") : t("Edit Customer")}
             </h2>
             <button
               type="button"
@@ -420,7 +464,7 @@ export default function Customers() {
               onClick={closeForm}
               disabled={isSaving}
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </header>
           {formError && (
@@ -428,7 +472,7 @@ export default function Customers() {
               className="create-purchase-alert customers-form-alert"
               role="alert"
             >
-              {formError}
+              {t(formError)}
             </p>
           )}
           <form
@@ -438,7 +482,7 @@ export default function Customers() {
           >
             <label className="purchase-field">
               <span>
-                Name <i>*</i>
+                {t("Name")} <i>*</i>
               </span>
               <input
                 value={form.name}
@@ -448,7 +492,7 @@ export default function Customers() {
               />
               {formFields.name && (
                 <small className="purchase-field__error">
-                  {formFields.name}
+                  {t(formFields.name)}
                 </small>
               )}
             </label>
@@ -456,7 +500,7 @@ export default function Customers() {
             {formMode === "create" ? (
               <label className="purchase-field">
                 <span>
-                  Email <i>*</i>
+                  {t("Email")} <i>*</i>
                 </span>
                 <input
                   type="email"
@@ -468,18 +512,18 @@ export default function Customers() {
                 />
                 {formFields.email && (
                   <small className="purchase-field__error">
-                    {formFields.email}
+                    {t(formFields.email)}
                   </small>
                 )}
               </label>
             ) : (
               <label className="purchase-field">
-                <span>Email</span>
+                <span>{t("Email")}</span>
                 <input
                   type="email"
                   value={form.email}
                   disabled
-                  aria-label="Customer login email, read only"
+                  aria-label={t("Customer login email, read only")}
                 />
               </label>
             )}
@@ -488,7 +532,7 @@ export default function Customers() {
               <>
                 <label className="purchase-field">
                   <span>
-                    Password <i>*</i>
+                    {t("Password")} <i>*</i>
                   </span>
                   <input
                     type="password"
@@ -502,13 +546,13 @@ export default function Customers() {
                   />
                   {formFields.password && (
                     <small className="purchase-field__error">
-                      {formFields.password}
+                      {t(formFields.password)}
                     </small>
                   )}
                 </label>
                 <label className="purchase-field">
                   <span>
-                    Confirm Password <i>*</i>
+                    {t("Confirm Password")} <i>*</i>
                   </span>
                   <input
                     type="password"
@@ -521,7 +565,7 @@ export default function Customers() {
                   />
                   {formFields.passwordConfirmation && (
                     <small className="purchase-field__error">
-                      {formFields.passwordConfirmation}
+                      {t(formFields.passwordConfirmation)}
                     </small>
                   )}
                 </label>
@@ -529,7 +573,7 @@ export default function Customers() {
             )}
 
             <label className="purchase-field">
-              <span>Phone</span>
+              <span>{t("Phone")}</span>
               <input
                 value={form.phone}
                 onChange={(event) => setField("phone", event.target.value)}
@@ -538,12 +582,12 @@ export default function Customers() {
               />
               {formFields.phone && (
                 <small className="purchase-field__error">
-                  {formFields.phone}
+                  {t(formFields.phone)}
                 </small>
               )}
             </label>
             <label className="purchase-field">
-              <span>Business Name</span>
+              <span>{t("Business Name")}</span>
               <input
                 value={form.businessName}
                 onChange={(event) =>
@@ -554,12 +598,12 @@ export default function Customers() {
               />
               {formFields.businessName && (
                 <small className="purchase-field__error">
-                  {formFields.businessName}
+                  {t(formFields.businessName)}
                 </small>
               )}
             </label>
             <label className="purchase-field">
-              <span>Address</span>
+              <span>{t("Address")}</span>
               <input
                 value={form.address}
                 onChange={(event) => setField("address", event.target.value)}
@@ -568,12 +612,12 @@ export default function Customers() {
               />
               {formFields.address && (
                 <small className="purchase-field__error">
-                  {formFields.address}
+                  {t(formFields.address)}
                 </small>
               )}
             </label>
             <label className="purchase-field">
-              <span>Tax Number</span>
+              <span>{t("Tax Number")}</span>
               <input
                 value={form.taxNumber}
                 onChange={(event) => setField("taxNumber", event.target.value)}
@@ -582,12 +626,12 @@ export default function Customers() {
               />
               {formFields.taxNumber && (
                 <small className="purchase-field__error">
-                  {formFields.taxNumber}
+                  {t(formFields.taxNumber)}
                 </small>
               )}
             </label>
             <label className="purchase-field customers-form-wide">
-              <span>Notes</span>
+              <span>{t("Notes")}</span>
               <textarea
                 rows={3}
                 maxLength={5000}
@@ -597,7 +641,7 @@ export default function Customers() {
               />
               {formFields.notes && (
                 <small className="purchase-field__error">
-                  {formFields.notes}
+                  {t(formFields.notes)}
                 </small>
               )}
             </label>
@@ -608,7 +652,7 @@ export default function Customers() {
                 onClick={closeForm}
                 disabled={isSaving}
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="submit"
@@ -616,17 +660,17 @@ export default function Customers() {
                 disabled={isSaving}
               >
                 {isSaving
-                  ? "Saving…"
+                  ? t("Saving…")
                   : formMode === "create"
-                    ? "Create Customer"
-                    : "Save Changes"}
+                    ? t("Create Customer")
+                    : t("Save Changes")}
               </button>
             </div>
           </form>
         </section>
       )}
 
-      <section className="purchases-panel" aria-label="Customer list">
+      <section className="purchases-panel" aria-label={t("Customer list")}>
         <div className="customers-toolbar">
           <label className="customers-search">
             <Search size={16} aria-hidden="true" />
@@ -637,8 +681,8 @@ export default function Customers() {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Search name, phone, or business"
-              aria-label="Search customers by name, phone, or business name"
+              placeholder={t("Search name, phone, or business")}
+              aria-label={t("Search customers by name, phone, or business name")}
             />
           </label>
           <button
@@ -646,31 +690,31 @@ export default function Customers() {
             type="button"
             onClick={() => setListRetry((current) => current + 1)}
             disabled={isLoading}
-            aria-label="Refresh customers"
+            aria-label={t("Refresh customers")}
           >
             <RefreshCw
               size={16}
               className={isLoading ? "overview-refresh__spinning" : ""}
               aria-hidden="true"
             />
-            <span>Refresh</span>
+            <span>{t("Refresh")}</span>
           </button>
         </div>
 
         {isLoading ? (
           <div className="purchases-state" role="status">
-            <span className="loading-spinner" /> Loading customers…
+            <span className="loading-spinner" /> {t("Loading customers…")}
           </div>
         ) : listError ? (
           <div className="purchases-state purchases-state--error" role="alert">
             <AlertCircle size={20} aria-hidden="true" />
-            <span>{listError}</span>
+            <span>{t(listError)}</span>
             <button
               type="button"
               className="purchases-retry"
               onClick={() => setListRetry((current) => current + 1)}
             >
-              Try again
+              {t("Try again")}
             </button>
           </div>
         ) : customers && customers.data.length === 0 ? (
@@ -680,13 +724,13 @@ export default function Customers() {
             </span>
             <strong>
               {debouncedSearch
-                ? "No customers match your search"
-                : "No customers yet"}
+                ? t("No customers match your search")
+                : t("No customers yet")}
             </strong>
             <span>
               {debouncedSearch
-                ? "Try another name, phone number, or business name."
-                : "Create a customer to see it listed here."}
+                ? t("Try another name, phone number, or business name.")
+                : t("Create a customer to see it listed here.")}
             </span>
           </div>
         ) : customers ? (
@@ -695,33 +739,48 @@ export default function Customers() {
               <table className="purchases-table customers-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Business Name</th>
-                    <th>Phone</th>
-                    <th>Email</th>
-                    <th>Actions</th>
+                    <th>{t("Name")}</th>
+                    <th>{t("Business Name")}</th>
+                    <th>{t("Phone")}</th>
+                    <th>{t("Email")}</th>
+                    <th>{t("Account Status")}</th>
+                    <th>{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {customers.data.map((customer) => (
                     <tr key={customer.id}>
-                      <td>
+                      <td data-label={t("Name")}>
                         <strong className="purchases-number">
                           {customer.name}
                         </strong>
                       </td>
-                      <td>{customer.businessName || "—"}</td>
-                      <td>{customer.phone || "—"}</td>
-                      <td>{customer.email || "—"}</td>
-                      <td>
+                      <td data-label={t("Business Name")}>{customer.businessName || "—"}</td>
+                      <td data-label={t("Phone")}>{customer.phone || "—"}</td>
+                      <td data-label={t("Email")} dir="ltr">{customer.email || "—"}</td>
+                      <td data-label={t("Account Status")}>
+                        <span className={`partner-status-badge ${customer.isActive ? "is-active" : "is-inactive"}`}>
+                          {t(customer.isActive ? "Active" : "Inactive")}
+                        </span>
+                      </td>
+                      <td data-label={t("Actions")}>
                         <button
                           className="purchase-view-button"
                           type="button"
                           onClick={() => setSelectedCustomerId(customer.id)}
-                          aria-label={`View ${customer.name}`}
+                          aria-label={`${t("View customer")} ${customer.name}`}
                         >
                           <Eye size={15} aria-hidden="true" />
-                          <span>Details</span>
+                          <span>{t("Details")}</span>
+                        </button>
+                        <button
+                          className="partner-table-edit"
+                          type="button"
+                          onClick={() => openEditForm(customer)}
+                          aria-label={`${t("Edit Customer")} ${customer.name}`}
+                        >
+                          <Pencil size={15} aria-hidden="true" />
+                          <span>{t("Edit")}</span>
                         </button>
                       </td>
                     </tr>
@@ -730,21 +789,21 @@ export default function Customers() {
               </table>
             </div>
             <footer className="purchases-pagination">
-              <span>
-                Showing {startRecord}–{endRecord} of{" "}
-                {new Intl.NumberFormat().format(customers.total)} customers
+              <span className="partner-pagination-count">
+                {t("Showing")} {startRecord}–{endRecord} {t("of")}{" "}
+                {new Intl.NumberFormat().format(customers.total)} {t("customers")}
               </span>
               <div className="purchases-pagination__controls">
                 <button
                   type="button"
                   onClick={() => setPage(customers.currentPage - 1)}
                   disabled={isLoading || customers.currentPage <= 1}
-                  aria-label="Previous page"
+                  aria-label={t("Previous page")}
                 >
-                  <ChevronLeft size={16} aria-hidden="true" /> Previous
+                  <ChevronLeft size={16} aria-hidden="true" /> {t("Previous")}
                 </button>
                 <span>
-                  Page <strong>{customers.currentPage}</strong> of{" "}
+                  {t("Page")} <strong>{customers.currentPage}</strong> {t("of")}{" "}
                   <strong>{customers.lastPage}</strong>
                 </span>
                 <button
@@ -753,9 +812,9 @@ export default function Customers() {
                   disabled={
                     isLoading || customers.currentPage >= customers.lastPage
                   }
-                  aria-label="Next page"
+                  aria-label={t("Next page")}
                 >
-                  Next <ChevronRight size={16} aria-hidden="true" />
+                  {t("Next")} <ChevronRight size={16} aria-hidden="true" />
                 </button>
               </div>
             </footer>
@@ -765,11 +824,7 @@ export default function Customers() {
 
       {selectedCustomerId !== null && (
         <div
-          className="purchase-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget)
-              setSelectedCustomerId(null);
-          }}
+          className="purchase-modal-backdrop partner-detail-backdrop"
         >
           <section
             className="purchase-modal customer-modal"
@@ -779,17 +834,24 @@ export default function Customers() {
           >
             <header className="purchase-modal__header">
               <div>
-                <p className="overview-eyebrow">CUSTOMER DETAILS</p>
+                <p className="overview-eyebrow">{t("CUSTOMER DETAILS")}</p>
                 <h2 id="customer-detail-title">
-                  {customerDetails?.name ?? "Customer"}
+                  {customerDetails?.name ?? t("Customer")}
                 </h2>
-                {customerDetails && <p>Customer #{customerDetails.id}</p>}
+                {customerDetails && (
+                  <p className="partner-detail-id" dir="ltr">
+                    {t("Customer")} #{customerDetails.id}
+                    <span className={`partner-status-badge ${customerDetails.isActive ? "is-active" : "is-inactive"}`}>
+                      {t(customerDetails.isActive ? "Active" : "Inactive")}
+                    </span>
+                  </p>
+                )}
               </div>
               <button
                 type="button"
                 className="purchase-modal__close"
                 onClick={() => setSelectedCustomerId(null)}
-                aria-label="Close details"
+                aria-label={t("Close details")}
               >
                 <X size={19} aria-hidden="true" />
               </button>
@@ -797,7 +859,7 @@ export default function Customers() {
             <div className="purchase-modal__body">
               {isDetailLoading ? (
                 <div className="purchases-state" role="status">
-                  <span className="loading-spinner" /> Loading customer details…
+                  <span className="loading-spinner" /> {t("Loading customer details…")}
                 </div>
               ) : detailError ? (
                 <div
@@ -805,55 +867,93 @@ export default function Customers() {
                   role="alert"
                 >
                   <AlertCircle size={20} aria-hidden="true" />
-                  <span>{detailError}</span>
+                  <span>{t(detailError)}</span>
                   <button
                     type="button"
                     className="purchases-retry"
                     onClick={() => setDetailRetry((current) => current + 1)}
                   >
-                    Try again
+                    {t("Try again")}
                   </button>
                 </div>
               ) : customerDetails ? (
                 <>
-                  <dl className="purchase-detail-grid customer-detail-grid">
-                    <div>
-                      <dt>Name</dt>
-                      <dd>{customerDetails.name}</dd>
-                    </div>
-                    <div>
-                      <dt>Business Name</dt>
-                      <dd>{customerDetails.businessName || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Phone</dt>
-                      <dd>{customerDetails.phone || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Email</dt>
-                      <dd>{customerDetails.email || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Address</dt>
-                      <dd>{customerDetails.address || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Tax Number</dt>
-                      <dd>{customerDetails.taxNumber || "—"}</dd>
-                    </div>
-                  </dl>
-                  <div className="customer-detail-notes">
-                    <strong>Notes</strong>
-                    <p>{customerDetails.notes || "—"}</p>
+                  <div className="partner-detail-contact">
+                    <span><strong>{t("Phone")}</strong> {customerDetails.phone || "—"}</span>
+                    <span dir="ltr"><strong>{t("Email")}</strong> {customerDetails.email || "—"}</span>
+                    <span><strong>{t("Address")}</strong> {customerDetails.address || "—"}</span>
+                  </div>
+                  {partnerActionError && (
+                    <p className="partner-action-feedback is-error" role="alert">
+                      {t(partnerActionError)}
+                    </p>
+                  )}
+                  {success && (
+                    <p className="partner-action-feedback is-success" role="status">
+                      {t(success)}
+                    </p>
+                  )}
+                  <div className="partner-profile-sections">
+                    <section className="partner-profile-section">
+                      <h3>{t("Personal / Partner Information")}</h3>
+                      <dl className="purchase-detail-grid customer-detail-grid">
+                        <div><dt>{t("Name")}</dt><dd>{customerDetails.name}</dd></div>
+                        <div><dt>{t("Partner ID")}</dt><dd dir="ltr">#{customerDetails.id}</dd></div>
+                        <div><dt>{t("Account Status")}</dt><dd>{t(customerDetails.isActive ? "Active" : "Inactive")}</dd></div>
+                      </dl>
+                    </section>
+                    <section className="partner-profile-section">
+                      <h3>{t("Business Information")}</h3>
+                      <dl className="purchase-detail-grid customer-detail-grid">
+                        <div><dt>{t("Business Name")}</dt><dd>{customerDetails.businessName || "—"}</dd></div>
+                      </dl>
+                    </section>
+                    <section className="partner-profile-section">
+                      <h3>{t("Contact Information")}</h3>
+                      <dl className="purchase-detail-grid customer-detail-grid">
+                        <div><dt>{t("Phone")}</dt><dd dir="ltr">{customerDetails.phone || "—"}</dd></div>
+                        <div><dt>{t("Email")}</dt><dd dir="ltr">{customerDetails.email || "—"}</dd></div>
+                        <div><dt>{t("Address")}</dt><dd>{customerDetails.address || "—"}</dd></div>
+                      </dl>
+                    </section>
+                    <section className="partner-profile-section">
+                      <h3>{t("Tax Information")}</h3>
+                      <dl className="purchase-detail-grid customer-detail-grid">
+                        <div><dt>{t("Tax Number")}</dt><dd dir="ltr">{customerDetails.taxNumber || "—"}</dd></div>
+                      </dl>
+                    </section>
+                    <section className="partner-profile-section">
+                      <h3>{t("Notes")}</h3>
+                      <p className="partner-detail-notes">{customerDetails.notes || "—"}</p>
+                    </section>
                   </div>
                   <PartnerStatement partnerId={customerDetails.id} partnerType="Customer" />
-                  <div className="customer-detail-actions">
+                  <div className="customer-detail-actions partner-detail-actions">
                     <button
                       className="purchase-save-button"
                       type="button"
                       onClick={() => openEditForm(customerDetails)}
+                      disabled={isPartnerActionProcessing}
                     >
-                      <Pencil size={15} aria-hidden="true" /> Edit Customer
+                      <Pencil size={15} aria-hidden="true" /> {t("Edit Customer")}
+                    </button>
+                    <button
+                      className="partner-toggle-button"
+                      type="button"
+                      onClick={() => void toggleCustomerStatus(customerDetails)}
+                      disabled={isPartnerActionProcessing}
+                    >
+                      <Power size={15} aria-hidden="true" />
+                      {t(customerDetails.isActive ? "Deactivate" : "Activate")}
+                    </button>
+                    <button
+                      className="partner-delete-button"
+                      type="button"
+                      onClick={() => void deleteCustomer(customerDetails)}
+                      disabled={isPartnerActionProcessing}
+                    >
+                      <Trash2 size={15} aria-hidden="true" />
+                      {t("Delete")}
                     </button>
                   </div>
                 </>
