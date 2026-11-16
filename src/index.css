@@ -48,8 +48,8 @@
   --shadow-card: 0 8px 24px rgb(23 37 84 / 6%);
   --forest: #172554;
   --forest-deep: #172554;
-  --green: #4f46e5;
-  --green-soft: #eef2ff;
+  --green: #15803d;
+  --green-soft: #f0fdf4;
   --ink: #172033;
   --muted: #64748b;
   --line: #e2e8f0;
@@ -772,7 +772,7 @@ input:focus-visible {
 
 @media (max-width: 1000px) {
   .login-shell {
-    grid-template-columns: minmax(350px, 0.92fr) minmax(420px, 1fr);
+    grid-template-columns: minmax(320px, 0.92fr) minmax(400px, 1fr);
   }
 
   .brand-panel {
@@ -7016,7 +7016,7 @@ button[class*="modal-close"] { min-width: 44px; min-height: 44px; flex: 0 0 auto
 .supplier-chat-composer footer button { min-height: 44px; font-size: 15px !important; }
 .partner-portal-nav a { min-height: 42px; font-size: 14px; }
 
-:lang(ps), :lang(fa), [dir="rtl"] {
+:lang(ps), [dir="rtl"] {
   font-family: "Noto Sans Arabic", "Noto Naskh Arabic", Tahoma, "Segoe UI", Arial, sans-serif;
   line-height: 1.8;
 }
@@ -7282,4 +7282,252 @@ button[class*="modal-close"] { min-width: 44px; min-height: 44px; flex: 0 0 auto
   .secretary-shell [role="dialog"][aria-modal="true"] [class*="modal-actions"] button,
   .secretary-shell [role="dialog"][aria-modal="true"] [class*="modal__footer"] button { flex-basis: 100%; }
   .secretary-shell .secretary-breadcrumb strong { max-width: 34vw; }
+}
+
+:root {
+ --color-profit: #15803d;
+ --color-profit-surface: #f0fdf4;
+ --color-loss: #b91c1c;
+ --color-loss-surface: #fef2f2;
+ --color-neutral-value: #64748b;
+ --color-neutral-surface: #f1f5f9;
+ --color-receivable: #0369a1;
+ --color-receivable-surface: #eff6ff;
+ --color-payable: #c2410c;
+ --color-payable-surface: #fff7ed;
+ --color-inventory: #0e7490;
+ --color-inventory-surface: #ecfeff;
+}
+
+.language-switcher {
+ display: inline-flex;
+ min-width: 122px;
+ align-items: center;
+ gap: 7px;
+ color: var(--color-muted);
+ font-size: 13px;
+ font-weight: 650;
+}
+
+.language-switcher select {
+ min-height: 36px;
+ padding: 5px 25px 5px 9px;
+ border: 1px solid var(--color-border);
+ border-radius: 8px;
+ color: var(--color-text);
+ background-color: var(--color-surface);
+ font: inherit;
+}
+
+.login-panel__topline .language-switcher {
+ margin-inline-start: auto;
+}
+
+.secretary-header__user,
+.partner-portal-user {
+ flex-wrap: wrap;
+}
+
+.financial-value--positive {
+ color: var(--color-profit) !important;
+}
+
+.financial-value--negative {
+ color: var(--color-loss) !important;
+}
+
+.financial-value--receivable {
+ color: var(--color-receivable) !important;
+}
+
+.financial-value--payable {
+ color: var(--color-payable) !important;
+}
+
+.financial-value--neutral {
+ color: var(--color-neutral-value) !important;
+}
+
+.reports-metric-card > div:nth-of-type(1) strong {
+ color: var(--color-neutral-value);
+}
+
+.reports-metric-card > div:nth-of-type(2) strong {
+ color: var(--color-receivable);
+}
+
+.reports-metric-card > div:nth-of-type(3) strong {
+ color: var(--color-payable);
+}
+
+.reports-profit-total strong:not(.is-negative):not(.is-neutral) {
+ color: var(--color-profit);
+}
+
+.reports-profit-total strong.is-negative {
+ color: var(--color-loss);
+}
+
+.reports-profit-total strong.is-neutral {
+ color: var(--color-neutral-value);
+}
+
+.overview-card__icon--green {
+ color: var(--color-profit);
+ background: var(--color-profit-surface);
+}
+
+.overview-card__icon--amber {
+ color: var(--color-payable);
+ background: var(--color-payable-surface);
+}
+
+.overview-card__icon--blue {
+ color: var(--color-receivable);
+ background: var(--color-receivable-surface);
+}
+
+.overview-card__icon--violet {
+ color: #6d28d9;
+ background: #f5f3ff;
+}
+
+.reports-purchase-cards article {
+ border-color: #e9d5ff;
+ background: #faf5ff;
+}
+
+.reports-purchase-cards article span {
+ color: #6d28d9;
+}
+
+.reports-purchase-cards article strong {
+ color: #5b21b6;
+}
+
+.inventory-overview__value strong,
+.inventory-status-list strong {
+ color: var(--color-inventory);
+}
+
+.reports-inventory-metrics strong {
+ color: var(--color-inventory);
+}
+
+.reports-inventory-charts .recharts-bar-rectangle path {
+ fill: var(--color-inventory) !important;
+}
+
+html[dir="rtl"] body {
+ text-align: start;
+}
+
+html[dir="rtl"] .secretary-shell,
+html[dir="rtl"] .partner-portal-shell,
+html[dir="rtl"] .login-shell {
+ direction: rtl;
+}
+
+html[dir="rtl"] .secretary-sidebar {
+ right: 0;
+ left: auto;
+ border-right: 0;
+ border-left: 1px solid #24366b;
+}
+
+html[dir="rtl"] .secretary-shell .secretary-main {
+ margin-right: 0;
+ margin-left: 0;
+}
+
+html[dir="rtl"] .secretary-shell--collapsed .secretary-main {
+ margin-right: 0;
+ margin-left: 0;
+}
+
+html[dir="rtl"] .secretary-navigation__item--active::before {
+ right: 0;
+ left: auto;
+}
+
+html[dir="rtl"] .secretary-sidebar__help,
+html[dir="rtl"] .secretary-navigation__item,
+html[dir="rtl"] .secretary-brand,
+html[dir="rtl"] .secretary-header,
+html[dir="rtl"] .secretary-breadcrumb,
+html[dir="rtl"] .partner-portal-header,
+html[dir="rtl"] .partner-portal-nav,
+html[dir="rtl"] .partner-portal-user {
+ direction: rtl;
+}
+
+html[dir="rtl"] .secretary-sidebar__close {
+ margin-right: auto;
+ margin-left: 0;
+}
+
+html[dir="rtl"] .secretary-shell .secretary-sidebar--collapsed {
+ transform-origin: right center;
+}
+
+html[dir="rtl"] :is(input[type="number"], input[type="date"], .currency-value, .financial-value--positive, .financial-value--negative, .financial-value--receivable, .financial-value--payable, .financial-value--neutral) {
+ direction: ltr;
+ text-align: right;
+ unicode-bidi: isolate;
+}
+
+html[dir="rtl"] table,
+html[dir="rtl"] .reports-chart-card,
+html[dir="rtl"] .partner-portal-table-wrap {
+ direction: rtl;
+}
+
+html[dir="rtl"] :is(input:not([type="date"]):not([type="number"]), textarea, select) {
+ text-align: right;
+}
+
+html[dir="rtl"] :is(th, td) {
+ text-align: right;
+}
+
+html[dir="rtl"] .recharts-wrapper {
+ direction: ltr;
+}
+
+@media (max-width: 760px) {
+ .language-switcher {
+   min-width: 0;
+ }
+
+ .language-switcher > span {
+   display: none;
+ }
+
+ .secretary-header__user .language-switcher select,
+ .partner-portal-user .language-switcher select {
+   max-width: 96px;
+ }
+
+ html[dir="rtl"] .secretary-shell .secretary-main,
+ html[dir="rtl"] .secretary-shell--collapsed .secretary-main {
+   margin-right: 0;
+   margin-left: 0;
+ }
+
+ html[dir="rtl"] .secretary-sidebar {
+   right: 0;
+   left: auto;
+   transform: translateX(105%);
+   box-shadow: -15px 0 40px rgb(20 39 27 / 13%);
+ }
+
+ html[dir="rtl"] .secretary-sidebar--mobile-open {
+   transform: translateX(0);
+ }
+
+ html[dir="rtl"] .reports-compact-filter,
+ html[dir="rtl"] .reports-inline-filters {
+   margin-right: 48px;
+   margin-left: 0;
+ }
 }

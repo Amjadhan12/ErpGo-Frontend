@@ -3,6 +3,7 @@ import { AlertCircle, LoaderCircle, MessageCircle, RefreshCw, Send } from "lucid
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import { getErrorMessage, isRecord, optionalText, parseId } from "@/app/InventoryShared";
+import { useLocale } from "@/lib/locale";
 
 type ChatMessage = { id: number; senderId: string; recipientId: string; senderName: string; senderRole: string; message: string; createdAt: string; readAt: string | null };
 type PagedMessages = { messages: ChatMessage[]; page: number; lastPage: number };
@@ -21,13 +22,14 @@ function parseMessages(value: unknown): PagedMessages {
   return { messages: (pagination.data as unknown[]).map(parseMessage), page: typeof pagination.current_page === "number" ? pagination.current_page : 1, lastPage: typeof pagination.last_page === "number" ? pagination.last_page : 1 };
 }
 
-function timestamp(value: string): string {
+function timestamp(value: string, language: "en" | "ps"): string {
   if (!value) return "";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(language === "ps" ? "ps-AF" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 
 export default function CustomerChat() {
+  const { t, language } = useLocale();
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [page, setPage] = useState(1);
@@ -87,26 +89,25 @@ export default function CustomerChat() {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages]);
 
   return <main className="supplier-chat-page">
-    <header className="supplier-chat-heading"><div><p className="overview-eyebrow">CUSTOMER PORTAL</p><h1>Chat with Secretary</h1><p>Messages between your account and the ERPGO Secretary.</p></div><button type="button" className="partner-portal-refresh" onClick={() => { setMessages([]); setPage(1); setRetry((value) => value + 1); }} disabled={loading}><RefreshCw size={15} /> Refresh</button></header>
-    <section className="supplier-chat-card" aria-label="Conversation with Secretary">
-      <header className="supplier-chat-contact"><span><MessageCircle size={19} /></span><div><strong>Secretary</strong><small>ERPGO support</small></div></header>
+    <header className="supplier-chat-heading"><div><p className="overview-eyebrow">{t("CUSTOMER PORTAL")}</p><h1>{t("Chat with Secretary")}</h1><p>{t("Messages between your account and the ERPGO Secretary.")}</p></div><button type="button" className="partner-portal-refresh" onClick={() => { setMessages([]); setPage(1); setRetry((value) => value + 1); }} disabled={loading}><RefreshCw size={15} /> {t("Refresh")}</button></header>
+    <section className="supplier-chat-card" aria-label={t("Conversation with Secretary")}>
+      <header className="supplier-chat-contact"><span><MessageCircle size={19} /></span><div><strong>{t("Secretary")}</strong><small>{t("ERPGO support")}</small></div></header>
       <div className="supplier-chat-messages" aria-live="polite">
-        {lastPage > page && <button className="supplier-chat-older" type="button" disabled={loading} onClick={() => setPage((value) => value + 1)}>Load older messages</button>}
-        {loading && messages.length === 0 ? <div className="supplier-chat-state" role="status"><LoaderCircle className="partner-portal-spin" size={18} /> Loading messages…</div>
-          : error && messages.length === 0 ? <div className="supplier-chat-state supplier-chat-state--error" role="alert"><AlertCircle size={17} />{error}<button type="button" onClick={() => setRetry((value) => value + 1)}>Try again</button></div>
-            : messages.length === 0 ? <div className="supplier-chat-state supplier-chat-state--empty"><MessageCircle size={26} /><strong>No messages yet</strong><span>Send a message to start your conversation.</span></div>
+        {lastPage > page && <button className="supplier-chat-older" type="button" disabled={loading} onClick={() => setPage((value) => value + 1)}>{t("Load older messages")}</button>}
+        {loading && messages.length === 0 ? <div className="supplier-chat-state" role="status"><LoaderCircle className="partner-portal-spin" size={18} /> {t("Loading messages…")}</div>
+          : error && messages.length === 0 ? <div className="supplier-chat-state supplier-chat-state--error" role="alert"><AlertCircle size={17} />{error}<button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Try again")}</button></div>
+            : messages.length === 0 ? <div className="supplier-chat-state supplier-chat-state--empty"><MessageCircle size={26} /><strong>{t("No messages yet")}</strong><span>{t("Send a message to start your conversation.")}</span></div>
               : messages.map((message) => {
                 const sent = message.senderId === String(user?.id);
                 return <article key={message.id} className={`supplier-chat-message${sent ? " supplier-chat-message--sent" : " supplier-chat-message--received"}`}>
-                  <div className="supplier-chat-message-meta"><strong>{sent ? "You" : message.senderName}</strong>{!sent && message.senderRole && <span>{message.senderRole}</span>}</div>
-                  <div className="supplier-chat-bubble"><p>{message.message}</p><time dateTime={message.createdAt}>{timestamp(message.createdAt)}</time></div>
+                  <div className="supplier-chat-message-meta"><strong>{sent ? t("You") : message.senderName}</strong>{!sent && message.senderRole && <span>{message.senderRole}</span>}</div>
+                  <div className="supplier-chat-bubble"><p>{message.message}</p><time dateTime={message.createdAt}>{timestamp(message.createdAt, language)}</time></div>
                 </article>;
               })}
-        {error && messages.length > 0 && <div className="supplier-chat-inline-error" role="alert">{error}<button type="button" onClick={() => setRetry((value) => value + 1)}>Retry</button></div>}
+        {error && messages.length > 0 && <div className="supplier-chat-inline-error" role="alert">{error}<button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Retry")}</button></div>}
         <div ref={endRef} />
       </div>
-      <form className="supplier-chat-composer" onSubmit={(event) => void sendMessage(event)}><textarea value={draft} rows={2} maxLength={10000} aria-label="Message to Secretary" placeholder="Write a message…" disabled={sending} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />{sendError && <p role="alert">{sendError}</p>}<footer><span>Enter to send · Shift + Enter for a new line</span><button type="submit" disabled={sending || !draft.trim()}><Send size={15} />{sending ? "Sending…" : "Send"}</button></footer></form>
+      <form className="supplier-chat-composer" onSubmit={(event) => void sendMessage(event)}><textarea value={draft} rows={2} maxLength={10000} aria-label={t("Message to Secretary")} placeholder={t("Write a message…")} disabled={sending} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />{sendError && <p role="alert">{sendError}</p>}<footer><span>{t("Enter to send · Shift + Enter for a new line")}</span><button type="submit" disabled={sending || !draft.trim()}><Send size={15} /> {t(sending ? "Sending…" : "Send")}</button></footer></form>
     </section>
   </main>;
 }
-

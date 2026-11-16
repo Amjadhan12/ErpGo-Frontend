@@ -29,6 +29,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import { LanguageSwitcher, useLocale } from "@/lib/locale";
 
 interface MenuItem {
   label: string;
@@ -147,6 +148,7 @@ function SidebarBrand({
   title?: string;
   imageUrl?: string;
 }) {
+  const { t } = useLocale();
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
@@ -160,7 +162,7 @@ function SidebarBrand({
       </span>
       <span className="secretary-brand__text">
         <strong>{title || "ERPGO"}</strong>
-        <small>MANAGEMENT SYSTEM</small>
+        <small>{t("MANAGEMENT SYSTEM")}</small>
       </span>
     </div>
   );
@@ -179,6 +181,7 @@ function SecretarySidebar({
   title?: string;
   logoUrl?: string;
 }) {
+  const { t } = useLocale();
   const location = useLocation();
 
   return (
@@ -187,21 +190,21 @@ function SecretarySidebar({
         <button
           className="secretary-overlay"
           type="button"
-          aria-label="Close navigation menu"
+          aria-label={t("Close navigation menu")}
           onClick={onClose}
         />
       )}
       <aside
         className={`secretary-sidebar${collapsed ? " secretary-sidebar--collapsed" : ""}${mobileOpen ? " secretary-sidebar--mobile-open" : ""}`}
         id="secretary-sidebar"
-        aria-label="Secretary navigation"
+        aria-label={t("Secretary navigation")}
       >
         <div className="secretary-sidebar__brand">
           <SidebarBrand title={title} imageUrl={logoUrl} />
           <button
             className="icon-button secretary-sidebar__close"
             type="button"
-            aria-label="Close navigation menu"
+            aria-label={t("Close navigation menu")}
             onClick={onClose}
           >
             <X size={19} aria-hidden="true" />
@@ -211,7 +214,7 @@ function SecretarySidebar({
         <nav className="secretary-navigation">
           {menuGroups.map((group) => (
             <div className="secretary-navigation__group" key={group.label}>
-              <p className="secretary-navigation__heading">{group.label}</p>
+              <p className="secretary-navigation__heading">{t(group.label)}</p>
               {group.items.map(({ label, icon: Icon }) => {
                 const route = routeByLabel[label] ?? null;
                 const isActive =
@@ -232,7 +235,7 @@ function SecretarySidebar({
                       onClick={onClose}
                     >
                       <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
-                      <span>{label}</span>
+                      <span>{t(label)}</span>
                     </NavLink>
                   );
                 }
@@ -243,15 +246,15 @@ function SecretarySidebar({
                     type="button"
                     key={label}
                     disabled
-                    aria-label={`${label} — not available yet`}
+                    aria-label={`${t(label)} — ${t("not available yet")}`}
                     title={
-                      collapsed ? `${label} — not available yet` : undefined
+                      collapsed ? `${t(label)} — ${t("not available yet")}` : undefined
                     }
                   >
                     <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
-                    <span>{label}</span>
+                    <span>{t(label)}</span>
                     {!collapsed && (
-                      <span className="secretary-navigation__later">Soon</span>
+                      <span className="secretary-navigation__later">{t("Soon")}</span>
                     )}
                   </button>
                 );
@@ -265,8 +268,8 @@ function SecretarySidebar({
             <CircleHelp size={17} aria-hidden="true" />
           </span>
           <span className="secretary-sidebar__help-copy">
-            <strong>Need a hand?</strong>
-            <small>Your workspace is ready to grow.</small>
+            <strong>{t("Need a hand?")}</strong>
+            <small>{t("Your workspace is ready to grow.")}</small>
           </span>
         </div>
       </aside>
@@ -275,6 +278,7 @@ function SecretarySidebar({
 }
 
 export default function SecretaryLayout() {
+  const { t } = useLocale();
   const { user, companyBranding, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -354,24 +358,24 @@ export default function SecretaryLayout() {
               className="icon-button secretary-header__menu"
               type="button"
               onClick={toggleSidebar}
-              aria-label={
+              aria-label={t(
                 isMobileViewport
                   ? mobileOpen
                     ? "Close navigation menu"
                     : "Open navigation menu"
                   : collapsed
                     ? "Expand navigation sidebar"
-                    : "Collapse navigation sidebar"
-              }
+                    : "Collapse navigation sidebar",
+              )}
               aria-expanded={isMobileViewport ? mobileOpen : !collapsed}
               aria-controls="secretary-sidebar"
             >
               <Menu size={20} aria-hidden="true" />
             </button>
             <div className="secretary-breadcrumb">
-              <span>Workspace</span>
+              <span>{t("Workspace")}</span>
               <ChevronDown size={14} aria-hidden="true" />
-              <strong>{pageTitle}</strong>
+              <strong>{t(pageTitle)}</strong>
             </div>
           </div>
 
@@ -382,20 +386,21 @@ export default function SecretaryLayout() {
               </span>
               <span className="secretary-user__info">
                 <strong>{user.name}</strong>
-                <small>Secretary</small>
+                <small>{t("Secretary")}</small>
               </span>
             </div>
+            <LanguageSwitcher />
             <span className="secretary-header__divider" aria-hidden="true" />
             <button
               className="secretary-logout"
               type="button"
               onClick={() => void handleSignOut()}
               disabled={isSigningOut}
-              aria-label="Log out"
-              title="Log out"
+              aria-label={t("Log out")}
+              title={t("Log out")}
             >
               <LogOut size={17} aria-hidden="true" />
-              <span>{isSigningOut ? "Signing out…" : "Log out"}</span>
+              <span>{t(isSigningOut ? "Signing out…" : "Log out")}</span>
             </button>
           </div>
         </header>
@@ -403,7 +408,7 @@ export default function SecretaryLayout() {
           <Outlet />
         </main>
 
-        <footer className="secretary-footer">ERPGO Management System</footer>
+        <footer className="secretary-footer">{t("ERPGO Management System")}</footer>
       </div>
     </div>
   );

@@ -13,6 +13,8 @@ import {
   Wallet,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { useLocale } from '@/lib/locale'
+import { financialValueClass } from '@/lib/financial'
 
 type Resource<T> =
   | { status: 'loading' }
@@ -328,14 +330,16 @@ function SummaryCard({
   totalCount,
   note,
 }: SummaryCardProps) {
+  const { t } = useLocale()
+
   return (
     <article className="overview-card">
       <div className={`overview-card__icon overview-card__icon--${color}`}>
         <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
       </div>
-      <h2>{title}</h2>
+      <h2>{t(title)}</h2>
       {resource.status === 'loading' ? (
-        <div className="overview-skeleton" aria-label={`Loading ${title.toLowerCase()}`} />
+        <div className="overview-skeleton" aria-label={`${t("Loading")} ${t(title).toLowerCase()}`} />
       ) : resource.status === 'error' ? (
         <p className="overview-card__message overview-card__message--error" role="alert">
           {resource.message}
@@ -344,12 +348,12 @@ function SummaryCard({
         <>
           {totalCount !== undefined && (
             <p className="overview-card__total-count">
-              <span>Total purchases</span>
+              <span>{t("Total purchases")}</span>
               <strong>{formatInteger(totalCount)}</strong>
             </p>
           )}
           {resource.data.length === 0 ? (
-            <p className="overview-card__message">{emptyMessage}</p>
+            <p className="overview-card__message">{t(emptyMessage)}</p>
           ) : (
             <ul className="overview-amount-list">
               {resource.data.map(({ currency, amount }, index) => (
@@ -380,19 +384,21 @@ function ReportPanel({
   resource: Resource<unknown>
   children: ReactNode
 }) {
+  const { t } = useLocale()
+
   return (
     <section className="overview-panel">
       <div className="overview-panel__header">
         <span className="overview-panel__icon"><Icon size={18} aria-hidden="true" /></span>
         <div>
-          <h2>{title}</h2>
-          <p>{description}</p>
+          <h2>{t(title)}</h2>
+          <p>{t(description)}</p>
         </div>
       </div>
       {resource.status === 'loading' ? (
         <div className="overview-panel__loading" role="status">
           <span className="loading-spinner" />
-          <span>Loading report…</span>
+          <span>{t("Loading report…")}</span>
         </div>
       ) : resource.status === 'error' ? (
         <div className="overview-empty overview-empty--error" role="alert">
@@ -405,6 +411,7 @@ function ReportPanel({
 }
 
 export default function SecretaryOverview() {
+  const { t } = useLocale()
   const [overview, setOverview] = useState(initialOverview)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -468,10 +475,10 @@ export default function SecretaryOverview() {
     <div className="overview-page">
       <header className="overview-heading">
         <div>
-          <p className="overview-eyebrow">WORKSPACE</p>
-          <h1>Overview</h1>
+          <p className="overview-eyebrow">{t("WORKSPACE")}</p>
+          <h1>{t("Overview")}</h1>
           <p className="overview-heading__description">
-            A current view of your business balances and operations.
+            {t("A current view of your business balances and operations.")}
           </p>
         </div>
         <button
@@ -479,23 +486,23 @@ export default function SecretaryOverview() {
           type="button"
           onClick={() => void refresh()}
           disabled={isRefreshing}
-          aria-label="Refresh dashboard overview"
+          aria-label={t("Refresh dashboard overview")}
         >
           <RefreshCw size={16} className={isRefreshing ? 'overview-refresh__spinning' : ''} aria-hidden="true" />
-          <span>{isRefreshing ? 'Refreshing…' : 'Refresh'}</span>
+          <span>{t(isRefreshing ? 'Refreshing…' : 'Refresh')}</span>
         </button>
       </header>
 
-      <section className="overview-section" aria-label="Financial balances">
+      <section className="overview-section" aria-label={t("Financial balances")}>
         <div className="overview-section__heading">
-          <h2>Financial balances</h2>
-          <p>Balances are grouped by currency and shown separately.</p>
+          <h2>{t("Financial balances")}</h2>
+          <p>{t("Balances are grouped by currency and shown separately.")}</p>
         </div>
         <div className="overview-cards">
           <SummaryCard
             title="Customer Receivables"
             icon={ArrowDownRight}
-            color="green"
+            color="blue"
             resource={receivables}
             emptyMessage="No receivables recorded."
           />
@@ -523,7 +530,7 @@ export default function SecretaryOverview() {
           <SummaryCard
             title="Total Purchases"
             icon={ShoppingCart}
-            color="green"
+            color="violet"
             resource={purchaseAmounts}
             emptyMessage="No posted purchases recorded."
             totalCount={purchaseSummary?.totalPurchaseCount}
@@ -542,17 +549,17 @@ export default function SecretaryOverview() {
           {inventory && (
             <div className="inventory-overview">
               <div className="inventory-overview__value">
-                <span>Inventory records</span>
+                <span>{t("Inventory records")}</span>
                 <strong>{formatNumber(inventory.inventoryRecords)}</strong>
               </div>
               <div className="inventory-overview__value">
-                <span>Stock value</span>
+                <span>{t("Stock value")}</span>
                 <strong>{formatCurrencyAmount(inventory.totalStockValueAfn, 'AFN')}</strong>
               </div>
               <div className="inventory-status-list">
-                <div><span className="inventory-status-dot inventory-status-dot--in" /> In stock <strong>{formatNumber(inventory.inStockCount)}</strong></div>
-                <div><span className="inventory-status-dot inventory-status-dot--low" /> Low stock <strong>{formatNumber(inventory.lowStockCount)}</strong></div>
-                <div><span className="inventory-status-dot inventory-status-dot--out" /> Out of stock <strong>{formatNumber(inventory.outOfStockCount)}</strong></div>
+                <div><span className="inventory-status-dot inventory-status-dot--in" /> {t("In stock")} <strong>{formatNumber(inventory.inStockCount)}</strong></div>
+                <div><span className="inventory-status-dot inventory-status-dot--low" /> {t("Low stock")} <strong>{formatNumber(inventory.lowStockCount)}</strong></div>
+                <div><span className="inventory-status-dot inventory-status-dot--out" /> {t("Out of stock")} <strong>{formatNumber(inventory.outOfStockCount)}</strong></div>
               </div>
             </div>
           )}
@@ -567,15 +574,15 @@ export default function SecretaryOverview() {
           {profitLoss && (
             <div className="overview-report-values">
               <div>
-                <span>Gross sales</span>
+                <span>{t("Gross sales")}</span>
                 <strong>{formatCurrencyAmount(profitLoss.grossSales, profitLoss.currency)}</strong>
               </div>
               <div>
-                <span>Sales returns</span>
+                <span>{t("Sales returns")}</span>
                 <strong>{formatCurrencyAmount(profitLoss.salesReturns, profitLoss.currency)}</strong>
               </div>
               <div className="overview-report-values__highlight">
-                <span>Net revenue</span>
+                <span>{t("Net revenue")}</span>
                 <strong>{formatCurrencyAmount(profitLoss.netRevenue, profitLoss.currency)}</strong>
               </div>
             </div>
@@ -591,20 +598,20 @@ export default function SecretaryOverview() {
           {profitLoss && (
             <div className="overview-report-values">
               <div>
-                <span>Gross profit</span>
-                <strong>{formatCurrencyAmount(profitLoss.grossProfit, profitLoss.currency)}</strong>
+                <span>{t("Gross profit")}</span>
+                <strong className={financialValueClass(profitLoss.grossProfit, "income")}>{formatCurrencyAmount(profitLoss.grossProfit, profitLoss.currency)}</strong>
               </div>
               <div>
-                <span>Operating expenses</span>
+                <span>{t("Operating expenses")}</span>
                 <strong>{formatCurrencyAmount(profitLoss.operatingExpenses, profitLoss.currency)}</strong>
               </div>
               <div>
-                <span>Stock wastage cost</span>
+                <span>{t("Stock wastage cost")}</span>
                 <strong>{formatCurrencyAmount(profitLoss.stockWastageCost, profitLoss.currency)}</strong>
               </div>
               <div className="overview-report-values__highlight">
-                <span>Net profit</span>
-                <strong>{formatCurrencyAmount(profitLoss.netProfit, profitLoss.currency)}</strong>
+                <span>{t("Net profit")}</span>
+                <strong className={financialValueClass(profitLoss.netProfit, "income")}>{formatCurrencyAmount(profitLoss.netProfit, profitLoss.currency)}</strong>
               </div>
             </div>
           )}
@@ -613,7 +620,7 @@ export default function SecretaryOverview() {
       </section>
 
       <p className="overview-footnote">
-        Cash and bank balances are based on the account types returned by the backend. Recent activity is omitted because no suitable recent-activity API is available.
+        {t("Cash and bank balances are based on the account types returned by the backend. Recent activity is omitted because no suitable recent-activity API is available.")}
       </p>
     </div>
   )

@@ -3,6 +3,8 @@ import { AlertCircle, LoaderCircle, RefreshCw, UserRound } from "lucide-react";
 import type { UserRole } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import { getErrorMessage, isRecord, numberValue, optionalText, parseId } from "@/app/InventoryShared";
+import { useLocale } from "@/lib/locale";
+import { financialValueClass } from "@/lib/financial";
 
 type PortalRole = Extract<UserRole, "Customer" | "Supplier">;
 type PortalProfile = { name: string; businessName: string | null; phone: string | null; email: string | null; address: string | null };
@@ -57,12 +59,13 @@ function money(amount: number, currency: string): string {
   catch { return `${amount.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`; }
 }
 
-function dateLabel(value: string): string {
+function dateLabel(value: string, language: "en" | "ps"): string {
   const parsed = new Date(`${value.slice(0, 10)}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(parsed);
+  return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat(language === "ps" ? "ps-AF" : "en-US", { year: "numeric", month: "short", day: "numeric" }).format(parsed);
 }
 
 export default function PartnerPortal({ role }: { role: PortalRole }) {
+  const { t, language } = useLocale();
   const [data, setData] = useState<PortalData | null>(null);
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
@@ -87,27 +90,27 @@ export default function PartnerPortal({ role }: { role: PortalRole }) {
   }, [config.balanceEndpoint, config.path, page, retry, role]);
 
   const balanceDescription = (value: PortalBalance): string => {
-    if (value.balanceType === "settled") return "Settled";
-    if (role === "Customer") return value.balanceType === "customer_owes_us" ? "You owe the company" : "The company owes you";
-    return value.balanceType === "we_owe_supplier" ? "The company owes you" : "You owe the company";
+    if (value.balanceType === "settled") return t("Settled");
+    if (role === "Customer") return t(value.balanceType === "customer_owes_us" ? "You owe the company" : "The company owes you");
+    return t(value.balanceType === "we_owe_supplier" ? "The company owes you" : "You owe the company");
   };
 
   return <main className="partner-portal-page">
     <div className="partner-portal-content">
-      <header className="partner-portal-heading"><div><p className="overview-eyebrow">{role.toUpperCase()} ACCOUNT</p><h1>{role} portal</h1><p>Your account profile, balances, and transaction history.</p></div><button className="partner-portal-refresh" type="button" onClick={() => setRetry((value) => value + 1)} disabled={loading}><RefreshCw size={16} /> Refresh</button></header>
-      {loading ? <div className="partner-portal-state" role="status"><LoaderCircle className="partner-portal-spin" size={20} /> Loading your account…</div>
-        : error ? <div className="partner-portal-state partner-portal-state--error" role="alert"><AlertCircle size={18} /><span>{error}</span><button type="button" onClick={() => setRetry((value) => value + 1)}>Try again</button></div>
+      <header className="partner-portal-heading"><div><p className="overview-eyebrow">{t(role === "Customer" ? "CUSTOMER ACCOUNT" : "SUPPLIER ACCOUNT")}</p><h1>{t(role === "Customer" ? "Customer portal" : "Supplier portal")}</h1><p>{t("Your account profile, balances, and transaction history.")}</p></div><button className="partner-portal-refresh" type="button" onClick={() => setRetry((value) => value + 1)} disabled={loading}><RefreshCw size={16} /> {t("Refresh")}</button></header>
+      {loading ? <div className="partner-portal-state" role="status"><LoaderCircle className="partner-portal-spin" size={20} /> {t("Loading your account…")}</div>
+        : error ? <div className="partner-portal-state partner-portal-state--error" role="alert"><AlertCircle size={18} /><span>{error}</span><button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Try again")}</button></div>
           : data && <>
             <section className="partner-portal-profile" aria-labelledby="portal-profile-title"><span className="partner-portal-profile-icon"><UserRound size={21} /></span><div><h2 id="portal-profile-title">{data.profile.name}</h2>{data.profile.businessName && <p>{data.profile.businessName}</p>}<div className="partner-portal-contact">{data.profile.phone && <span>{data.profile.phone}</span>}{data.profile.email && <span>{data.profile.email}</span>}{data.profile.address && <span>{data.profile.address}</span>}</div></div></section>
-            <section className="partner-portal-section"><header><div><h2>Balances by currency</h2><p>Each currency is shown separately.</p></div></header>
-              {data.balances.length === 0 ? <div className="partner-portal-empty">No balances are available.</div> : <div className="partner-portal-balances">{data.balances.map((balance) => <article key={balance.currency}><div className="partner-portal-currency"><strong>{balance.currency}</strong><span>{balance.currencyName}</span></div><div className="partner-portal-balance-main"><small>Current balance</small><strong>{money(balance.balance, balance.currency)}</strong><span>{balanceDescription(balance)}</span></div><dl><div><dt>Opening balance</dt><dd>{money(balance.opening, balance.currency)}</dd></div><div><dt>Total debit</dt><dd>{money(balance.debit, balance.currency)}</dd></div><div><dt>Total credit</dt><dd>{money(balance.credit, balance.currency)}</dd></div></dl></article>)}</div>}
+            <section className="partner-portal-section"><header><div><h2>{t("Balances by currency")}</h2><p>{t("Each currency is shown separately.")}</p></div></header>
+              {data.balances.length === 0 ? <div className="partner-portal-empty">{t("No balances are available.")}</div> : <div className="partner-portal-balances">{data.balances.map((balance) => <article key={balance.currency}><div className="partner-portal-currency"><strong>{balance.currency}</strong><span>{balance.currencyName}</span></div><div className="partner-portal-balance-main"><small>{t("Current balance")}</small><strong className={financialValueClass(balance.balance, "balance")}>{money(balance.balance, balance.currency)}</strong><span>{balanceDescription(balance)}</span></div><dl><div><dt>{t("Opening balance")}</dt><dd>{money(balance.opening, balance.currency)}</dd></div><div><dt>{t("Total debit")}</dt><dd>{money(balance.debit, balance.currency)}</dd></div><div><dt>{t("Total credit")}</dt><dd>{money(balance.credit, balance.currency)}</dd></div></dl></article>)}</div>}
             </section>
-            <section className="partner-portal-section"><header><div><h2>Opening balances</h2><p>Initial amounts recorded for your account.</p></div></header>
-              {data.openings.length === 0 ? <div className="partner-portal-empty">No opening balances are recorded.</div> : <div className="partner-portal-table-wrap"><table className="partner-portal-table"><thead><tr><th>Date</th><th>Currency</th><th>Amount</th><th>Notes</th></tr></thead><tbody>{data.openings.map((opening) => <tr key={opening.id}><td>{dateLabel(opening.date)}</td><td>{opening.currency}</td><td><strong>{money(opening.amount, opening.currency)}</strong></td><td>{opening.notes || "—"}</td></tr>)}</tbody></table></div>}
+            <section className="partner-portal-section"><header><div><h2>{t("Opening balances")}</h2><p>{t("Initial amounts recorded for your account.")}</p></div></header>
+              {data.openings.length === 0 ? <div className="partner-portal-empty">{t("No opening balances are recorded.")}</div> : <div className="partner-portal-table-wrap"><table className="partner-portal-table"><thead><tr><th>{t("Date")}</th><th>{t("Currency")}</th><th>{t("Amount")}</th><th>{t("Notes")}</th></tr></thead><tbody>{data.openings.map((opening) => <tr key={opening.id}><td>{dateLabel(opening.date, language)}</td><td>{opening.currency}</td><td><strong>{money(opening.amount, opening.currency)}</strong></td><td>{opening.notes || "—"}</td></tr>)}</tbody></table></div>}
             </section>
-            <section className="partner-portal-section"><header><div><h2>Transaction history</h2><p>{data.transactions.total} transaction{data.transactions.total === 1 ? "" : "s"}</p></div></header>
-              {data.transactions.rows.length === 0 ? <div className="partner-portal-empty">No transactions recorded.</div> : <div className="partner-portal-table-wrap"><table className="partner-portal-table"><thead><tr><th>Date</th><th>Type</th><th>Direction</th><th>Currency</th><th>Amount</th><th>Reference / description</th></tr></thead><tbody>{data.transactions.rows.map((transaction) => <tr key={transaction.id}><td>{dateLabel(transaction.date)}</td><td>{transaction.type.replaceAll("_", " ")}</td><td>{transaction.direction}</td><td>{transaction.currency}</td><td><strong>{money(transaction.amount, transaction.currency)}</strong></td><td>{[transaction.referenceType, transaction.referenceId === null ? null : `#${transaction.referenceId}`, transaction.description].filter(Boolean).join(" · ") || "—"}</td></tr>)}</tbody></table></div>}
-              {data.transactions.lastPage > 1 && <div className="partner-portal-pagination"><span>Page {data.transactions.page} of {data.transactions.lastPage}</span><div><button type="button" disabled={data.transactions.page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button><button type="button" disabled={data.transactions.page >= data.transactions.lastPage} onClick={() => setPage((value) => value + 1)}>Next</button></div></div>}
+            <section className="partner-portal-section"><header><div><h2>{t("Transaction history")}</h2><p>{data.transactions.total} {t(data.transactions.total === 1 ? "transaction" : "transactions")}</p></div></header>
+              {data.transactions.rows.length === 0 ? <div className="partner-portal-empty">{t("No transactions recorded.")}</div> : <div className="partner-portal-table-wrap"><table className="partner-portal-table"><thead><tr><th>{t("Date")}</th><th>{t("Type")}</th><th>{t("Direction")}</th><th>{t("Currency")}</th><th>{t("Amount")}</th><th>{t("Reference / description")}</th></tr></thead><tbody>{data.transactions.rows.map((transaction) => <tr key={transaction.id}><td>{dateLabel(transaction.date, language)}</td><td>{transaction.type.replaceAll("_", " ")}</td><td>{transaction.direction}</td><td>{transaction.currency}</td><td><strong>{money(transaction.amount, transaction.currency)}</strong></td><td>{[transaction.referenceType, transaction.referenceId === null ? null : `#${transaction.referenceId}`, transaction.description].filter(Boolean).join(" · ") || "—"}</td></tr>)}</tbody></table></div>}
+              {data.transactions.lastPage > 1 && <div className="partner-portal-pagination"><span>{t("Page")} {data.transactions.page} {t("of")} {data.transactions.lastPage}</span><div><button type="button" disabled={data.transactions.page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>{t("Previous")}</button><button type="button" disabled={data.transactions.page >= data.transactions.lastPage} onClick={() => setPage((value) => value + 1)}>{t("Next")}</button></div></div>}
             </section>
           </>}
     </div>

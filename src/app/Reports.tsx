@@ -3,6 +3,8 @@ import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveCo
 import { BarChart3, Boxes, CircleDollarSign, RefreshCw, TrendingUp, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
 import { fetchAllPages, formatQuantity, getErrorMessage, isRecord, loadWarehouses, numberValue, parseId, type InventoryWarehouseOption } from "@/app/InventoryShared";
+import { useLocale } from "@/lib/locale";
+import { financialChartColor, financialValueClass } from "@/lib/financial";
 
 type Currency = { id: number; code: string; name: string; decimals: number };
 type RequestParams = Record<string, string | number | undefined>;
@@ -171,14 +173,16 @@ function moneyTick(amount: number): string { return new Intl.NumberFormat(undefi
 function localToday(): string { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function agingLabel(value: string): string { return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 function SectionState<T>({ report, children }: { report: ReportState<T>; children: (data: T) => React.ReactNode }) {
-  if (report.loading) return <div className="reports-state" role="status">Loading report…</div>;
-  if (report.error) return <div className="reports-state reports-state--error" role="alert">{report.error}<button type="button" onClick={report.reload}>Try again</button></div>;
-  if (!report.data) return <div className="reports-state">No report data available.</div>;
+  const { t } = useLocale();
+  if (report.loading) return <div className="reports-state" role="status">{t("Loading report…")}</div>;
+  if (report.error) return <div className="reports-state reports-state--error" role="alert">{report.error}<button type="button" onClick={report.reload}>{t("Try again")}</button></div>;
+  if (!report.data) return <div className="reports-state">{t("No report data available.")}</div>;
   return <>{children(report.data)}</>;
 }
-const chartColors = ["#477653", "#83a36f", "#d7a65d", "#6d91b4", "#bd7867", "#9296b7", "#6aa29b"];
+const chartColors = ["#0891b2", "#0e7490", "#22d3ee", "#155e75", "#67e8f9", "#164e63", "#a5f3fc"];
 
 export default function Reports() {
+  const { t, language } = useLocale();
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseOption[]>([]);
   const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -231,7 +235,7 @@ export default function Reports() {
   const partnerCurrencies = useMemo(() => [...new Set((partners.data ?? []).flatMap((partner) => partner.balances.map((balance) => balance.currency)))].sort(), [partners.data]);
   const visiblePartners = useMemo(() => (partners.data ?? []).flatMap((partner) => {
     const balance = partner.balances.find((item) => item.currency === partnerCurrency);
-    return balance ? [{ name: partner.name, type: partner.partnerType, balance: balance.balance, balanceType: balance.balanceType }] : [];
+    return balance ? [{ id: partner.id, name: partner.name, type: partner.partnerType, balance: balance.balance, balanceType: balance.balanceType }] : [];
   }).sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance)).slice(0, 15), [partners.data, partnerCurrency]);
   const partnerAgingRows = useMemo(() => (partnerAging.data?.partners ?? []).flatMap((partner): PartnerAgingTableRow[] => partner.currencies.length
     ? partner.currencies.map((currency) => ({ key: `${partner.id}-${currency.currencyId}`, partner, currency }))
@@ -263,11 +267,13 @@ export default function Reports() {
   function applyPeriod() {
     let nextFrom = "";
     let nextTo = "";
-    let nextLabel = "All dates";
+    let nextLabel = t("All dates");
     if (periodMode === "custom") {
       if (fromDraft && toDraft && toDraft < fromDraft) { setDateError("To date must be on or after the from date."); return; }
       nextFrom = fromDraft; nextTo = toDraft;
-      nextLabel = nextFrom || nextTo ? `Custom range: ${nextFrom || "Any date"} – ${nextTo || "Any date"}` : "All dates";
+      nextLabel = nextFrom || nextTo
+        ? `${t("Custom range:")} ${nextFrom || t("Any date")} – ${nextTo || t("Any date")}`
+        : t("All dates");
     } else if (periodMode === "monthly") {
       if (!Number.isInteger(periodYear) || periodYear < 1 || periodYear > 9999 || !Number.isInteger(periodMonth) || periodMonth < 1 || periodMonth > 12) {
         setDateError("Choose a valid month and year."); return;
@@ -277,63 +283,336 @@ export default function Reports() {
       const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
       const lastDay = daysInMonth[periodMonth - 1];
       nextTo = `${String(periodYear).padStart(4, "0")}-${String(periodMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-      nextLabel = `Monthly: ${new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2000, periodMonth - 1, 1))} ${periodYear}`;
+      nextLabel = `${t("Monthly:")} ${new Intl.DateTimeFormat(language === "ps" ? "ps-AF" : "en-US", { month: "long" }).format(new Date(2000, periodMonth - 1, 1))} ${periodYear}`;
     } else {
       if (!Number.isInteger(periodYear) || periodYear < 1 || periodYear > 9999) { setDateError("Choose a valid year."); return; }
       nextFrom = `${String(periodYear).padStart(4, "0")}-01-01`;
       nextTo = `${String(periodYear).padStart(4, "0")}-12-31`;
-      nextLabel = `Yearly: ${periodYear}`;
+      nextLabel = `${t("Yearly:")} ${periodYear}`;
     }
     setDateError(null); setFromDraft(nextFrom); setToDraft(nextTo); setFromDate(nextFrom); setToDate(nextTo); setPeriodLabel(nextLabel);
   }
-  function resetDates() { setPeriodMode("custom"); setFromDraft(""); setToDraft(""); setFromDate(""); setToDate(""); setPeriodLabel("All dates"); setDateError(null); }
+  function resetDates() { setPeriodMode("custom"); setFromDraft(""); setToDraft(""); setFromDate(""); setToDate(""); setPeriodLabel(t("All dates")); setDateError(null); }
 
   return <div className="reports-page">
-    <header className="reports-heading"><div><p className="reports-eyebrow">ANALYTICS</p><h1>Reports</h1><p>Explore financial performance, cash movement, inventory, partners, and purchases.</p></div><button className="reports-refresh" type="button" onClick={() => { financial.reload(); profitLoss.reload(); cashFlow.reload(); inventory.reload(); partners.reload(); purchases.reload(); partnerAging.reload(); }}><RefreshCw size={16} /> Refresh reports</button></header>
-    <section className="reports-date-filter"><div className="reports-period-copy"><strong>Report period</strong><span>Applies to Profit & Loss, Cash Flow, and Purchase Summary.</span><small>Applied: {periodLabel}</small></div><label>Period<select value={periodMode} onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}><option value="custom">Custom Range</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>{periodMode === "custom" ? <><label>From<input type="date" value={fromDraft} max={toDraft || undefined} onChange={(event) => setFromDraft(event.target.value)} /></label><label>To<input type="date" value={toDraft} min={fromDraft || undefined} onChange={(event) => setToDraft(event.target.value)} /></label></> : <>{periodMode === "monthly" && <label>Month<select value={periodMonth} onChange={(event) => setPeriodMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2020, index, 1))}</option>)}</select></label>}<label>Year<input type="number" min="1" max="9999" value={periodYear} onChange={(event) => setPeriodYear(Number(event.target.value))} /></label></>}<div className="reports-filter-buttons"><button type="button" className="reports-reset" onClick={resetDates}>Reset</button><button type="button" className="reports-apply" onClick={applyPeriod}>Apply period</button></div>{dateError && <span className="reports-date-error" role="alert">{dateError}</span>}</section>
-    {optionsError && <div className="reports-options-error" role="alert">Some filter options could not be loaded: {optionsError}</div>}
+    <header className="reports-heading"><div><p className="reports-eyebrow">{t("ANALYTICS")}</p><h1>{t("Reports")}</h1><p>{t("Explore financial performance, cash movement, inventory, partners, and purchases.")}</p></div><button className="reports-refresh" type="button" onClick={() => { financial.reload(); profitLoss.reload(); cashFlow.reload(); inventory.reload(); partners.reload(); purchases.reload(); partnerAging.reload(); }}><RefreshCw size={16} /> {t("Refresh reports")}</button></header>
+    <section className="reports-date-filter"><div className="reports-period-copy"><strong>{t("Report period")}</strong><span>{t("Applies to Profit & Loss, Cash Flow, and Purchase Summary.")}</span><small>{t("Applied:")} {periodLabel}</small></div><label>{t("Period")}<select value={periodMode} onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}><option value="custom">{t("Custom Range")}</option><option value="monthly">{t("Monthly")}</option><option value="yearly">{t("Yearly")}</option></select></label>{periodMode === "custom" ? <><label>{t("From")}<input type="date" value={fromDraft} max={toDraft || undefined} onChange={(event) => setFromDraft(event.target.value)} /></label><label>{t("To")}<input type="date" value={toDraft} min={fromDraft || undefined} onChange={(event) => setToDraft(event.target.value)} /></label></> : <>{periodMode === "monthly" && <label>{t("Month")}<select value={periodMonth} onChange={(event) => setPeriodMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2020, index, 1))}</option>)}</select></label>}<label>{t("Year")}<input type="number" min="1" max="9999" value={periodYear} onChange={(event) => setPeriodYear(Number(event.target.value))} /></label></>}<div className="reports-filter-buttons"><button type="button" className="reports-reset" onClick={resetDates}>{t("Reset")}</button><button type="button" className="reports-apply" onClick={applyPeriod}>{t("Apply period")}</button></div>{dateError && <span className="reports-date-error" role="alert">{t(dateError)}</span>}</section>
+    {optionsError && <div className="reports-options-error" role="alert">{t("Some filter options could not be loaded:")} {optionsError}</div>}
 
-    <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><Wallet size={19} /></div><div><h2>Financial summary</h2><p>Balances grouped by currency. Amounts are never combined across currencies.</p></div><label className="reports-compact-filter">Currency<select value={financialCurrency} onChange={(event) => setFinancialCurrency(event.target.value)}><option value="">All currencies</option>{currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code}</option>)}</select></label></div>
-      <SectionState report={financial}>{(data) => <><div className="reports-metric-grid">{financialCodes.map((code) => { const cash = data.cash.find((row) => row.currency === code); const receivable = data.customerReceivables[code] ?? 0; const payable = data.supplierPayables[code] ?? 0; return <article className="reports-metric-card" key={code}><span className="reports-currency-label">{code}</span><div><small>Cash & bank</small><strong>{money(cash?.balance ?? 0, code)}</strong></div><div><small>Customer receivables</small><strong>{money(receivable, code)}</strong></div><div><small>Supplier payables</small><strong>{money(payable, code)}</strong></div></article>; })}</div><div className="reports-chart-grid">{financialCodes.map((code) => { const cash = data.cash.find((row) => row.currency === code); const chartData = [{ name: "Cash & bank", amount: cash?.balance ?? 0 }, { name: "Receivables", amount: data.customerReceivables[code] ?? 0 }, { name: "Payables", amount: data.supplierPayables[code] ?? 0 }]; return <div className="reports-chart-card" key={code}><h3>{code} balances</h3><ResponsiveContainer width="100%" height={250}><BarChart data={chartData} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 13 }} interval={0} /><YAxis tickFormatter={moneyTick} tick={{ fontSize: 13 }} /><Tooltip formatter={(value) => money(Number(value), code)} /><Legend /><Bar dataKey="amount" name={`Amount (${code})`} fill="#477653" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div>; })}</div></>}</SectionState>
+    <section className="reports-section">
+      <div className="reports-section-heading">
+        <div className="reports-icon"><Wallet size={19} /></div>
+        <div>
+          <h2>{t("Financial summary")}</h2>
+          <p>{t("Balances grouped by currency. Amounts are never combined across currencies.")}</p>
+        </div>
+        <label className="reports-compact-filter">{t("Currency")}
+          <select value={financialCurrency} onChange={(event) => setFinancialCurrency(event.target.value)}>
+            <option value="">{t("All currencies")}</option>
+            {currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code}</option>)}
+          </select>
+        </label>
+      </div>
+      <SectionState report={financial}>{(data) => <>
+        <div className="reports-metric-grid">
+          {financialCodes.map((code) => {
+            const cash = data.cash.find((row) => row.currency === code);
+            const cashBalance = cash?.balance ?? 0;
+            const receivable = data.customerReceivables[code] ?? 0;
+            const payable = data.supplierPayables[code] ?? 0;
+            return <article className="reports-metric-card" key={code}>
+              <span className="reports-currency-label">{code}</span>
+              <div><small>{t("Cash & bank")}</small><strong className={financialValueClass(cashBalance, "balance")}>{money(cashBalance, code)}</strong></div>
+              <div><small>{t("Customer receivables")}</small><strong className={financialValueClass(receivable, "receivable")}>{money(receivable, code)}</strong></div>
+              <div><small>{t("Supplier payables")}</small><strong className={financialValueClass(payable, "payable")}>{money(payable, code)}</strong></div>
+            </article>;
+          })}
+        </div>
+        <div className="reports-chart-grid">
+          {financialCodes.map((code) => {
+            const cash = data.cash.find((row) => row.currency === code);
+            const chartData = [
+              { name: t("Cash & bank"), amount: cash?.balance ?? 0 },
+              { name: t("Receivables"), amount: data.customerReceivables[code] ?? 0 },
+              { name: t("Payables"), amount: data.supplierPayables[code] ?? 0 },
+            ];
+            return <div className="reports-chart-card" key={code}>
+              <h3>{code} {t("balances")}</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={chartData} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 13 }} interval={0} />
+                  <YAxis tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
+                  <Tooltip formatter={(value) => money(Number(value), code)} />
+                  <Legend />
+                  <Bar dataKey="amount" name={`${t("Amount")} (${code})`} radius={[5, 5, 0, 0]}>
+                    {chartData.map((item) => <Cell key={item.name} fill={financialChartColor(item.amount, item.name === t("Receivables") ? "receivable" : item.name === t("Payables") ? "payable" : "balance")} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>;
+          })}
+        </div>
+      </>}</SectionState>
     </section>
 
-    <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><TrendingUp size={19} /></div><div><h2>Profit & Loss</h2><p>Backend report is expressed in AFN and includes sales returns, returned goods, expenses, and wastage.</p></div></div><SectionState report={profitLoss}>{(data) => { const chartData = [{ name: "Net revenue", amount: data.netRevenue }, { name: "Cost of goods", amount: data.netCogs }, { name: "Expenses", amount: data.expenses }, { name: "Stock wastage", amount: data.wastage }, { name: "Net profit", amount: data.netProfit }]; return <><div className="reports-profit-grid"><div className="reports-profit-total"><span>Net profit / loss</span><strong className={data.netProfit < 0 ? "is-negative" : ""}>{money(data.netProfit, data.currency)}</strong><small>Gross profit: {money(data.grossProfit, data.currency)}</small></div><div className="reports-profit-kpis"><div><small>Gross sales</small><strong>{money(data.grossSales, data.currency)}</strong></div><div><small>Sales returns</small><strong>{money(data.salesReturns, data.currency)}</strong></div><div><small>Net revenue</small><strong>{money(data.netRevenue, data.currency)}</strong></div><div><small>Cost of goods sold (net)</small><strong>{money(data.netCogs, data.currency)}</strong></div><div><small>Operating expenses</small><strong>{money(data.expenses, data.currency)}</strong></div><div><small>Stock wastage</small><strong>{money(data.wastage, data.currency)}</strong></div></div></div><div className="reports-chart-card reports-chart-card--wide"><h3>Profit & loss components · {data.currency}</h3><ResponsiveContainer width="100%" height={270}><BarChart data={chartData} margin={{ top: 10, right: 15, left: 5, bottom: 10 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 13 }} /><YAxis tickFormatter={moneyTick} tick={{ fontSize: 13 }} /><Tooltip formatter={(value) => money(Number(value), data.currency)} /><Legend /><Bar dataKey="amount" name={data.currency} fill="#668d68" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div>{data.expenseCategories.length > 0 && <div className="reports-category-list"><h3>Expenses by category</h3>{data.expenseCategories.map((category) => <div key={category.name}><span>{category.name}</span><strong>{money(category.amount, data.currency)}</strong></div>)}</div>}</>; }}</SectionState></section>
+    <section className="reports-section">
+      <div className="reports-section-heading">
+        <div className="reports-icon"><TrendingUp size={19} /></div>
+        <div>
+          <h2>{t("Profit & Loss")}</h2>
+          <p>{t("Backend report is expressed in AFN and includes sales returns, returned goods, expenses, and wastage.")}</p>
+        </div>
+      </div>
+      <SectionState report={profitLoss}>{(data) => {
+        const chartData = [
+          { name: t("Net revenue"), amount: data.netRevenue, kind: "income" as const },
+          { name: t("Cost of goods"), amount: data.netCogs, kind: "expense" as const },
+          { name: t("Expenses"), amount: data.expenses, kind: "expense" as const },
+          { name: t("Stock wastage"), amount: data.wastage, kind: "expense" as const },
+          { name: t("Net profit"), amount: data.netProfit, kind: "income" as const },
+        ];
+        return <>
+          <div className="reports-profit-grid">
+            <div className="reports-profit-total">
+              <span>{t("Net profit / loss")}</span>
+              <strong className={data.netProfit < 0 ? "is-negative" : data.netProfit === 0 ? "is-neutral" : "is-positive"}>{money(data.netProfit, data.currency)}</strong>
+              <small>{t("Gross profit")}: {money(data.grossProfit, data.currency)}</small>
+            </div>
+            <div className="reports-profit-kpis">
+              <div><small>{t("Gross sales")}</small><strong className={financialValueClass(data.grossSales, "income")}>{money(data.grossSales, data.currency)}</strong></div>
+              <div><small>{t("Sales returns")}</small><strong className={financialValueClass(data.salesReturns, "expense")}>{money(data.salesReturns, data.currency)}</strong></div>
+              <div><small>{t("Net revenue")}</small><strong className={financialValueClass(data.netRevenue, "income")}>{money(data.netRevenue, data.currency)}</strong></div>
+              <div><small>{t("Cost of goods sold (net)")}</small><strong className={financialValueClass(data.netCogs, "expense")}>{money(data.netCogs, data.currency)}</strong></div>
+              <div><small>{t("Operating expenses")}</small><strong className={financialValueClass(data.expenses, "expense")}>{money(data.expenses, data.currency)}</strong></div>
+              <div><small>{t("Stock wastage")}</small><strong className={financialValueClass(data.wastage, "expense")}>{money(data.wastage, data.currency)}</strong></div>
+            </div>
+          </div>
+          <div className="reports-chart-card reports-chart-card--wide">
+            <h3>{t("Profit & loss components ·")} {data.currency}</h3>
+            <ResponsiveContainer width="100%" height={270}>
+              <BarChart data={chartData} margin={{ top: 10, right: 15, left: 5, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 13 }} />
+                <YAxis tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
+                <Tooltip formatter={(value) => money(Number(value), data.currency)} />
+                <Legend />
+                <Bar dataKey="amount" name={data.currency} radius={[5, 5, 0, 0]}>
+                  {chartData.map((item) => <Cell key={item.name} fill={financialChartColor(item.amount, item.kind)} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {data.expenseCategories.length > 0 && <div className="reports-category-list">
+            <h3>{t("Expenses by category")}</h3>
+            {data.expenseCategories.map((category) => <div key={category.name}><span>{category.name}</span><strong className={financialValueClass(category.amount, "expense")}>{money(category.amount, data.currency)}</strong></div>)}
+          </div>}
+        </>;
+      }}</SectionState>
+    </section>
 
-    <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><CircleDollarSign size={19} /></div><div><h2>Cash flow</h2><p>Operating cash flows, excluding internal account transfers from inflow and outflow.</p></div><label className="reports-compact-filter">Currency<select value={cashFlowCurrency} onChange={(event) => setCashFlowCurrency(event.target.value)}><option value="">All currencies</option>{currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code}</option>)}</select></label></div><SectionState report={cashFlow}>{(data) => data.length ? <div className="reports-chart-grid">{data.map((row) => { const chartData = [{ name: "Cash inflows", amount: row.inflow }, { name: "Cash outflows", amount: row.outflow }, { name: "Net cash flow", amount: row.net }]; return <div className="reports-chart-card" key={row.currency}><h3>{row.currency} cash movement</h3><div className="reports-cashflow-summary"><span>Opening {money(row.opening, row.currency)}</span><span>Closing {money(row.closing, row.currency)}</span></div><ResponsiveContainer width="100%" height={250}><BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 13 }} /><YAxis tickFormatter={moneyTick} tick={{ fontSize: 13 }} /><Tooltip formatter={(value) => money(Number(value), row.currency)} /><Legend /><Bar dataKey="amount" name={row.currency} fill="#668d68" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer><small className="reports-transfer-note">Internal transfers: +{money(row.transferIn, row.currency)} / −{money(row.transferOut, row.currency)}</small></div>; })}</div> : <div className="reports-empty">No cash flow data for the selected filters.</div>}</SectionState></section>
+    <section className="reports-section">
+      <div className="reports-section-heading">
+        <div className="reports-icon"><CircleDollarSign size={19} /></div>
+        <div><h2>{t("Cash flow")}</h2><p>{t("Operating cash flows, excluding internal account transfers from inflow and outflow.")}</p></div>
+        <label className="reports-compact-filter">{t("Currency")}
+          <select value={cashFlowCurrency} onChange={(event) => setCashFlowCurrency(event.target.value)}>
+            <option value="">{t("All currencies")}</option>
+            {currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code}</option>)}
+          </select>
+        </label>
+      </div>
+      <SectionState report={cashFlow}>{(data) => data.length
+        ? <div className="reports-chart-grid">{data.map((row) => {
+          const chartData = [
+            { name: t("Cash inflows"), amount: row.inflow, kind: "income" as const },
+            { name: t("Cash outflows"), amount: row.outflow, kind: "expense" as const },
+            { name: t("Net cash flow"), amount: row.net, kind: "income" as const },
+          ];
+          return <div className="reports-chart-card" key={row.currency}>
+            <h3>{row.currency} {t("cash movement")}</h3>
+            <div className="reports-cashflow-summary">
+              <span>{t("Opening")} <strong className={financialValueClass(row.opening, "balance")}>{money(row.opening, row.currency)}</strong></span>
+              <span>{t("Closing")} <strong className={financialValueClass(row.closing, "balance")}>{money(row.closing, row.currency)}</strong></span>
+            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 13 }} />
+                <YAxis tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
+                <Tooltip formatter={(value) => money(Number(value), row.currency)} />
+                <Legend />
+                <Bar dataKey="amount" name={row.currency} radius={[5, 5, 0, 0]}>
+                  {chartData.map((item) => <Cell key={item.name} fill={financialChartColor(item.amount, item.kind)} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <small className="reports-transfer-note">{t("Internal transfers:")} +{money(row.transferIn, row.currency)} / −{money(row.transferOut, row.currency)}</small>
+          </div>;
+        })}</div>
+        : <div className="reports-empty">{t("No cash flow data for the selected filters.")}</div>}
+      </SectionState>
+    </section>
 
-    <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><Boxes size={19} /></div><div><h2>Inventory</h2><p>Stock quantities stay with their product units; stock values are reported in AFN.</p></div><label className="reports-compact-filter">Warehouse<select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}><option value="">All warehouses</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label></div><SectionState report={inventory}>{(data) => <><div className="reports-inventory-metrics"><div><small>Inventory records</small><strong>{data.productCount}</strong></div><div><small>Total stock value</small><strong>{money(data.totalValue, "AFN")}</strong></div><div><small>Low stock</small><strong>{data.lowStock}</strong></div><div><small>Out of stock</small><strong>{data.outOfStock}</strong></div></div>{warehouseValues.length > 0 && <div className="reports-chart-grid reports-inventory-charts"><div className="reports-chart-card"><h3>Stock value by warehouse · AFN</h3><ResponsiveContainer width="100%" height={270}><PieChart><Pie data={warehouseValues} dataKey="value" nameKey="warehouse" cx="50%" cy="50%" outerRadius="72%" label={({ name }) => name}>{warehouseValues.map((item, index) => <Cell key={item.warehouse} fill={chartColors[index % chartColors.length]} />)}</Pie><Tooltip formatter={(value) => money(Number(value), "AFN")} /><Legend /></PieChart></ResponsiveContainer></div><div className="reports-chart-card"><h3>Warehouse stock value · AFN</h3><ResponsiveContainer width="100%" height={270}><BarChart data={warehouseValues} layout="vertical" margin={{ top: 8, right: 22, left: 18, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 13 }} /><YAxis type="category" dataKey="warehouse" width={100} tick={{ fontSize: 13 }} /><Tooltip formatter={(value) => money(Number(value), "AFN")} /><Bar dataKey="value" name="Stock value (AFN)" fill="#668d68" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer></div></div>}{data.rows.length ? <div className="reports-table-wrap"><table className="reports-table"><thead><tr><th>Product</th><th>Warehouse</th><th>Quantity</th><th>Stock value (AFN)</th><th>Status</th></tr></thead><tbody>{data.rows.map((row) => <tr key={row.id}><td><strong>{row.product}</strong>{row.sku && <small>{row.sku}</small>}</td><td>{row.warehouse}</td><td>{formatQuantity(row.quantity)} {row.unit}</td><td>{money(row.valueAfn, "AFN")}</td><td><span className={`reports-stock-status reports-stock-status--${row.status}`}>{row.status.replaceAll("_", " ")}</span></td></tr>)}</tbody></table></div> : <div className="reports-empty">No inventory records match this warehouse.</div>}</>}</SectionState></section>
+    <section className="reports-section">
+      <div className="reports-section-heading">
+        <div className="reports-icon"><Boxes size={19} /></div>
+        <div><h2>{t("Inventory")}</h2><p>{t("Stock quantities stay with their product units; stock values are reported in AFN.")}</p></div>
+        <label className="reports-compact-filter">{t("Warehouse")}
+          <select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
+            <option value="">{t("All warehouses")}</option>
+            {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
+          </select>
+        </label>
+      </div>
+      <SectionState report={inventory}>{(data) => <>
+        <div className="reports-inventory-metrics">
+          <div><small>{t("Inventory records")}</small><strong>{data.productCount}</strong></div>
+          <div><small>{t("Total stock value")}</small><strong>{money(data.totalValue, "AFN")}</strong></div>
+          <div><small>{t("Low stock")}</small><strong>{data.lowStock}</strong></div>
+          <div><small>{t("Out of stock")}</small><strong>{data.outOfStock}</strong></div>
+        </div>
+        {warehouseValues.length > 0 && <div className="reports-chart-grid reports-inventory-charts">
+          <div className="reports-chart-card">
+            <h3>{t("Stock value by warehouse · AFN")}</h3>
+            <ResponsiveContainer width="100%" height={270}>
+              <PieChart><Pie data={warehouseValues} dataKey="value" nameKey="warehouse" cx="50%" cy="50%" outerRadius="72%" label={({ name }) => name}>
+                {warehouseValues.map((item, index) => <Cell key={item.warehouse} fill={chartColors[index % chartColors.length]} />)}
+              </Pie><Tooltip formatter={(value) => money(Number(value), "AFN")} /><Legend /></PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="reports-chart-card">
+            <h3>{t("Warehouse stock value · AFN")}</h3>
+            <ResponsiveContainer width="100%" height={270}>
+              <BarChart data={warehouseValues} layout="vertical" margin={{ top: 8, right: 22, left: 18, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
+                <YAxis type="category" dataKey="warehouse" width={100} tick={{ fontSize: 13 }} />
+                <Tooltip formatter={(value) => money(Number(value), "AFN")} />
+                <Bar dataKey="value" name={t("Stock value (AFN)")} fill="#0891b2" radius={[0, 5, 5, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>}
+        {data.rows.length
+          ? <div className="reports-table-wrap"><table className="reports-table">
+            <thead><tr><th>{t("Product")}</th><th>{t("Warehouse")}</th><th>{t("Quantity")}</th><th>{t("Stock value (AFN)")}</th><th>{t("Status")}</th></tr></thead>
+            <tbody>{data.rows.map((row) => <tr key={row.id}>
+              <td><strong>{row.product}</strong>{row.sku && <small>{row.sku}</small>}</td>
+              <td>{row.warehouse}</td><td>{formatQuantity(row.quantity)} {row.unit}</td>
+              <td>{money(row.valueAfn, "AFN")}</td>
+              <td><span className={`reports-stock-status reports-stock-status--${row.status}`}>{row.status.replaceAll("_", " ")}</span></td>
+            </tr>)}</tbody>
+          </table></div>
+          : <div className="reports-empty">{t("No inventory records match this warehouse.")}</div>}
+      </>}</SectionState>
+    </section>
 
-    <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><BarChart3 size={19} /></div><div><h2>Partner balances</h2><p>Customer and supplier balances are compared within one selected currency.</p></div><div className="reports-inline-filters"><label className="reports-compact-filter">Partner type<select value={partnerType} onChange={(event) => setPartnerType(event.target.value)}><option value="">All partners</option><option value="Customer">Customers</option><option value="Supplier">Suppliers</option></select></label><label className="reports-compact-filter">Currency<select value={partnerCurrency} onChange={(event) => setPartnerCurrency(event.target.value)}><option value="">Choose currency</option>{partnerCurrencies.map((code) => <option key={code} value={code}>{code}</option>)}</select></label></div></div><SectionState report={partners}>{() => !partnerCurrencies.length ? <div className="reports-empty">No partner balances are available.</div> : !partnerCurrency ? <div className="reports-empty">Choose a currency to view comparable partner balances.</div> : visiblePartners.length ? <div className="reports-chart-card reports-chart-card--wide"><h3>{partnerCurrency} outstanding balances · up to 15 partners</h3><ResponsiveContainer width="100%" height={Math.max(280, visiblePartners.length * 34)}><BarChart data={visiblePartners} layout="vertical" margin={{ top: 8, right: 24, left: 18, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 13 }} /><YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 13 }} /><Tooltip formatter={(value, _name, item) => [`${money(Number(value), partnerCurrency)} · ${item.payload.type}`, "Balance"]} /><Legend /><Bar dataKey="balance" name={`Balance (${partnerCurrency})`} fill="#668d68" radius={[0, 5, 5, 0]} /></BarChart></ResponsiveContainer><div className="reports-partner-legend"><span>Positive: customer owes us / we owe supplier</span><span>Negative: customer credit / supplier owes us</span></div></div> : <div className="reports-empty">No partner has a {partnerCurrency} balance.</div>}</SectionState></section>
+    <section className="reports-section">
+      <div className="reports-section-heading">
+        <div className="reports-icon"><BarChart3 size={19} /></div>
+        <div><h2>{t("Partner balances")}</h2><p>{t("Customer and supplier balances are compared within one selected currency.")}</p></div>
+        <div className="reports-inline-filters">
+          <label className="reports-compact-filter">{t("Partner type")}
+            <select value={partnerType} onChange={(event) => setPartnerType(event.target.value)}>
+              <option value="">{t("All partners")}</option>
+              <option value="Customer">{t("Customers")}</option>
+              <option value="Supplier">{t("Suppliers")}</option>
+            </select>
+          </label>
+          <label className="reports-compact-filter">{t("Currency")}
+            <select value={partnerCurrency} onChange={(event) => setPartnerCurrency(event.target.value)}>
+              <option value="">{t("Choose currency")}</option>
+              {partnerCurrencies.map((code) => <option key={code} value={code}>{code}</option>)}
+            </select>
+          </label>
+        </div>
+      </div>
+      <SectionState report={partners}>{() => !partnerCurrencies.length
+        ? <div className="reports-empty">{t("No partner balances are available.")}</div>
+        : !partnerCurrency
+          ? <div className="reports-empty">{t("Choose a currency to view comparable partner balances.")}</div>
+          : visiblePartners.length
+            ? <div className="reports-chart-card reports-chart-card--wide">
+              <h3>{partnerCurrency} {t("outstanding balances · up to 15 partners")}</h3>
+              <ResponsiveContainer width="100%" height={Math.max(280, visiblePartners.length * 34)}>
+                <BarChart data={visiblePartners} layout="vertical" margin={{ top: 8, right: 24, left: 18, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
+                  <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 13 }} />
+                  <Tooltip formatter={(value, _name, item) => [`${money(Number(value), partnerCurrency)} · ${item.payload.type}`, t("Balance")]} />
+                  <Legend />
+                  <Bar dataKey="balance" name={`${t("Balance")} (${partnerCurrency})`} radius={[0, 5, 5, 0]}>
+                    {visiblePartners.map((item) => <Cell key={item.id} fill={financialChartColor(item.balance, "balance")} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="reports-partner-legend">
+                <span>{t("Positive: customer owes us / we owe supplier")}</span>
+                <span>{t("Negative: customer credit / supplier owes us")}</span>
+              </div>
+            </div>
+            : <div className="reports-empty">{t("No partner has a")} {partnerCurrency} {t("balance.")}</div>}
+      </SectionState>
+    </section>
 
     <section className="reports-section reports-aging-section">
-      <div className="reports-section-heading"><div className="reports-icon"><BarChart3 size={19} /></div><div><h2>Partner aging</h2><p>Outstanding open items are aged by transaction date using the backend’s FIFO allocation.</p></div></div>
+      <div className="reports-section-heading"><div className="reports-icon"><BarChart3 size={19} /></div><div><h2>{t("Partner aging")}</h2><p>{t("Outstanding open items are aged by transaction date using the backend’s FIFO allocation.")}</p></div></div>
       <form className="reports-aging-filters" onSubmit={(event) => { event.preventDefault(); setAgingFilters({ asOfDate: agingDateDraft, partnerType: agingTypeDraft, currencyId: agingCurrencyDraft, search: agingSearchDraft.trim() }); setAgingPage(1); setExpandedAgingRows({}); }}>
-        <label>As of date<input type="date" value={agingDateDraft} onChange={(event) => setAgingDateDraft(event.target.value)} required /></label>
-        <label>Partner type<select value={agingTypeDraft} onChange={(event) => setAgingTypeDraft(event.target.value)}><option value="">All partners</option><option value="Customer">Customers</option><option value="Supplier">Suppliers</option></select></label>
-        <label>Currency<select value={agingCurrencyDraft} onChange={(event) => setAgingCurrencyDraft(event.target.value)}><option value="">All currencies</option>{currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code}</option>)}</select></label>
-        <label className="reports-aging-search">Search<input type="search" value={agingSearchDraft} onChange={(event) => setAgingSearchDraft(event.target.value)} placeholder="Name, business name, or phone" /></label>
-        <div className="reports-aging-actions"><button className="reports-reset" type="button" onClick={() => { const today = localToday(); setAgingDateDraft(today); setAgingTypeDraft(""); setAgingCurrencyDraft(""); setAgingSearchDraft(""); setAgingFilters({ asOfDate: today, partnerType: "", currencyId: "", search: "" }); setAgingPage(1); setExpandedAgingRows({}); }}>Reset</button><button className="reports-apply" type="submit">Apply</button></div>
+        <label>{t("As of date")}<input type="date" value={agingDateDraft} onChange={(event) => setAgingDateDraft(event.target.value)} required /></label>
+        <label>{t("Partner type")}<select value={agingTypeDraft} onChange={(event) => setAgingTypeDraft(event.target.value)}><option value="">{t("All partners")}</option><option value="Customer">{t("Customers")}</option><option value="Supplier">{t("Suppliers")}</option></select></label>
+        <label>{t("Currency")}<select value={agingCurrencyDraft} onChange={(event) => setAgingCurrencyDraft(event.target.value)}><option value="">{t("All currencies")}</option>{currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.code}</option>)}</select></label>
+        <label className="reports-aging-search">{t("Search")}<input type="search" value={agingSearchDraft} onChange={(event) => setAgingSearchDraft(event.target.value)} placeholder={t("Name, business name, or phone")} /></label>
+        <div className="reports-aging-actions"><button className="reports-reset" type="button" onClick={() => { const today = localToday(); setAgingDateDraft(today); setAgingTypeDraft(""); setAgingCurrencyDraft(""); setAgingSearchDraft(""); setAgingFilters({ asOfDate: today, partnerType: "", currencyId: "", search: "" }); setAgingPage(1); setExpandedAgingRows({}); }}>{t("Reset")}</button><button className="reports-apply" type="submit">{t("Apply")}</button></div>
       </form>
-      <p className="reports-aging-meta">As of <strong>{partnerAging.data?.asOfDate || agingFilters.asOfDate}</strong>{partnerAging.data?.allocationMethod && <> · Allocation: <strong>{partnerAging.data.allocationMethod}</strong></>}{partnerAging.data?.agingBasis && <> · Aging basis: <strong>{partnerAging.data.agingBasis.replaceAll("_", " ")}</strong></>}</p>
-      {partnerAging.loading ? <div className="reports-state" role="status">Loading partner aging report…</div>
-        : partnerAging.error ? <div className="reports-state reports-state--error" role="alert">{partnerAging.error}<button type="button" onClick={partnerAging.reload}>Try again</button></div>
-          : !partnerAging.data || partnerAging.data.total === 0 ? <div className="reports-empty">No partners match the selected filters.</div>
+      <p className="reports-aging-meta">{t("As of")} <strong>{partnerAging.data?.asOfDate || agingFilters.asOfDate}</strong>{partnerAging.data?.allocationMethod && <> · {t("Allocation:")} <strong>{partnerAging.data.allocationMethod}</strong></>}{partnerAging.data?.agingBasis && <> · {t("Aging basis:")} <strong>{partnerAging.data.agingBasis.replaceAll("_", " ")}</strong></>}</p>
+      {partnerAging.loading ? <div className="reports-state" role="status">{t("Loading partner aging report…")}</div>
+        : partnerAging.error ? <div className="reports-state reports-state--error" role="alert">{partnerAging.error}<button type="button" onClick={partnerAging.reload}>{t("Try again")}</button></div>
+          : !partnerAging.data || partnerAging.data.total === 0 ? <div className="reports-empty">{t("No partners match the selected filters.")}</div>
             : <>
-              <div className="reports-table-wrap reports-aging-table-wrap"><table className="reports-table reports-aging-table"><thead><tr><th>Partner</th><th>Type</th><th>Currency</th><th>0–30 days</th><th>31–60 days</th><th>61–90 days</th><th>Over 90 days</th><th>Total outstanding</th><th>Unapplied credit</th><th>Open items</th></tr></thead>
+              <div className="reports-table-wrap reports-aging-table-wrap"><table className="reports-table reports-aging-table"><thead><tr><th>{t("Partner")}</th><th>{t("Type")}</th><th>{t("Currency")}</th><th>{t("0–30 days")}</th><th>{t("31–60 days")}</th><th>{t("61–90 days")}</th><th>{t("Over 90 days")}</th><th>{t("Total outstanding")}</th><th>{t("Unapplied credit")}</th><th>{t("Open items")}</th></tr></thead>
                 <tbody>{partnerAgingRows.map(({ key, partner, currency }) => {
                   const expanded = Boolean(expandedAgingRows[key]);
                   return <Fragment key={key}><tr>
                     <td><strong>{partner.name}</strong>{partner.businessName && <small>{partner.businessName}</small>}{partner.phone && <small>{partner.phone}</small>}</td><td>{partner.partnerType}</td><td>{currency ? <span className="reports-aging-currency">{currency.currency}</span> : "—"}</td>
-                    <td>{currency ? money(currency.aging["0_30_days"], currency.currency) : "—"}</td><td>{currency ? money(currency.aging["31_60_days"], currency.currency) : "—"}</td><td>{currency ? money(currency.aging["61_90_days"], currency.currency) : "—"}</td><td>{currency ? money(currency.aging.over_90_days, currency.currency) : "—"}</td>
-                    <td><strong>{currency ? money(currency.totalOutstanding, currency.currency) : "—"}</strong></td><td>{currency ? money(currency.unappliedCredit, currency.currency) : "—"}</td>
-                    <td>{currency && currency.openItems.length > 0 ? <button className="reports-aging-toggle" type="button" aria-expanded={expanded} onClick={() => setExpandedAgingRows((current) => ({ ...current, [key]: !current[key] }))}>{expanded ? "Hide" : "View"} ({currency.openItems.length})</button> : "—"}</td>
-                  </tr>{expanded && currency && <tr className="reports-aging-detail-row"><td colSpan={10}><div className="reports-aging-items"><h3>{partner.name} · {currency.currency} open items</h3><div className="reports-table-wrap"><table className="reports-table"><thead><tr><th>Transaction date</th><th>Age</th><th>Aging bucket</th><th>Amount</th><th>Source / type</th><th>Reference / description</th></tr></thead><tbody>{currency.openItems.map((item, index) => <tr key={`${key}-item-${index}`}><td>{item.transactionDate}</td><td>{item.ageDays} days</td><td>{agingLabel(item.agingBucket)}</td><td><strong>{money(item.amount, currency.currency)}</strong></td><td>{[item.source, item.transactionType].filter(Boolean).join(" · ") || "—"}</td><td>{[item.referenceType, item.referenceId === null ? null : `#${item.referenceId}`, item.description].filter(Boolean).join(" · ") || "—"}</td></tr>)}</tbody></table></div></div></td></tr>}</Fragment>;
+                    <td className={currency ? financialValueClass(currency.aging["0_30_days"], partner.partnerType === "Customer" ? "receivable" : "payable") : undefined}>{currency ? money(currency.aging["0_30_days"], currency.currency) : "—"}</td><td className={currency ? financialValueClass(currency.aging["31_60_days"], partner.partnerType === "Customer" ? "receivable" : "payable") : undefined}>{currency ? money(currency.aging["31_60_days"], currency.currency) : "—"}</td><td className={currency ? financialValueClass(currency.aging["61_90_days"], partner.partnerType === "Customer" ? "receivable" : "payable") : undefined}>{currency ? money(currency.aging["61_90_days"], currency.currency) : "—"}</td><td className={currency ? financialValueClass(currency.aging.over_90_days, partner.partnerType === "Customer" ? "receivable" : "payable") : undefined}>{currency ? money(currency.aging.over_90_days, currency.currency) : "—"}</td>
+                    <td><strong className={currency ? financialValueClass(currency.totalOutstanding, partner.partnerType === "Customer" ? "receivable" : "payable") : undefined}>{currency ? money(currency.totalOutstanding, currency.currency) : "—"}</strong></td><td className={currency ? financialValueClass(currency.unappliedCredit, partner.partnerType === "Customer" ? "payable" : "receivable") : undefined}>{currency ? money(currency.unappliedCredit, currency.currency) : "—"}</td>
+                    <td>{currency && currency.openItems.length > 0 ? <button className="reports-aging-toggle" type="button" aria-expanded={expanded} onClick={() => setExpandedAgingRows((current) => ({ ...current, [key]: !current[key] }))}>{t(expanded ? "Hide" : "View")} ({currency.openItems.length})</button> : "—"}</td>
+                  </tr>{expanded && currency && <tr className="reports-aging-detail-row"><td colSpan={10}><div className="reports-aging-items"><h3>{partner.name} · {currency.currency} {t("open items")}</h3><div className="reports-table-wrap"><table className="reports-table"><thead><tr><th>{t("Transaction date")}</th><th>{t("Age")}</th><th>{t("Aging bucket")}</th><th>{t("Amount")}</th><th>{t("Source / type")}</th><th>{t("Reference / description")}</th></tr></thead><tbody>{currency.openItems.map((item, index) => <tr key={`${key}-item-${index}`}><td>{item.transactionDate}</td><td>{item.ageDays} {t("days")}</td><td>{agingLabel(item.agingBucket)}</td><td><strong className={financialValueClass(item.amount, partner.partnerType === "Customer" ? "receivable" : "payable")}>{money(item.amount, currency.currency)}</strong></td><td>{[item.source, item.transactionType].filter(Boolean).join(" · ") || "—"}</td><td>{[item.referenceType, item.referenceId === null ? null : `#${item.referenceId}`, item.description].filter(Boolean).join(" · ") || "—"}</td></tr>)}</tbody></table></div></div></td></tr>}</Fragment>;
                 })}</tbody>
               </table></div>
-              <div className="reports-aging-pagination"><span>Showing page {partnerAging.data.page} of {partnerAging.data.lastPage} · {partnerAging.data.total} partners</span><div><button type="button" disabled={partnerAging.data.page <= 1} onClick={() => { setExpandedAgingRows({}); setAgingPage((page) => Math.max(1, page - 1)); }}>Previous</button><button type="button" disabled={partnerAging.data.page >= partnerAging.data.lastPage} onClick={() => { setExpandedAgingRows({}); setAgingPage((page) => page + 1); }}>Next</button></div></div>
+              <div className="reports-aging-pagination"><span>{t("Showing page")} {partnerAging.data.page} {t("of")} {partnerAging.data.lastPage} · {partnerAging.data.total} {t("partners")}</span><div><button type="button" disabled={partnerAging.data.page <= 1} onClick={() => { setExpandedAgingRows({}); setAgingPage((page) => Math.max(1, page - 1)); }}>{t("Previous")}</button><button type="button" disabled={partnerAging.data.page >= partnerAging.data.lastPage} onClick={() => { setExpandedAgingRows({}); setAgingPage((page) => page + 1); }}>{t("Next")}</button></div></div>
             </>}
     </section>
 
-    <section className="reports-section"><div className="reports-section-heading"><div className="reports-icon"><BarChart3 size={19} /></div><div><h2>Purchase summary</h2><p>Posted gross purchases by currency. Purchase returns are excluded by the backend.</p></div></div><SectionState report={purchases}>{(data) => data.byCurrency.length ? <><div className="reports-purchase-cards">{data.byCurrency.map((row) => <article key={row.code}><span>{row.code}</span><strong>{money(row.amount, row.code)}</strong><small>{row.count} {row.count === 1 ? "purchase" : "purchases"}</small></article>)}</div><div className="reports-chart-card reports-chart-card--wide"><h3>Posted purchase count by currency</h3><ResponsiveContainer width="100%" height={250}><BarChart data={data.byCurrency} margin={{ top: 12, right: 15, left: 4, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="code" /><YAxis allowDecimals={false} /><Tooltip formatter={(value) => [Number(value).toLocaleString(), "Purchases"]} /><Legend /><Bar dataKey="count" name="Purchase count" fill="#668d68" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div>{data.returnsNote && <p className="reports-note">{data.returnsNote}</p>}</> : <div className="reports-empty">No posted purchases match this period.</div>}</SectionState></section>
+    <section className="reports-section">
+      <div className="reports-section-heading">
+        <div className="reports-icon"><BarChart3 size={19} /></div>
+        <div><h2>{t("Purchase summary")}</h2><p>{t("Posted gross purchases by currency. Purchase returns are excluded by the backend.")}</p></div>
+      </div>
+      <SectionState report={purchases}>{(data) => data.byCurrency.length
+        ? <>
+          <div className="reports-purchase-cards">{data.byCurrency.map((row) => <article key={row.code}>
+            <span>{row.code}</span><strong>{money(row.amount, row.code)}</strong>
+            <small>{row.count} {t(row.count === 1 ? "purchase" : "purchases")}</small>
+          </article>)}</div>
+          <div className="reports-chart-card reports-chart-card--wide">
+            <h3>{t("Posted purchase count by currency")}</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={data.byCurrency} margin={{ top: 12, right: 15, left: 4, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="code" />
+                <YAxis allowDecimals={false} />
+                <Tooltip formatter={(value) => [Number(value).toLocaleString(), t("Purchases")]} />
+                <Legend />
+                <Bar dataKey="count" name={t("Purchase count")} fill="#7c3aed" radius={[5, 5, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {data.returnsNote && <p className="reports-note">{data.returnsNote}</p>}
+        </>
+        : <div className="reports-empty">{t("No posted purchases match this period.")}</div>}
+      </SectionState>
+    </section>
   </div>;
 }

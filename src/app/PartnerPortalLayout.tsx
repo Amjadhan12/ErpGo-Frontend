@@ -5,15 +5,17 @@ import { portalPaths, useAuth, type UserRole } from "@/auth/AuthContext";
 import PartnerPortalPage from "@/app/PartnerPortal";
 import SupplierChat from "@/app/SupplierChat";
 import CustomerChat from "@/app/CustomerChat";
+import { LanguageSwitcher, useLocale } from "@/lib/locale";
 
 type PortalRole = Extract<UserRole, "Customer" | "Supplier">;
 
 function PartnerPortalLayout({ role }: { role: PortalRole }) {
+  const { t } = useLocale();
   const { user, isCheckingSession, signOut } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
 
   if (isCheckingSession) {
-    return <div className="partner-portal-route-state" role="status"><span className="loading-spinner" /> Checking your secure session…</div>;
+    return <div className="partner-portal-route-state" role="status"><span className="loading-spinner" /> {t("Checking your secure session…")}</div>;
   }
   if (!user) return <Navigate to="/" replace />;
   if (user.role !== role) return <Navigate to={portalPaths[user.role]} replace />;
@@ -25,9 +27,9 @@ function PartnerPortalLayout({ role }: { role: PortalRole }) {
   }
 
   return <div className="partner-portal-shell">
-    <header className="partner-portal-header"><div className="partner-portal-brand"><span className="partner-portal-brand-icon"><Building2 size={20} /></span><span><strong>ERPGO</strong><small>{role} portal</small></span></div><nav className="partner-portal-nav" aria-label={`${role} portal navigation`}><NavLink to={role === "Customer" ? "/customer" : "/supplier"} end><UserRound size={15} /> Account</NavLink>{role === "Customer" && <NavLink to="/customer/chat"><MessageCircle size={15} /> Chat</NavLink>}{role === "Supplier" && <NavLink to="/supplier/chat"><MessageCircle size={15} /> Chat</NavLink>}</nav><div className="partner-portal-user"><span>{user.name}</span><button type="button" onClick={() => void handleSignOut()} disabled={signingOut}><LogOut size={15} />{signingOut ? "Signing out…" : "Sign out"}</button></div></header>
+    <header className="partner-portal-header"><div className="partner-portal-brand"><span className="partner-portal-brand-icon"><Building2 size={20} /></span><span><strong>ERPGO</strong><small>{t(role === "Customer" ? "Customer portal" : "Supplier portal")}</small></span></div><nav className="partner-portal-nav" aria-label={t(`${role} portal navigation`)}><NavLink to={role === "Customer" ? "/customer" : "/supplier"} end><UserRound size={15} /> {t("Account")}</NavLink>{role === "Customer" && <NavLink to="/customer/chat"><MessageCircle size={15} /> {t("Chat")}</NavLink>}{role === "Supplier" && <NavLink to="/supplier/chat"><MessageCircle size={15} /> {t("Chat")}</NavLink>}</nav><div className="partner-portal-user"><LanguageSwitcher /><span>{user.name}</span><button type="button" onClick={() => void handleSignOut()} disabled={signingOut}><LogOut size={15} />{t(signingOut ? "Signing out…" : "Sign out")}</button></div></header>
     <Outlet />
-    <footer className="partner-portal-footer">ERPGO · {role} account</footer>
+    <footer className="partner-portal-footer">{t(role === "Customer" ? "ERPGO · Customer account" : "ERPGO · Supplier account")}</footer>
   </div>;
 }
 

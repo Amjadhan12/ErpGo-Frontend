@@ -61,6 +61,7 @@ import SaleReturns from "@/app/SaleReturns";
 import PurchaseReturns from "@/app/PurchaseReturns";
 import SaleReturnSettlements from "@/app/SaleReturnSettlements";
 import PurchaseReturnSettlements from "@/app/PurchaseReturnSettlements";
+import { LanguageSwitcher, LocaleProvider, useLocale } from "@/lib/locale";
 const Reports = lazy(() => import("@/app/Reports"));
 
 function BrandMark({
@@ -87,10 +88,12 @@ function BrandMark({
 }
 
 function RoleLabel({ role }: { role: UserRole }) {
+  const { t } = useLocale();
+
   return (
     <span className="role-label">
       <ShieldCheck aria-hidden="true" size={15} />
-      {role}
+      {t(role)}
     </span>
   );
 }
@@ -115,6 +118,7 @@ function getRouteNotice(value: unknown): {
 }
 
 function LoginExperience() {
+  const { t } = useLocale();
   const {
     user,
     isCheckingSession,
@@ -187,22 +191,21 @@ function LoginExperience() {
           <BrandMark imageUrl={companyBranding?.logoUrl} />
           <div className="brand-header__wordmark">
             <span>{companyTitle}</span>
-            <small>POULTRY · OPERATIONS · GROWTH</small>
+            <small>{t("POULTRY · OPERATIONS · GROWTH")}</small>
           </div>
         </header>
 
         <div className="brand-story">
           <div className="eyebrow">
-            <span /> ONE CONNECTED BUSINESS
+            <span /> {t("ONE CONNECTED BUSINESS")}
           </div>
           <h1>
-            Better business
+            {t("Better business")}
             <br />
-            starts <em>together.</em>
+            {t("starts")} <em>{t("together.")}</em>
           </h1>
           <p>
-            A clearer view of your poultry business, from the first flock to the
-            final delivery.
+            {t("A clearer view of your poultry business, from the first flock to the final delivery.")}
           </p>
           <div className="brand-story__illustration" aria-hidden="true">
             <span className="illustration-halo" />
@@ -222,8 +225,8 @@ function LoginExperience() {
                 <CheckCircle2 />
               </span>
               <span>
-                <b>Everything in sync</b>
-                <small>One workspace for your team</small>
+                <b>{t("Everything in sync")}</b>
+                <small>{t("One workspace for your team")}</small>
               </span>
             </span>
           </div>
@@ -231,10 +234,9 @@ function LoginExperience() {
 
         <footer className="brand-footer">
           <span>
-            <ShieldCheck size={15} aria-hidden="true" /> Secure access for your
-            team
+            <ShieldCheck size={15} aria-hidden="true" /> {t("Secure access for your team")}
           </span>
-          <span>Built for better operations</span>
+          <span>{t("Built for better operations")}</span>
         </footer>
       </section>
 
@@ -244,8 +246,9 @@ function LoginExperience() {
             <BrandMark imageUrl={companyBranding?.logoUrl} compact />
             <span>{companyTitle}</span>
           </div>
+          <LanguageSwitcher />
           <span className="secure-note">
-            <LockKeyhole size={14} aria-hidden="true" /> Secure sign in
+            <LockKeyhole size={14} aria-hidden="true" /> {t("Secure sign in")}
           </span>
         </div>
 
@@ -253,34 +256,33 @@ function LoginExperience() {
           {isCheckingSession ? (
             <div className="session-loading" role="status">
               <span className="loading-spinner" />
-              <span>Checking your secure session…</span>
+              <span>{t("Checking your secure session…")}</span>
             </div>
           ) : user ? (
             <div className="signed-in-card">
               <div className="signed-in-icon">
                 <CheckCircle2 aria-hidden="true" />
               </div>
-              <p className="form-eyebrow">ACCESS CONFIRMED</p>
-              <h2>Welcome, {user.name.split(" ")[0]}.</h2>
+              <p className="form-eyebrow">{t("ACCESS CONFIRMED")}</p>
+              <h2>{t("Welcome,")} {user.name.split(" ")[0]}.</h2>
               <p className="signed-in-copy">
-                You’re signed in to ERPGO. Your account is recognized for the{" "}
-                {portalLabels[user.role]}.
+                {t("You’re signed in to ERPGO. Your account is recognized for the")}{" "}
+                {t(portalLabels[user.role])}.
               </p>
               {routeNotice.secretaryAccessDenied && (
                 <p className="form-alert form-alert--error" role="alert">
-                  Secretary access is restricted to Secretary accounts.
+                  {t("Secretary access is restricted to Secretary accounts.")}
                 </p>
               )}
               {routeNotice.logoutWarning && (
                 <p className="form-alert form-alert--notice" role="status">
-                  Your local session ended, but the server could not confirm
-                  sign-out.
+                  {t("Your local session ended, but the server could not confirm sign-out.")}
                 </p>
               )}
               <RoleLabel role={user.role} />
               {signOutError && (
                 <p className="form-alert form-alert--error" role="alert">
-                  {signOutError}
+                  {t(signOutError)}
                 </p>
               )}
               <button
@@ -288,25 +290,24 @@ function LoginExperience() {
                 type="button"
                 onClick={handleSignOut}
               >
-                Sign out
+                {t("Sign out")}
               </button>
             </div>
           ) : (
             <>
               <div className="form-heading">
-                <p className="form-eyebrow">WELCOME TO ERPGO</p>
+                <p className="form-eyebrow">{t("Welcome to ERPGO")}</p>
                 <h2>
-                  Sign in to your
+                  {t("Sign in to your")}
                   <br />
-                  <span>workspace.</span>
+                  <span>{t("workspace.")}</span>
                 </h2>
-                <p>Use your work email and password to continue.</p>
+                <p>{t("Use your work email and password to continue.")}</p>
               </div>
 
               {routeNotice.logoutWarning && (
                 <div className="form-alert form-alert--notice" role="status">
-                  Your local session ended, but the server could not confirm
-                  sign-out.
+                  {t("Your local session ended, but the server could not confirm sign-out.")}
                 </div>
               )}
               {sessionNotice && (
@@ -316,7 +317,7 @@ function LoginExperience() {
               )}
               {signOutError && (
                 <div className="form-alert form-alert--error" role="alert">
-                  {signOutError}
+                  {t(signOutError)}
                 </div>
               )}
               {errorMessage && (
@@ -327,7 +328,7 @@ function LoginExperience() {
 
               <form className="login-form" onSubmit={handleSubmit}>
                 <div className="form-field">
-                  <label htmlFor="email">Work email</label>
+                  <label htmlFor="email">{t("Work email")}</label>
                   <div
                     className={`input-wrap${fieldErrors.email ? " input-wrap--invalid" : ""}`}
                   >
@@ -362,7 +363,7 @@ function LoginExperience() {
                 </div>
 
                 <div className="form-field">
-                  <label htmlFor="password">Password</label>
+                  <label htmlFor="password">{t("Password")}</label>
                   <div
                     className={`input-wrap${fieldErrors.password ? " input-wrap--invalid" : ""}`}
                   >
@@ -376,7 +377,7 @@ function LoginExperience() {
                       name="password"
                       type={showPassword ? "text" : "password"}
                       autoComplete="current-password"
-                      placeholder="Enter your password"
+                      placeholder={t("Enter your password")}
                       value={password}
                       onChange={(event) => {
                         setPassword(event.target.value);
@@ -397,7 +398,7 @@ function LoginExperience() {
                       type="button"
                       onClick={() => setShowPassword((visible) => !visible)}
                       aria-label={
-                        showPassword ? "Hide password" : "Show password"
+                        t(showPassword ? "Hide password" : "Show password")
                       }
                       aria-pressed={showPassword}
                       disabled={isSubmitting}
@@ -424,11 +425,11 @@ function LoginExperience() {
                   {isSubmitting ? (
                     <>
                       <span className="button-spinner" aria-hidden="true" />
-                      Signing in…
+                      {t("Signing in…")}
                     </>
                   ) : (
                     <>
-                      Sign in
+                      {t("Sign in")}
                       <ArrowRight size={18} aria-hidden="true" />
                     </>
                   )}
@@ -437,7 +438,7 @@ function LoginExperience() {
 
               <p className="form-footnote">
                 <ShieldCheck size={15} aria-hidden="true" />
-                Your account access is managed by your ERPGO administrator.
+                {t("Your account access is managed by your ERPGO administrator.")}
               </p>
             </>
           )}
@@ -445,7 +446,7 @@ function LoginExperience() {
 
         <footer className="login-footer">
           <span>© {new Date().getFullYear()} ERPGO</span>
-          <span>One business. One clear view.</span>
+          <span>{t("One business. One clear view.")}</span>
         </footer>
       </section>
     </main>
@@ -453,13 +454,14 @@ function LoginExperience() {
 }
 
 function ProtectedSecretaryRoute() {
+  const { t } = useLocale();
   const { user, isCheckingSession } = useAuth();
 
   if (isCheckingSession) {
     return (
       <div className="secretary-route-loading" role="status">
         <span className="loading-spinner" />
-        <span>Checking your secure session…</span>
+        <span>{t("Checking your secure session…")}</span>
       </div>
     );
   }
@@ -477,9 +479,10 @@ function ProtectedSecretaryRoute() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
+    <LocaleProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
           <Route path="/" element={<LoginExperience />} />
           <Route path="/customer" element={<CustomerPortalLayout />}>
             <Route index element={<PortalIndex role="Customer" />} />
@@ -526,8 +529,9 @@ export default function App() {
             <Route path="batch-expiry" element={<BatchExpiry />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </LocaleProvider>
   );
 }
