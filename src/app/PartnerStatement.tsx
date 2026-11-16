@@ -1,6 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import axios from "axios";
-import { ChevronLeft, ChevronRight, ExternalLink, RefreshCw } from "lucide-react";
+import {
+  BookOpenText,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  ExternalLink,
+  FileText,
+  RefreshCw,
+  RotateCcw,
+  UserRound,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { financialValueClass } from "@/lib/financial";
 import { useLocale } from "@/lib/locale";
@@ -23,6 +35,7 @@ const MONTH_NAMES = [
 interface PartnerStatementProps {
   partnerId: number;
   partnerType: "Customer" | "Supplier";
+  children: ReactNode;
 }
 
 interface CurrencySummary {
@@ -71,8 +84,54 @@ interface DocumentInfo {
   amount: string;
 }
 
+interface PartnerDocumentSection {
+  id: "invoices" | "payments" | "returns" | "settlements";
+  title: string;
+  icon: LucideIcon;
+  tone: string;
+  numberField: string;
+  dateField: string;
+}
+
+interface PartnerDocumentRecord extends Record<string, unknown> {
+  id: number | string;
+}
+
+interface PartnerDocumentPage {
+  records: PartnerDocumentRecord[];
+  page: number;
+  lastPage: number;
+  total: number;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseDocumentPage(value: unknown): PartnerDocumentPage {
+  if (!isRecord(value) || !Array.isArray(value.data)) {
+    throw new Error("The document list response was incomplete.");
+  }
+  const records = value.data.map((record): PartnerDocumentRecord => {
+    if (!isRecord(record) || !("id" in record) ||
+      (typeof record.id !== "number" && typeof record.id !== "string")) {
+      throw new Error("The document list response was incomplete.");
+    }
+    return { ...record, id: record.id };
+  });
+  if (
+    typeof value.current_page !== "number" ||
+    typeof value.last_page !== "number" ||
+    typeof value.total !== "number"
+  ) {
+    throw new Error("The document list response was incomplete.");
+  }
+  return {
+    records,
+    page: value.current_page,
+    lastPage: value.last_page,
+    total: value.total,
+  };
 }
 
 function toNumber(value: unknown): number {
@@ -130,13 +189,64 @@ function parseStatement(value: unknown): Statement {
   };
 }
 
-function errorMessage(error: unknown): string {
-  if (axios.isAxiosError(error) && isRecord(error.response?.data) && typeof error.response.data.message === "string") return error.response.data.message;
-  return error instanceof Error ? error.message : "Could not load the account statement.";
+function errorMessage(error: unknown, fallback = "Could not load the account statement."): string {
+  if (axios.isAxiosError(error)) {
+    if (isRecord(error.response?.data) && typeof error.response.data.message === "string") return error.response.data.message;
+    return fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
 }
 
 function money(value: number, currency: string): string {
   return `${currency} ${new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(value)}`;
+}
+
+function relatedRecord(value: unknown): Record<string, unknown> | null {
+  return isRecord(value) ? value : null;
+}
+
+function textValue(value: unknown): string | null {
+  return typeof value === "string" || typeof value === "number" ? String(value) : null;
+}
+
+function documentNumber(
+  record: PartnerDocumentRecord,
+  section: PartnerDocumentSection,
+): string {
+  return textValue(record[section.numberField]) ?? `#${record.id}`;
+}
+
+function documentDate(record: PartnerDocumentRecord, section: PartnerDocumentSection): string {
+  return textValue(record[section.dateField]) ?? "";
+}
+
+function documentCurrency(record: PartnerDocumentRecord): string {
+  const currency = relatedRecord(record.currency);
+  const sale = relatedRecord(record.sale);
+  const purchase = relatedRecord(record.purchase);
+  const returnRecord = relatedRecord(record.sale_return) ?? relatedRecord(record.purchase_return);
+  const returnCurrency = relatedRecord(returnRecord?.currency);
+  return textValue(currency?.code) ??
+    textValue(relatedRecord(sale?.currency)?.code) ??
+    textValue(relatedRecord(purchase?.currency)?.code) ??
+    textValue(returnCurrency?.code) ??
+    "";
+}
+
+function formatDocumentDate(value: string, language: "en" | "ps"): string {
+  if (!value) return "—";
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(language === "ps" ? "ps-AF" : "en-US", {
+    dateStyle: "medium",
+  }).format(date);
+}
+
+function documentAmount(record: PartnerDocumentRecord): number | null {
+  const value = record.grand_total ?? record.amount;
+  if (value === null || value === undefined || value === "") return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : null;
 }
 
 function supportedSource(referenceType: string | null): { endpoint: string; title: string; numberField: string; dateField: string } | null {
@@ -148,33 +258,58 @@ function supportedSource(referenceType: string | null): { endpoint: string; titl
   return referenceType ? sources[referenceType] ?? null : null;
 }
 
-export default function PartnerStatement({ partnerId, partnerType }: PartnerStatementProps) {
-  const { t } = useLocale();
+export default function PartnerStatement({ partnerId, partnerType, children }: PartnerStatementProps) {
+  const { t, language } = useLocale();
   const today = new Date();
   const documentSections = partnerType === "Customer"
     ? [
-      { id: "invoices", title: "Sales Invoices", endpoint: "/api/sales", filter: "Missing filter: business_partner_id" },
-      { id: "payments", title: "Customer Receipts / Payment Vouchers", endpoint: "/api/sale-payments", filter: "Missing filter: business_partner_id" },
-      { id: "returns", title: "Sale Returns", endpoint: "/api/sale-returns", filter: "Missing filter: business_partner_id" },
-      { id: "settlements", title: "Sale Return Settlements", endpoint: "/api/sale-return-settlements", filter: "Existing filter: sale_return_id; missing partner_id" },
+      { id: "invoices", title: "Sales Invoices", icon: FileText, tone: "blue", numberField: "sale_number", dateField: "sale_date" },
+      { id: "payments", title: "Customer Receipts", icon: CreditCard, tone: "green", numberField: "payment_number", dateField: "payment_date" },
+      { id: "returns", title: "Sale Returns", icon: RotateCcw, tone: "orange", numberField: "return_number", dateField: "return_date" },
+      { id: "settlements", title: "Sale Return Settlements", icon: Wallet, tone: "teal", numberField: "settlement_number", dateField: "settlement_date" },
     ] as const
     : [
-      { id: "invoices", title: "Purchase Invoices", endpoint: "/api/purchases", filter: "Missing filter: business_partner_id" },
-      { id: "payments", title: "Supplier Payments", endpoint: "/api/supplier-payments", filter: "Missing filter: business_partner_id" },
-      { id: "returns", title: "Purchase Returns", endpoint: "/api/purchase-returns", filter: "Missing filter: business_partner_id" },
-      { id: "settlements", title: "Purchase Return Settlements", endpoint: "/api/purchase-return-settlements", filter: "Existing filter: purchase_return_id; missing partner_id" },
-    ] as const;
+      { id: "invoices", title: "Purchase Invoices", icon: FileText, tone: "blue", numberField: "purchase_number", dateField: "purchase_date" },
+      { id: "payments", title: "Supplier Payments", icon: CreditCard, tone: "green", numberField: "payment_number", dateField: "payment_date" },
+      { id: "returns", title: "Purchase Returns", icon: RotateCcw, tone: "orange", numberField: "return_number", dateField: "return_date" },
+      { id: "settlements", title: "Purchase Return Settlements", icon: Wallet, tone: "teal", numberField: "settlement_number", dateField: "settlement_date" },
+    ] as const satisfies readonly PartnerDocumentSection[];
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(0);
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
-  const [activeSection, setActiveSection] = useState("statement");
+  const [activeSection, setActiveSection] = useState("overview");
   const [statement, setStatement] = useState<Statement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [documentPage, setDocumentPage] = useState(1);
+  const [documentRetry, setDocumentRetry] = useState(0);
+  const [documentList, setDocumentList] = useState<PartnerDocumentPage | null>(null);
+  const [documentListLoading, setDocumentListLoading] = useState(false);
+  const [documentListError, setDocumentListError] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<PartnerDocumentRecord | null>(null);
   const [document, setDocument] = useState<DocumentInfo | null>(null);
   const [documentLoading, setDocumentLoading] = useState(false);
   const [documentError, setDocumentError] = useState<string | null>(null);
+  const selectedDocuments = documentSections.find((section) => section.id === activeSection);
+  const selectedRecordSource = selectedRecord
+    ? relatedRecord(selectedRecord.sale) ?? relatedRecord(selectedRecord.purchase)
+    : null;
+  const selectedRecordReturn = selectedRecord
+    ? relatedRecord(selectedRecord.sale_return) ?? relatedRecord(selectedRecord.purchase_return)
+    : null;
+  const selectedRecordReference = selectedRecordSource
+    ? textValue(selectedRecordSource.sale_number) ?? textValue(selectedRecordSource.purchase_number)
+    : selectedRecordReturn
+      ? textValue(selectedRecordReturn.return_number)
+      : null;
+  const selectedRecordItems = selectedRecord && Array.isArray(selectedRecord.items)
+    ? selectedRecord.items.filter(isRecord)
+    : selectedRecordSource && Array.isArray(selectedRecordSource.items)
+      ? selectedRecordSource.items.filter(isRecord)
+      : [];
+  const selectedRecordCurrency = selectedRecord ? documentCurrency(selectedRecord) : "";
+  const selectedRecordAmount = selectedRecord ? documentAmount(selectedRecord) : null;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -197,9 +332,36 @@ export default function PartnerStatement({ partnerId, partnerType }: PartnerStat
   }, [partnerId, partnerType, year, month, page, retry]);
 
   useEffect(() => {
-    setActiveSection("statement");
+    setActiveSection("overview");
     setPage(1);
+    setDocumentPage(1);
+    setSelectedRecord(null);
   }, [partnerId, partnerType]);
+
+  useEffect(() => {
+    if (!selectedDocuments) return;
+    const controller = new AbortController();
+    setDocumentListLoading(true);
+    setDocumentListError(null);
+    setDocumentList(null);
+    api.get<unknown>(
+      `/api/business-partners/${partnerId}/documents/${selectedDocuments.id}`,
+      {
+        params: { page: documentPage, per_page: 10 },
+        signal: controller.signal,
+      },
+    ).then(({ data }) => setDocumentList(parseDocumentPage(data)))
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted) {
+          setDocumentList(null);
+          setDocumentListError(errorMessage(reason, "Could not load partner documents."));
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDocumentListLoading(false);
+      });
+    return () => controller.abort();
+  }, [partnerId, selectedDocuments?.id, documentPage, documentRetry]);
 
   async function openSource(row: StatementRow) {
     const source = supportedSource(row.referenceType);
@@ -242,16 +404,49 @@ export default function PartnerStatement({ partnerId, partnerType }: PartnerStat
     }
   }
 
-  const selectedDocuments = documentSections.find((section) => section.id === activeSection);
-
   return (
-    <section className="partner-statement" aria-label={t("Partner documents")}>
+    <section className="partner-statement partner-details-workspace" aria-label={t("Partner documents")}>
+      <nav className="partner-document-tabs" role="tablist" aria-label={t("Partner documents")} dir={language === "ps" ? "rtl" : "ltr"}>
+        <button id="partner-doc-tab-overview" type="button" role="tab" aria-selected={activeSection === "overview"} aria-controls="partner-document-panel" onClick={() => setActiveSection("overview")}>
+          <UserRound size={18} aria-hidden="true" /><span>{t("Overview")}</span>
+        </button>
+        {documentSections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <button
+              key={section.id}
+              id={`partner-doc-tab-${section.id}`}
+              className={`partner-document-tab--${section.tone}`}
+              type="button"
+              role="tab"
+              aria-selected={activeSection === section.id}
+              aria-controls="partner-document-panel"
+              onClick={() => {
+                setDocumentPage(1);
+                setSelectedRecord(null);
+                setActiveSection(section.id);
+              }}
+            >
+              <Icon size={18} aria-hidden="true" /><span>{t(section.title)}</span>
+            </button>
+          );
+        })}
+        <button id="partner-doc-tab-statement" className="partner-document-tab--indigo" type="button" role="tab" aria-selected={activeSection === "statement"} aria-controls="partner-document-panel" onClick={() => { setSelectedRecord(null); setActiveSection("statement"); }}>
+          <BookOpenText size={18} aria-hidden="true" /><span>{t("Account Statement")}</span>
+        </button>
+      </nav>
+
+      <div className="partner-document-content" dir={language === "ps" ? "rtl" : "ltr"}>
       <header className="partner-statement__heading">
         <div>
-          <h3>{t("Partner documents")}</h3>
-          <p>{t("Balances are calculated separately for each currency.")}</p>
+          <h3>{t(activeSection === "overview" ? "Partner overview" : selectedDocuments?.title ?? "Account Statement")}</h3>
+          <p>{t(activeSection === "statement" ? "Balances are calculated separately for each currency." : "View this partner’s profile and related records.")}</p>
         </div>
-        {activeSection === "statement" && (
+        {selectedDocuments ? (
+          <button className="overview-refresh" type="button" onClick={() => setDocumentRetry((value) => value + 1)} disabled={documentListLoading} aria-label={t("Refresh documents")}>
+            <RefreshCw size={15} aria-hidden="true" /> {t("Refresh")}
+          </button>
+        ) : activeSection === "statement" ? (
           <button
             className="overview-refresh"
             type="button"
@@ -261,34 +456,8 @@ export default function PartnerStatement({ partnerId, partnerType }: PartnerStat
           >
             <RefreshCw size={15} aria-hidden="true" /> {t("Refresh")}
           </button>
-        )}
+        ) : null}
       </header>
-
-      <nav className="partner-document-tabs" role="tablist" aria-label={t("Partner documents")}>
-        {documentSections.map((section) => (
-          <button
-            key={section.id}
-            id={`partner-doc-tab-${section.id}`}
-            type="button"
-            role="tab"
-            aria-selected={activeSection === section.id}
-            aria-controls="partner-document-panel"
-            onClick={() => setActiveSection(section.id)}
-          >
-            {t(section.title)}
-          </button>
-        ))}
-        <button
-          id="partner-doc-tab-statement"
-          type="button"
-          role="tab"
-          aria-selected={activeSection === "statement"}
-          aria-controls="partner-document-panel"
-          onClick={() => setActiveSection("statement")}
-        >
-          {t("Account Statement")}
-        </button>
-      </nav>
 
       <div
         id="partner-document-panel"
@@ -296,13 +465,72 @@ export default function PartnerStatement({ partnerId, partnerType }: PartnerStat
         role="tabpanel"
         aria-labelledby={activeSection === "statement" ? "partner-doc-tab-statement" : `partner-doc-tab-${activeSection}`}
       >
-        {selectedDocuments ? (
-          <div className="partner-document-unavailable" role="status">
-            <h4>{t(selectedDocuments.title)}</h4>
-            <p>{t("The API does not provide a partner-filtered list for this document type.")}</p>
-            <code dir="ltr">GET {selectedDocuments.endpoint}</code>
-            <small dir="ltr">{selectedDocuments.filter}</small>
-          </div>
+        {activeSection === "overview" ? (
+          <div className="partner-profile-overview">{children}</div>
+        ) : selectedDocuments ? (
+          <section className={`partner-document-list partner-document-list--${selectedDocuments.tone}`} aria-label={t(selectedDocuments.title)}>
+            {documentListLoading ? (
+              <div className="purchases-state" role="status"><span className="loading-spinner" /> {t("Loading documents…")}</div>
+            ) : documentListError ? (
+              <div className="purchases-state purchases-state--error" role="alert">
+                <span>{t(documentListError)}</span>
+                <button type="button" className="purchases-retry" onClick={() => setDocumentRetry((value) => value + 1)}>{t("Try again")}</button>
+              </div>
+            ) : documentList?.records.length ? (
+              <>
+                <div className="purchases-table-scroll partner-document-table-scroll">
+                  <table className="purchases-table partner-document-table">
+                    <thead>
+                      <tr>
+                        <th>{t("Date")}</th>
+                        <th>{t("Document number")}</th>
+                        <th>{t("Status")}</th>
+                        <th>{t("Currency")}</th>
+                        <th>{t("Amount")}</th>
+                        <th>{t("Actions")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {documentList.records.map((record) => {
+                        const code = documentCurrency(record);
+                        const amount = documentAmount(record);
+                        const status = textValue(record.status) ?? textValue(record.payment_status) ?? t("Recorded");
+                        const number = documentNumber(record, selectedDocuments);
+                        return (
+                          <tr key={record.id}>
+                            <td data-label={t("Date")} dir="ltr">{formatDocumentDate(documentDate(record, selectedDocuments), language)}</td>
+                            <td data-label={t("Document number")} dir="ltr"><strong>{number}</strong></td>
+                            <td data-label={t("Status")}><span className={`partner-document-status partner-document-status--${status.toLowerCase()}`}>{status}</span></td>
+                            <td data-label={t("Currency")} dir="ltr">{code || "—"}</td>
+                            <td data-label={t("Amount")} dir="ltr">{amount === null || !code ? "—" : money(amount, code)}</td>
+                            <td data-label={t("Actions")}>
+                              <button type="button" className="partner-document-view" onClick={() => setSelectedRecord(record)} aria-label={`${t("View Details")}: ${number}`}>
+                                <ExternalLink size={14} aria-hidden="true" /> {t("View Details")}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <footer className="purchases-pagination partner-document-pagination">
+                  <span>{documentList.total} {t("documents")}</span>
+                  <div className="purchases-pagination__controls">
+                    <button type="button" onClick={() => setDocumentPage((value) => value - 1)} disabled={documentPage <= 1 || documentListLoading} aria-label={t("Previous page")}>
+                      <ChevronLeft size={16} /> {t("Previous")}
+                    </button>
+                    <span>{t("Page")} <strong>{documentList.page}</strong> {t("of")} <strong>{documentList.lastPage}</strong></span>
+                    <button type="button" onClick={() => setDocumentPage((value) => value + 1)} disabled={documentPage >= documentList.lastPage || documentListLoading} aria-label={t("Next page")}>
+                      {t("Next")} <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </footer>
+              </>
+            ) : (
+              <div className="purchases-state purchases-state--empty">{t("No documents found for this partner.")}</div>
+            )}
+          </section>
         ) : (
           <>
             <div className="partner-statement__filters">
@@ -437,17 +665,93 @@ export default function PartnerStatement({ partnerId, partnerType }: PartnerStat
           </>
         )}
       </div>
+      </div>
+
+      {selectedRecord && selectedDocuments && (
+        <div className="partner-statement__document-backdrop partner-statement__record-backdrop">
+          <section className="partner-statement__document partner-document-detail" role="dialog" aria-modal="true" aria-labelledby="partner-record-title" dir={language === "ps" ? "rtl" : "ltr"}>
+            <header>
+              <div>
+                <p className="overview-eyebrow">{t(selectedDocuments.title)}</p>
+                <h3 id="partner-record-title" dir="ltr">{documentNumber(selectedRecord, selectedDocuments)}</h3>
+              </div>
+              <button type="button" onClick={() => setSelectedRecord(null)} aria-label={t("Close document details")}>×</button>
+            </header>
+            <dl>
+              <div><dt>{t("Document number")}</dt><dd dir="ltr">{documentNumber(selectedRecord, selectedDocuments)}</dd></div>
+              <div><dt>{t("Date")}</dt><dd dir="ltr">{formatDocumentDate(documentDate(selectedRecord, selectedDocuments), language)}</dd></div>
+              <div>
+                <dt>{t("Status")}</dt>
+                <dd>{textValue(selectedRecord.status) ?? textValue(selectedRecord.payment_status) ?? t("Recorded")}</dd>
+              </div>
+              <div><dt>{t("Currency")}</dt><dd dir="ltr">{documentCurrency(selectedRecord) || "—"}</dd></div>
+              <div>
+                <dt>{t("Amount")}</dt>
+                <dd dir="ltr">
+                  {selectedRecordAmount === null || !selectedRecordCurrency
+                    ? "—"
+                    : money(selectedRecordAmount, selectedRecordCurrency)}
+                </dd>
+              </div>
+              {textValue(selectedRecord.invoice_number) && (
+                <div><dt>{t("Invoice number")}</dt><dd dir="ltr">{textValue(selectedRecord.invoice_number)}</dd></div>
+              )}
+              {textValue(selectedRecord.payment_status) && (
+                <div><dt>{t("Payment status")}</dt><dd>{textValue(selectedRecord.payment_status)}</dd></div>
+              )}
+              {selectedRecordReference && (
+                <div><dt>{t("Related document")}</dt><dd dir="ltr">{selectedRecordReference}</dd></div>
+              )}
+              {textValue(relatedRecord(selectedRecord.financial_account)?.name) && (
+                <div><dt>{t("Financial account")}</dt><dd>{textValue(relatedRecord(selectedRecord.financial_account)?.name)}</dd></div>
+              )}
+              {textValue(relatedRecord(selectedRecord.warehouse)?.name) && (
+                <div><dt>{t("Warehouse")}</dt><dd>{textValue(relatedRecord(selectedRecord.warehouse)?.name)}</dd></div>
+              )}
+              {textValue(selectedRecord.exchange_rate_to_afn) && (
+                <div><dt>{t("Exchange rate")}</dt><dd dir="ltr">{textValue(selectedRecord.exchange_rate_to_afn)}</dd></div>
+              )}
+              {textValue(selectedRecord.notes) && (
+                <div className="partner-document-detail__notes"><dt>{t("Notes")}</dt><dd>{textValue(selectedRecord.notes)}</dd></div>
+              )}
+            </dl>
+            {selectedRecordItems.length > 0 && (
+              <section className="partner-document-detail__items">
+                <h4>{t("Items")}</h4>
+                <div className="purchases-table-scroll">
+                  <table className="purchases-table">
+                    <thead>
+                      <tr><th>{t("Product")}</th><th>{t("Quantity")}</th><th>{t("Unit Price")}</th><th>{t("Amount")}</th></tr>
+                    </thead>
+                    <tbody>
+                      {selectedRecordItems.map((item, index) => {
+                        const product = relatedRecord(item.product);
+                        const rawUnitAmount = item.unit_price ?? item.unit_cost;
+                        const rawLineAmount = item.line_total;
+                        const unitAmount = rawUnitAmount === null || rawUnitAmount === undefined ? null : Number(rawUnitAmount);
+                        const lineAmount = rawLineAmount === null || rawLineAmount === undefined ? null : Number(rawLineAmount);
+                        return (
+                          <tr key={textValue(item.id) ?? index}>
+                            <td data-label={t("Product")}>{textValue(product?.name) ?? "—"}</td>
+                            <td data-label={t("Quantity")} dir="ltr">{textValue(item.quantity) ?? "—"}</td>
+                            <td data-label={t("Unit Price")} dir="ltr">{selectedRecordCurrency && unitAmount !== null && Number.isFinite(unitAmount) ? money(unitAmount, selectedRecordCurrency) : "—"}</td>
+                            <td data-label={t("Amount")} dir="ltr">{selectedRecordCurrency && lineAmount !== null && Number.isFinite(lineAmount) ? money(lineAmount, selectedRecordCurrency) : "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+          </section>
+        </div>
+      )}
 
       {(documentLoading || documentError || document) && (
         <div
           className="partner-statement__document-backdrop"
           role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setDocument(null);
-              setDocumentError(null);
-            }
-          }}
         >
           <section className="partner-statement__document" role="dialog" aria-modal="true" aria-labelledby="partner-source-title">
             <header>

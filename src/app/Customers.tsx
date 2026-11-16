@@ -878,6 +878,7 @@ export default function Customers() {
                 </div>
               ) : customerDetails ? (
                 <>
+                  <PartnerStatement partnerId={customerDetails.id} partnerType="Customer">
                   <div className="partner-detail-contact">
                     <span><strong>{t("Phone")}</strong> {customerDetails.phone || "—"}</span>
                     <span dir="ltr"><strong>{t("Email")}</strong> {customerDetails.email || "—"}</span>
@@ -927,7 +928,7 @@ export default function Customers() {
                       <p className="partner-detail-notes">{customerDetails.notes || "—"}</p>
                     </section>
                   </div>
-                  <PartnerStatement partnerId={customerDetails.id} partnerType="Customer" />
+                  </PartnerStatement>
                   <div className="customer-detail-actions partner-detail-actions">
                     <button
                       className="purchase-save-button"

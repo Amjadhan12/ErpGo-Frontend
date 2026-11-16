@@ -878,6 +878,7 @@ export default function Suppliers() {
                 </div>
               ) : supplierDetails ? (
                 <>
+                  <PartnerStatement partnerId={supplierDetails.id} partnerType="Supplier">
                   <div className="partner-detail-contact">
                     <span><strong>{t("Phone")}</strong> {supplierDetails.phone || "—"}</span>
                     <span dir="ltr"><strong>{t("Email")}</strong> {supplierDetails.email || "—"}</span>
@@ -927,7 +928,7 @@ export default function Suppliers() {
                       <p className="partner-detail-notes">{supplierDetails.notes || "—"}</p>
                     </section>
                   </div>
-                  <PartnerStatement partnerId={supplierDetails.id} partnerType="Supplier" />
+                  </PartnerStatement>
                   <div className="supplier-detail-actions partner-detail-actions">
                     <button
                       className="purchase-save-button"
