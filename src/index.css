@@ -120,7 +120,7 @@ html[dir="rtl"] .chat-conversations {
     "Segoe UI",
     sans-serif;
   color: #172033;
-  background: #f5f7fb;
+  background: #f5f7fa;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -135,16 +135,16 @@ html[dir="rtl"] .chat-conversations {
   --color-secondary: #0f766e;
   --color-secondary-container: #ccfbf1;
   --color-tertiary: #d97706;
-  --color-background: #f5f7fb;
+  --color-background: #f5f7fa;
   --color-surface: #ffffff;
   --color-surface-muted: #f8fafc;
-  --color-text: #172033;
+  --color-text: #172b4d;
   --color-muted: #64748b;
   --color-border: #e2e8f0;
   --color-success: #15803d;
-  --color-warning: #b45309;
-  --color-error: #b91c1c;
-  --color-info: #0369a1;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-info: #0284c7;
   --font-body: 15px;
   --font-control: 16px;
   --font-label: 15px;
@@ -161,6 +161,302 @@ html[dir="rtl"] .chat-conversations {
   --muted: #64748b;
   --line: #e2e8f0;
   --gold: #0f766e;
+}
+
+.login-footer__portfolio {
+  color: var(--color-primary-dark);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.login-footer__portfolio:hover,
+.login-footer__portfolio:focus-visible {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.secretary-sidebar {
+  border-inline-end-color: rgb(255 255 255 / 10%);
+  background: var(--color-sidebar);
+  color: #f8fafc;
+}
+
+.secretary-sidebar__brand {
+  border-bottom-color: rgb(255 255 255 / 12%);
+}
+
+.secretary-brand__mark {
+  border-color: rgb(255 255 255 / 20%);
+  color: #fff;
+  background: rgb(255 255 255 / 10%);
+}
+
+.secretary-brand__text strong {
+  color: #fff;
+}
+
+.secretary-brand__text small {
+  color: #cbd5e1;
+}
+
+.secretary-navigation__heading {
+  color: #94a3b8;
+}
+
+.secretary-navigation__item {
+  color: #cbd5e1;
+}
+
+.secretary-navigation__item svg {
+  color: #94a3b8;
+}
+
+.secretary-navigation__item:not(:disabled):hover {
+  color: #fff;
+  background: rgb(255 255 255 / 9%);
+}
+
+.secretary-navigation__item--active,
+.secretary-navigation__item--active:hover {
+  color: #fff;
+  background: var(--color-primary);
+}
+
+.secretary-navigation__item--active svg {
+  color: #fff;
+}
+
+.secretary-navigation__item--active::before {
+  background: #93c5fd;
+}
+
+.secretary-navigation__later {
+  color: #94a3b8;
+}
+
+.secretary-sidebar__help-icon {
+  color: #bfdbfe;
+  background: rgb(255 255 255 / 10%);
+}
+
+.secretary-header {
+  border-bottom-color: var(--color-border);
+  background: rgb(255 255 255 / 96%);
+}
+
+.partner-portal-header {
+  border-bottom-color: #243b53;
+  background: var(--color-sidebar);
+  color: #f8fafc;
+}
+
+.partner-portal-brand,
+.partner-portal-brand strong,
+.partner-portal-user {
+  color: #f8fafc;
+}
+
+.partner-portal-brand small {
+  color: #cbd5e1;
+}
+
+.partner-portal-brand-icon {
+  color: #bfdbfe;
+  background: rgb(255 255 255 / 10%);
+}
+
+.partner-portal-nav a {
+  color: #e2e8f0;
+}
+
+.partner-portal-nav a:hover,
+.partner-portal-nav a.active {
+  color: #fff;
+  background: rgb(255 255 255 / 12%);
+}
+
+.partner-portal-nav a.active svg {
+  color: #93c5fd;
+}
+
+.partner-portal-user button {
+  border-color: rgb(255 255 255 / 24%);
+  color: #f8fafc;
+  background: rgb(255 255 255 / 8%);
+}
+
+.partner-portal-user button:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 40%);
+  color: #fff;
+  background: rgb(255 255 255 / 14%);
+}
+
+.partner-portal-header .language-switcher {
+  border-color: rgb(255 255 255 / 24%);
+  color: #f8fafc;
+  background: rgb(255 255 255 / 8%);
+}
+
+.partner-portal-header .language-switcher select {
+  color: #f8fafc;
+  background: transparent;
+}
+
+.partner-portal-header .language-switcher option {
+  color: var(--color-text);
+  background: #fff;
+}
+
+.secretary-content :is(div, section, article)[class*="table-scroll"],
+.secretary-content :is(div, section, article)[class*="table-wrap"],
+.partner-portal-content :is(div, section)[class*="table-scroll"],
+.partner-portal-content :is(div, section)[class*="table-wrap"] {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: #94a3b8 #f1f5f9;
+  scrollbar-width: thin;
+}
+
+.secretary-content table,
+.partner-portal-content table {
+  color: var(--color-text);
+}
+
+.secretary-content table thead th,
+.partner-portal-content table thead th {
+  border-color: #29445f;
+  background: var(--color-sidebar);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .015em;
+  text-align: start;
+}
+
+.secretary-content table tbody tr:nth-child(even),
+.partner-portal-content table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.secretary-content table tbody tr:hover,
+.partner-portal-content table tbody tr:hover {
+  background: #eff6ff;
+}
+
+.secretary-content table tbody td,
+.partner-portal-content table tbody td {
+  border-color: var(--color-border);
+  color: #334155;
+  text-align: start;
+}
+
+.secretary-content table :is(td, th),
+.partner-portal-content table :is(td, th) {
+  vertical-align: middle;
+}
+
+.secretary-content :is(article, section)[class*="card"],
+.secretary-content :is(article, section)[class*="panel"],
+.partner-portal-content :is(article, section)[class*="card"],
+.partner-portal-content :is(article, section)[class*="panel"] {
+  border-color: var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.secretary-content [role="dialog"][aria-modal="true"],
+.partner-portal-content [role="dialog"][aria-modal="true"] {
+  border-color: var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 24px 72px rgb(15 23 42 / 28%);
+}
+
+.secretary-content [role="dialog"][aria-modal="true"] > header,
+.partner-portal-content [role="dialog"][aria-modal="true"] > header {
+  border-color: #29445f;
+  border-radius: 15px 15px 0 0;
+  background: var(--color-sidebar);
+  color: #fff;
+}
+
+.secretary-content [role="dialog"][aria-modal="true"] > header :is(h1, h2, h3, p, small, span, svg),
+.partner-portal-content [role="dialog"][aria-modal="true"] > header :is(h1, h2, h3, p, small, span, svg) {
+  color: inherit;
+}
+
+.secretary-content [role="dialog"][aria-modal="true"] > header p,
+.partner-portal-content [role="dialog"][aria-modal="true"] > header p {
+  color: #cbd5e1;
+}
+
+.secretary-content [role="dialog"][aria-modal="true"] > header button,
+.partner-portal-content [role="dialog"][aria-modal="true"] > header button {
+  border-color: rgb(255 255 255 / 24%);
+  color: #fff;
+  background: rgb(255 255 255 / 8%);
+}
+
+.secretary-content [role="dialog"][aria-modal="true"] > header button:hover,
+.partner-portal-content [role="dialog"][aria-modal="true"] > header button:hover {
+  border-color: rgb(255 255 255 / 40%);
+  background: rgb(255 255 255 / 16%);
+}
+
+.secretary-content :is(button[class*="danger"], button[class*="delete"], button[class*="deactivate"]) {
+  border-color: var(--color-error);
+  background: var(--color-error);
+  color: #fff;
+}
+
+.secretary-content :is(button[class*="danger"], button[class*="delete"], button[class*="deactivate"]):hover:not(:disabled) {
+  border-color: #b91c1c;
+  background: #b91c1c;
+}
+
+.secretary-content :is(button[class*="activate"], button[class*="reactivate"]) {
+  border-color: var(--color-success);
+  background: var(--color-success);
+  color: #fff;
+}
+
+.secretary-content :is(button[class*="activate"], button[class*="reactivate"]):hover:not(:disabled) {
+  border-color: #166534;
+  background: #166534;
+}
+
+.secretary-content :is([class*="status--active"], [class*="badge--active"]) {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.secretary-content :is([class*="status--inactive"], [class*="badge--inactive"]) {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+@media (max-width: 760px) {
+  .partner-portal-header {
+    background: var(--color-sidebar);
+  }
+
+  .secretary-content table,
+  .partner-portal-content table {
+    min-width: max-content;
+  }
+}
+
+@media print {
+  .secretary-content table thead th,
+  .partner-portal-content table thead th {
+    background: #fff;
+    color: #172b4d;
+    print-color-adjust: exact;
+  }
 }
 
 * {
@@ -14877,4 +15173,231 @@ html[dir="rtl"] .recharts-wrapper {
   .sales-redesign__remove { width: 100%; }
   .sales-redesign__modal-actions { flex-wrap: wrap; }
   .sales-redesign__summary-list { padding-inline: 14px; }
+}
+
+/* Global enterprise design layer */
+.secretary-sidebar {
+  border-inline-end-color: rgb(255 255 255 / 10%);
+  background: var(--color-sidebar);
+  color: #f8fafc;
+}
+
+.secretary-sidebar__brand { border-bottom-color: rgb(255 255 255 / 12%); }
+.secretary-brand__mark { border-color: rgb(255 255 255 / 20%); color: #fff; background: rgb(255 255 255 / 10%); }
+.secretary-brand__text strong { color: #fff; }
+.secretary-brand__text small { color: #cbd5e1; }
+.secretary-navigation__heading { color: #94a3b8; }
+.secretary-navigation__item { color: #cbd5e1; }
+.secretary-navigation__item svg { color: #94a3b8; }
+.secretary-navigation__item:not(:disabled):hover { color: #fff; background: rgb(255 255 255 / 9%); }
+.secretary-navigation__item--active,
+.secretary-navigation__item--active:hover { color: #fff; background: var(--color-primary); }
+.secretary-navigation__item--active svg { color: #fff; }
+.secretary-navigation__item--active::before { background: #93c5fd; }
+.secretary-navigation__later { color: #94a3b8; }
+.secretary-sidebar__help-icon { color: #bfdbfe; background: rgb(255 255 255 / 10%); }
+
+.secretary-header { border-bottom-color: var(--color-border); background: rgb(255 255 255 / 96%); }
+.secretary-breadcrumb strong,
+.secretary-user__info strong { color: var(--color-text); }
+.secretary-header__menu:hover { border-color: #bfdbfe; color: var(--color-primary-dark); background: var(--color-primary-container); }
+
+.partner-portal-header {
+  border-bottom-color: #243b53;
+  background: var(--color-sidebar);
+  color: #f8fafc;
+}
+.partner-portal-brand,
+.partner-portal-brand strong,
+.partner-portal-user { color: #f8fafc; }
+.partner-portal-brand small { color: #cbd5e1; }
+.partner-portal-brand-icon { color: #bfdbfe; background: rgb(255 255 255 / 10%); }
+.partner-portal-nav a { color: #e2e8f0; }
+.partner-portal-nav a:hover,
+.partner-portal-nav a.active { color: #fff; background: rgb(255 255 255 / 12%); }
+.partner-portal-nav a.active svg { color: #93c5fd; }
+.partner-portal-user button {
+  border-color: rgb(255 255 255 / 24%);
+  color: #f8fafc;
+  background: rgb(255 255 255 / 8%);
+}
+.partner-portal-user button:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 40%);
+  color: #fff;
+  background: rgb(255 255 255 / 14%);
+}
+.partner-portal-header .language-switcher {
+  border-color: rgb(255 255 255 / 24%);
+  color: #f8fafc;
+  background: rgb(255 255 255 / 8%);
+}
+.partner-portal-header .language-switcher select { color: #f8fafc; background: transparent; }
+.partner-portal-header .language-switcher option { color: var(--color-text); background: #fff; }
+
+.secretary-shell .secretary-content :is(div, section, article)[class*="table-scroll"],
+.secretary-shell .secretary-content :is(div, section, article)[class*="table-wrap"],
+.partner-portal-shell .partner-portal-content :is(div, section)[class*="table-scroll"],
+.partner-portal-shell .partner-portal-content :is(div, section)[class*="table-wrap"] {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: #94a3b8 #f1f5f9;
+  scrollbar-width: thin;
+}
+
+.secretary-shell .secretary-content table,
+.partner-portal-shell .partner-portal-content table { color: var(--color-text); }
+
+.secretary-shell .secretary-content table thead th,
+.partner-portal-shell .partner-portal-content table thead th {
+  border-color: #29445f;
+  background: var(--color-sidebar);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .015em;
+  text-align: start;
+}
+
+.secretary-shell .secretary-content table tbody tr:nth-child(even),
+.partner-portal-shell .partner-portal-content table tbody tr:nth-child(even) { background: #f8fafc; }
+.secretary-shell .secretary-content table tbody tr:hover,
+.partner-portal-shell .partner-portal-content table tbody tr:hover { background: #eff6ff; }
+.secretary-shell .secretary-content table tbody td,
+.partner-portal-shell .partner-portal-content table tbody td {
+  border-color: var(--color-border);
+  color: #334155;
+  text-align: start;
+}
+.secretary-shell .secretary-content table :is(td, th),
+.partner-portal-shell .partner-portal-content table :is(td, th) { vertical-align: middle; }
+
+.secretary-shell .secretary-content :is(article, section)[class*="card"],
+.secretary-shell .secretary-content :is(article, section)[class*="panel"],
+.partner-portal-shell .partner-portal-content :is(article, section)[class*="card"],
+.partner-portal-shell .partner-portal-content :is(article, section)[class*="panel"] {
+  border-color: var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.secretary-shell .secretary-content div[class*="card"]:not([class*="icon"]):not([class*="avatar"]):not([class*="badge"]):not([class*="action"]):not([class*="header"]):not([class*="body"]),
+.partner-portal-shell .partner-portal-content div[class*="card"]:not([class*="icon"]):not([class*="avatar"]):not([class*="badge"]):not([class*="action"]):not([class*="header"]):not([class*="body"]) {
+  border-color: var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.secretary-shell .secretary-content [role="dialog"][aria-modal="true"],
+.partner-portal-shell .partner-portal-content [role="dialog"][aria-modal="true"] {
+  border-color: var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 24px 72px rgb(15 23 42 / 28%);
+}
+
+.secretary-shell .secretary-content [role="dialog"][aria-modal="true"] > header,
+.partner-portal-shell .partner-portal-content [role="dialog"][aria-modal="true"] > header {
+  border-color: #29445f;
+  border-radius: 15px 15px 0 0;
+  background: var(--color-sidebar);
+  color: #fff;
+}
+
+.secretary-shell .secretary-content [role="dialog"][aria-modal="true"] > header :is(h1, h2, h3, p, small, span, svg),
+.partner-portal-shell .partner-portal-content [role="dialog"][aria-modal="true"] > header :is(h1, h2, h3, p, small, span, svg) { color: inherit; }
+.secretary-shell .secretary-content [role="dialog"][aria-modal="true"] > header p,
+.partner-portal-shell .partner-portal-content [role="dialog"][aria-modal="true"] > header p { color: #cbd5e1; }
+.secretary-shell .secretary-content [role="dialog"][aria-modal="true"] > header button,
+.partner-portal-shell .partner-portal-content [role="dialog"][aria-modal="true"] > header button {
+  border-color: rgb(255 255 255 / 24%);
+  color: #fff;
+  background: rgb(255 255 255 / 8%);
+}
+.secretary-shell .secretary-content [role="dialog"][aria-modal="true"] > header button:hover,
+.partner-portal-shell .partner-portal-content [role="dialog"][aria-modal="true"] > header button:hover { background: rgb(255 255 255 / 16%); }
+
+.secretary-shell .secretary-content :is(button[class*="danger"], button[class*="delete"], button[class*="deactivate"]) {
+  border-color: var(--color-error);
+  background: var(--color-error);
+  color: #fff;
+}
+.secretary-shell .secretary-content :is(button[class*="danger"], button[class*="delete"], button[class*="deactivate"]):hover:not(:disabled) {
+  border-color: #b91c1c;
+  background: #b91c1c;
+}
+.secretary-shell .secretary-content button[class*="activate"]:not([class*="deactivate"]),
+.secretary-shell .secretary-content button[class*="reactivate"] {
+  border-color: var(--color-success);
+  background: var(--color-success);
+  color: #fff;
+}
+.secretary-shell .secretary-content button[class*="activate"]:not([class*="deactivate"]):hover:not(:disabled),
+.secretary-shell .secretary-content button[class*="reactivate"]:hover:not(:disabled) {
+  border-color: #166534;
+  background: #166534;
+}
+
+.login-footer__portfolio {
+  color: var(--color-primary-dark);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.login-footer__portfolio:hover,
+.login-footer__portfolio:focus-visible { color: var(--color-primary); text-decoration: underline; }
+
+.financial-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.financial-account-status-button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+.financial-account-deactivate { border-color: #fecaca; color: #b91c1c; background: #fef2f2; }
+.financial-account-reactivate { border-color: #bbf7d0; color: #166534; background: #f0fdf4; }
+.financial-status-inactive { border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 9px; color: #475569; background: #f1f5f9; font-size: 12px; font-weight: 650; }
+.financial-account-status-button:disabled { cursor: wait; opacity: .6; }
+
+@media (max-width: 760px) {
+  .partner-portal-header { background: var(--color-sidebar); }
+}
+
+@media print {
+  .secretary-shell .secretary-content table thead th,
+  .partner-portal-shell .partner-portal-content table thead th {
+    background: var(--color-sidebar);
+    print-color-adjust: exact;
+  }
+}
+
+#root th,
+#root th *:not(input):not(select):not(textarea) {
+  color: #fff !important;
+}
+
+.settings-form-footer { justify-content: space-between; gap: 10px; }
+.settings-delete {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 15px;
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.settings-delete:hover:not(:disabled) { background: #fef2f2; }
+.settings-delete:disabled { opacity: .65; cursor: wait; }
+@media (max-width: 760px) {
+  .settings-form-footer { flex-direction: column-reverse; }
+  .settings-delete { width: 100%; }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Eye, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Eye, LoaderCircle, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { getErrorMessage, getValidationResult, isRecord, optionalText, parseId, parseLaravelPage, todayValue, type LaravelPage } from "@/app/InventoryShared";
 import { useLocale } from "@/lib/locale";
@@ -52,6 +52,8 @@ export default function DailyBookNotes() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -99,6 +101,26 @@ export default function DailyBookNotes() {
     } finally { setSaving(false); }
   }
 
+  async function deleteNote(note: DailyBookNote) {
+    if (deletingId !== null) return;
+    const title = note.title || t("Untitled note");
+    if (!window.confirm(t("Delete daily book note “{title}”?").replace("{title}", title))) return;
+    setDeletingId(note.id);
+    setDeleteError(null);
+    setSuccess(null);
+    try {
+      await api.delete(`/api/daily-book-notes/${note.id}`);
+      setSuccess("Daily book note deleted successfully.");
+      if (selected?.id === note.id) setSelected(null);
+      setPage((current) => rows?.data.length === 1 ? Math.max(1, current - 1) : current);
+      setRetry((current) => current + 1);
+    } catch (error) {
+      setDeleteError(getErrorMessage(error));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setPage(1); setSearch(query.trim()); setSuccess(null);
   }
@@ -111,6 +133,7 @@ export default function DailyBookNotes() {
       </header>
 
       {success && <div className="daily-notes-notice" role="status">{t(success)}<button aria-label={t("Dismiss message")} onClick={() => setSuccess(null)}><X size={16} /></button></div>}
+      {deleteError && <div className="daily-notes-form-error" role="alert">{t(deleteError)}<button type="button" onClick={() => setDeleteError(null)}>{t("Dismiss message")}</button></div>}
 
       {formOpen && <section className="daily-notes-panel daily-notes-compose">
         <div className="daily-notes-panel-heading"><div className="daily-notes-icon"><BookOpen size={18} /></div><div><h2>{t(editingId === null ? "Create note" : "Edit note")}</h2><p>{t("Enter the note details and applicable date.")}</p></div><button className="daily-notes-icon-button" aria-label={t("Close form")} onClick={resetForm}><X size={18} /></button></div>
@@ -137,7 +160,7 @@ export default function DailyBookNotes() {
           : <>
             <div className="daily-notes-table-wrap"><table className="daily-notes-table"><thead><tr><th>{t("Title")}</th><th>{t("Date")}</th><th>{t("Details")}</th><th>{t("Created by")}</th><th>{t("Actions")}</th></tr></thead><tbody>{rows.data.map((note) => <tr key={note.id}>
               <td><strong>{note.title || t("Untitled note")}</strong></td><td>{displayDate(note.noteDate)}</td><td className="daily-notes-preview">{note.details}</td><td>{note.creator || "—"}</td>
-              <td><div className="daily-notes-row-actions"><button aria-label={t("View note")} title={t("View note")} onClick={() => void openNote(note.id)}><Eye size={16} /></button><button aria-label={t("Edit note")} title={t("Edit note")} onClick={() => void openNote(note.id, true)}><Pencil size={16} /></button></div></td>
+              <td><div className="daily-notes-row-actions"><button aria-label={t("View note")} title={t("View note")} onClick={() => void openNote(note.id)}><Eye size={16} /></button><button aria-label={t("Edit note")} title={t("Edit note")} onClick={() => void openNote(note.id, true)}><Pencil size={16} /></button><button className="daily-notes-delete" aria-label={t("Delete note")} title={t("Delete note")} disabled={deletingId !== null} onClick={() => void deleteNote(note)}>{deletingId === note.id ? <LoaderCircle className="daily-notes-spin" size={16} /> : <Trash2 size={16} />}</button></div></td>
             </tr>)}</tbody></table></div>
             <footer className="daily-notes-pagination"><span>{t("Showing {start}–{end} of {total}").replace("{start}", String(Math.min((rows.currentPage - 1) * rows.perPage + 1, rows.total))).replace("{end}", String(Math.min(rows.currentPage * rows.perPage, rows.total))).replace("{total}", String(rows.total))}</span><div><button disabled={rows.currentPage <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft size={15} /> {t("Previous")}</button><span>{t("Page")} {rows.currentPage} {t("of")} {rows.lastPage}</span><button disabled={rows.currentPage >= rows.lastPage} onClick={() => setPage((current) => current + 1)}>{t("Next")} <ChevronRight size={15} /></button></div></footer>
           </>}

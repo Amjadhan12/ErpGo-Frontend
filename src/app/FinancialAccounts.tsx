@@ -6,7 +6,7 @@ import DatePeriodFilter from "@/app/DatePeriodFilter";
 import { useLocale } from "@/lib/locale";
 
 type Currency = { id: number; code: string; name: string; symbol: string; decimals: number; active: boolean };
-type Account = { id: number; name: string; accountType: string; holderType: string | null; currency: Currency; opening: number; totalIn: number; totalOut: number; balance: number };
+type Account = { id: number; name: string; accountType: string; holderType: string | null; currency: Currency; opening: number; totalIn: number; totalOut: number; balance: number; isActive: boolean };
 type LedgerRow = { id: number; date: string; type: string; direction: "in" | "out"; amount: number; description: string | null; reference: string; balance: number };
 type Ledger = { rows: LedgerRow[]; page: number; lastPage: number; total: number; opening: number; totalIn: number; totalOut: number; closing: number; currency: string };
 
@@ -15,8 +15,8 @@ function parseCurrency(value: unknown): Currency {
   return { id: parseId(value.id, "currency ID"), code: value.code.toUpperCase(), name: value.name, symbol: typeof value.symbol === "string" ? value.symbol : value.code, decimals: typeof value.decimal_places === "number" ? value.decimal_places : 2, active: value.is_active === true };
 }
 function parseAccount(value: unknown): Account {
-  if (!isRecord(value) || !isRecord(value.currency)) throw new Error("The financial account response contains an incomplete record.");
-  return { id: parseId(value.id, "account ID"), name: typeof value.name === "string" ? value.name : "Account", accountType: typeof value.account_type === "string" ? value.account_type : "—", holderType: optionalText(value.holder_type), currency: parseCurrency(value.currency), opening: numberValue(value.opening_balance, "opening balance"), totalIn: numberValue(value.total_in, "incoming total"), totalOut: numberValue(value.total_out, "outgoing total"), balance: numberValue(value.current_balance, "current balance") };
+  if (!isRecord(value) || !isRecord(value.currency) || typeof value.is_active !== "boolean") throw new Error("The financial account response contains an incomplete record.");
+  return { id: parseId(value.id, "account ID"), name: typeof value.name === "string" ? value.name : "Account", accountType: typeof value.account_type === "string" ? value.account_type : "—", holderType: optionalText(value.holder_type), currency: parseCurrency(value.currency), opening: numberValue(value.opening_balance, "opening balance"), totalIn: numberValue(value.total_in, "incoming total"), totalOut: numberValue(value.total_out, "outgoing total"), balance: numberValue(value.current_balance, "current balance"), isActive: value.is_active };
 }
 function formatMoney(amount: number, code: string, decimals = 2): string {
   return new Intl.NumberFormat(undefined, { style: "currency", currency: code, minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(amount);
@@ -48,6 +48,7 @@ export default function FinancialAccounts() {
   const [retry, setRetry] = useState(0);
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -72,7 +73,7 @@ export default function FinancialAccounts() {
     const controller = new AbortController();
     setLoading(true); setError(null);
     void Promise.all([
-      api.get<unknown>("/api/financial-accounts/balances", { signal: controller.signal }).then(({ data }) => {
+      api.get<unknown>("/api/financial-accounts/balances", { params: { include_inactive: true }, signal: controller.signal }).then(({ data }) => {
         if (!isRecord(data) || !Array.isArray(data.data)) throw new Error("The financial account list response is incomplete.");
         setAccounts(data.data.map(parseAccount));
       }),
@@ -101,12 +102,35 @@ export default function FinancialAccounts() {
 
   const currencyTotals = useMemo(() => {
     const totals = new Map<string, { currency: Currency; balance: number; count: number }>();
-    for (const account of accounts) {
+    for (const account of accounts.filter((item) => item.isActive)) {
       const current = totals.get(account.currency.code) ?? { currency: account.currency, balance: 0, count: 0 };
       current.balance += account.balance; current.count += 1; totals.set(account.currency.code, current);
     }
     return ["AFN", "USD", "PKR"].map((code) => totals.get(code) ?? { currency: currencies.find((item) => item.code === code) ?? { id: 0, code, name: code, symbol: code, decimals: 2, active: true }, balance: 0, count: 0 });
   }, [accounts, currencies]);
+
+  async function toggleAccountStatus(account: Account) {
+    const nextActive = !account.isActive;
+    if (statusUpdatingId !== null) return;
+    if (!nextActive && !window.confirm(t("Deactivate “{account}”? The account history will be preserved.").replace("{account}", account.name))) return;
+    setStatusUpdatingId(account.id);
+    setSuccess(null);
+    setError(null);
+    try {
+      const { data } = await api.patch<unknown>(`/api/financial-accounts/${account.id}/status`, { is_active: nextActive });
+      if (!isRecord(data) || !isRecord(data.data) || data.data.is_active !== nextActive) {
+        throw new Error("The financial account status response is incomplete.");
+      }
+      setAccounts((current) => current.map((item) => item.id === account.id ? { ...item, isActive: nextActive } : item));
+      setSelected((current) => current?.id === account.id ? { ...current, isActive: nextActive } : current);
+      setSuccess(nextActive ? "Financial account reactivated successfully." : "Financial account deactivated successfully.");
+      setRetry((value) => value + 1);
+    } catch (requestError) {
+      setError(getErrorMessage(requestError));
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  }
 
   function resetForm() {
     setCurrencyId(""); setName(""); setAccountType("cash"); setHolderType("company"); setLocation(""); setAccountNumber(""); setNotes(""); setIsActive(true); setFieldErrors({}); setFormError(null);
@@ -126,11 +150,11 @@ export default function FinancialAccounts() {
     <header className="financial-accounts-heading"><div><p className="financial-accounts-eyebrow">{t("FINANCE")}</p><h1>{t("Financial Accounts")}</h1><p>{t("Manage cash and bank accounts and review their transaction history.")}</p></div><button className="financial-primary-button" type="button" onClick={() => { resetForm(); setCreating(true); }}><CirclePlus size={17} /> {t("New account")}</button></header>
     {success && <div className="financial-notice financial-notice--success" role="status">{t(success)}</div>}
     <section className="financial-currency-grid" aria-label={t("Balances by currency")}>{currencyTotals.map(({ currency, balance, count }) => <article className="financial-currency-card" key={currency.code}><span className="financial-currency-icon"><Wallet size={18} /></span><div><span>{currency.code} {t("balance")}</span><strong>{formatMoney(balance, currency.code, currency.decimals)}</strong><small>{count} {t(count === 1 ? "account" : "accounts")}</small></div></article>)}</section>
-    <section className="financial-account-panel"><div className="financial-section-heading"><div><h2>{t("Accounts")}</h2><p>{accounts.length} {t("active")} {t(accounts.length === 1 ? "account" : "accounts")}</p></div><button className="financial-icon-button" type="button" aria-label={t("Refresh accounts")} onClick={() => setRetry((value) => value + 1)}><RefreshCw size={17} /></button></div>
-      {loading ? <div className="financial-state" role="status">{t("Loading financial accounts…")}</div> : error ? <div className="financial-state financial-state--error" role="alert">{t(error)}<button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Try again")}</button></div> : accounts.length ? <div className="financial-table-scroll"><table className="financial-table"><thead><tr><th>{t("Account")}</th><th>{t("Type")}</th><th>{t("Holder")}</th><th>{t("Currency")}</th><th>{t("Current balance")}</th><th>{t("Status")}</th><th aria-label={t("Actions")} /></tr></thead><tbody>{accounts.map((account) => <tr key={account.id}><td><strong>{account.name}</strong></td><td><span className={`financial-type-badge financial-type-badge--${account.accountType.toLowerCase()}`}>{t(account.accountType)}</span></td><td>{account.holderType ? t(account.holderType.replaceAll("_", " ")) : "—"}</td><td><span className="financial-currency-tag">{account.currency.code}</span></td><td className="financial-balance">{formatMoney(account.balance, account.currency.code, account.currency.decimals)}</td><td><span className="financial-status-active">{t("Active")}</span></td><td><button className="financial-details-button" type="button" onClick={() => { setLedgerFromDate(""); setLedgerToDate(""); setSelected(account); setLedgerPage(1); }}><Eye size={15} /> {t("Ledger")}</button></td></tr>)}</tbody></table></div> : <div className="financial-state financial-state--empty"><Building2 size={25} /><strong>{t("No active accounts")}</strong><span>{t("Create an account to start viewing balances and transaction history.")}</span></div>}
+    <section className="financial-account-panel"><div className="financial-section-heading"><div><h2>{t("Accounts")}</h2><p>{t("{active} active · {inactive} inactive").replace("{active}", String(accounts.filter((item) => item.isActive).length)).replace("{inactive}", String(accounts.filter((item) => !item.isActive).length))}</p></div><button className="financial-icon-button" type="button" aria-label={t("Refresh accounts")} onClick={() => setRetry((value) => value + 1)}><RefreshCw size={17} /></button></div>
+      {loading ? <div className="financial-state" role="status">{t("Loading financial accounts…")}</div> : error ? <div className="financial-state financial-state--error" role="alert">{t(error)}<button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Try again")}</button></div> : accounts.length ? <div className="financial-table-scroll"><table className="financial-table"><thead><tr><th>{t("Account")}</th><th>{t("Type")}</th><th>{t("Holder")}</th><th>{t("Currency")}</th><th>{t("Current balance")}</th><th>{t("Status")}</th><th aria-label={t("Actions")} /></tr></thead><tbody>{accounts.map((account) => <tr key={account.id}><td><strong>{account.name}</strong></td><td><span className={`financial-type-badge financial-type-badge--${account.accountType.toLowerCase()}`}>{t(account.accountType)}</span></td><td>{account.holderType ? t(account.holderType.replaceAll("_", " ")) : "—"}</td><td><span className="financial-currency-tag">{account.currency.code}</span></td><td className="financial-balance">{formatMoney(account.balance, account.currency.code, account.currency.decimals)}</td><td><span className={`financial-status-${account.isActive ? "active" : "inactive"}`}>{t(account.isActive ? "Active" : "Inactive")}</span></td><td><div className="financial-account-actions"><button className="financial-details-button" type="button" onClick={() => { setLedgerFromDate(""); setLedgerToDate(""); setSelected(account); setLedgerPage(1); }}><Eye size={15} /> {t("Ledger")}</button><button className={`financial-account-status-button ${account.isActive ? "financial-account-deactivate" : "financial-account-reactivate"}`} type="button" onClick={() => void toggleAccountStatus(account)} disabled={statusUpdatingId !== null}>{t(statusUpdatingId === account.id ? account.isActive ? "Deactivating…" : "Reactivating…" : account.isActive ? "Deactivate" : "Reactivate")}</button></div></td></tr>)}</tbody></table></div> : <div className="financial-state financial-state--empty"><Building2 size={25} /><strong>{t("No accounts yet")}</strong><span>{t("Create an account to start viewing balances and transaction history.")}</span></div>}
     </section>
 
-    {creating && <div className="financial-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setCreating(false); }}><section className="financial-modal" role="dialog" aria-modal="true" aria-labelledby="financial-create-title"><header className="financial-modal-header"><div><span className="financial-modal-icon"><Landmark size={19} /></span><div><h2 id="financial-create-title">{t("Create financial account")}</h2><p>{t("Account details and balance currency")}</p></div></div><button className="financial-icon-button" type="button" aria-label={t("Close")} onClick={() => setCreating(false)} disabled={saving}><X size={18} /></button></header><form onSubmit={submit} noValidate><div className="financial-form-grid">
+    {creating && <div className="financial-modal-backdrop" role="presentation"><section className="financial-modal" role="dialog" aria-modal="true" aria-labelledby="financial-create-title"><header className="financial-modal-header"><div><span className="financial-modal-icon"><Landmark size={19} /></span><div><h2 id="financial-create-title">{t("Create financial account")}</h2><p>{t("Account details and balance currency")}</p></div></div><button className="financial-icon-button" type="button" aria-label={t("Close")} onClick={() => setCreating(false)} disabled={saving}><X size={18} /></button></header><form onSubmit={submit} noValidate><div className="financial-form-grid">
       <label className="financial-field"><span>{t("Account name")} <b>*</b></span><input value={name} maxLength={150} onChange={(event) => setName(event.target.value)} required aria-invalid={Boolean(fieldErrors.name)} />{fieldErrors.name && <small>{t(fieldErrors.name)}</small>}</label>
       <label className="financial-field"><span>{t("Currency")} <b>*</b></span><select value={currencyId} onChange={(event) => setCurrencyId(event.target.value)} required aria-invalid={Boolean(fieldErrors.currency_id)}><option value="">{t("Select currency")}</option>{currencies.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}</select>{fieldErrors.currency_id && <small>{t(fieldErrors.currency_id)}</small>}</label>
       <label className="financial-field"><span>{t("Account type")} <b>*</b></span><select value={accountType} onChange={(event) => setAccountType(event.target.value)} required><option value="cash">{t("Cash")}</option><option value="bank">{t("Bank")}</option></select>{fieldErrors.account_type && <small>{t(fieldErrors.account_type)}</small>}</label>

@@ -366,7 +366,7 @@ export default function Returns({ kind }: { kind: ReturnKind }) {
             </div></footer>
           </>}
       </section>
-      {(selected || detailLoading || detailError) && <div className="returns-redesign__modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !detailLoading) { setSelected(null); setDetailError(null); } }}>
+      {(selected || detailLoading || detailError) && <div className="returns-redesign__modal-backdrop" role="presentation">
         <section className="returns-redesign__dialog" role="dialog" aria-modal="true" aria-labelledby="returns-redesign-detail-title">
           <header className="returns-redesign__dialog-heading"><div><p className="returns-redesign__eyebrow">{t("Return details")}</p><h2 id="returns-redesign-detail-title">{selected?.number ?? title}</h2><p>{selected && formatDate(selected.date, language)}</p></div><button type="button" className="returns-redesign__icon-button" aria-label={t("Close details")} disabled={detailLoading} onClick={() => { setSelected(null); setDetailError(null); }}><X size={19} aria-hidden="true" /></button></header>
           {detailLoading ? <div className="returns-redesign__state" role="status"><span className="returns-redesign__spinner" />{t("Loading return details...")}</div>

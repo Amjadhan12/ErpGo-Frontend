@@ -360,7 +360,7 @@ export default function BatchExpiry() {
             label={t("No expiry date")}
             value={summary.withoutExpiry}
             numberFormat={numberFormat}
-            tone="no-expiry"
+            tone="no_expiry"
           />
           <SummaryCard
             label={t("Batches with stock")}

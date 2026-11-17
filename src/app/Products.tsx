@@ -1462,10 +1462,7 @@ export default function Products() {
       {selectedProductId !== null && (
         <div
           className="purchase-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget)
-              setSelectedProductId(null);
-          }}
+          role="presentation"
         >
           <section
             className="purchase-modal product-details-modal"
@@ -1577,7 +1574,7 @@ export default function Products() {
                       >
                       {isUpdatingProductStatus
                         ? t(productDetails.isActive ? "Deactivating…" : "Activating…")
-                        : t(productDetails.isActive ? "Deactivate" : "Activate")}
+                        : t(productDetails.isActive ? "Deactivate" : "Reactivate")}
                     </button>
                   </div>
                 </>
@@ -1590,9 +1587,7 @@ export default function Products() {
       {categoriesOpen && (
         <div
           className="purchase-modal-backdrop product-category-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeCategories();
-          }}
+          role="presentation"
         >
           <section
             className="purchase-modal product-category-modal"
@@ -1759,7 +1754,7 @@ export default function Products() {
                           >
                             {categoryStatusUpdatingId === category.id
                               ? t(category.isActive ? "Deactivating…" : "Activating…")
-                              : t(category.isActive ? "Deactivate" : "Activate")}
+                              : t(category.isActive ? "Deactivate" : "Reactivate")}
                           </button>
                         </div>
                       ))}
@@ -1783,9 +1778,7 @@ export default function Products() {
       {unitsOpen && (
         <div
           className="purchase-modal-backdrop product-unit-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeUnits();
-          }}
+          role="presentation"
         >
           <section
             className="purchase-modal product-unit-modal"
@@ -1963,7 +1956,7 @@ export default function Products() {
                           >
                             {unitStatusUpdatingId === unit.id
                               ? t(unit.isActive ? "Deactivating…" : "Activating…")
-                              : t(unit.isActive ? "Deactivate" : "Activate")}
+                              : t(unit.isActive ? "Deactivate" : "Reactivate")}
                           </button>
                         </div>
                       ))}

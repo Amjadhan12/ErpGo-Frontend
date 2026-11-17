@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { CheckCircle2, ImagePlus, LoaderCircle, RefreshCw } from "lucide-react";
+import { CheckCircle2, ImagePlus, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 import { api, getPublicStorageUrl } from "@/lib/api";
 import { getErrorMessage, getValidationResult, isRecord, optionalText, parseId } from "@/app/InventoryShared";
 import { useAuth } from "@/auth/AuthContext";
@@ -57,6 +57,7 @@ export default function SettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -141,6 +142,38 @@ export default function SettingsPage() {
     } finally { setSaving(false); }
   }
 
+  async function deleteSettings() {
+    if (!setting || deleting) return;
+    const confirmed = window.confirm(
+      t("Delete company settings “{title}” and its uploaded logo? Older saved settings may become active. This cannot be undone.")
+        .replace("{title}", setting.titleEn),
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setFormError(null);
+    setSuccess(null);
+    try {
+      const { data } = await api.delete<unknown>(`/api/settings/${setting.id}`);
+      setSetting(null);
+      setValues(blankValues);
+      setLogo(null);
+      const input = document.getElementById("settings-logo") as HTMLInputElement | null;
+      if (input) input.value = "";
+      await refreshCompanyBranding();
+
+      if (!isRecord(data) || typeof data.message !== "string") {
+        setFormError("Company settings were deleted, but the server response was incomplete.");
+        return;
+      }
+      setSuccess(data.message);
+    } catch (error: unknown) {
+      setFormError(getErrorMessage(error));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="settings-page" dir={direction}>
       <header className="settings-heading"><div><p className="overview-eyebrow">{t("WORKSPACE")}</p><h1>{t("Company Settings")}</h1><p>{t("Manage the organization details used throughout ERPGO.")}</p></div><button className="overview-refresh" type="button" disabled={loading} onClick={() => setLoadAttempt((value) => value + 1)}><RefreshCw size={16} />{t("Refresh")}</button></header>
@@ -158,7 +191,10 @@ export default function SettingsPage() {
           <Field label={t("Bill text (optional)")} error={fieldErrors.bill_text ? t(fieldErrors.bill_text) : undefined} wide><textarea rows={3} value={values.bill_text} onChange={(event) => updateValue("bill_text", event.target.value)} /></Field>
           <div className="settings-field settings-field--wide"><span>{t("Company logo (optional)")}</span><div className="settings-logo-row">{logoPreview ? <img className="settings-logo-preview" src={logoPreview} alt={t("Company logo preview")} /> : <div className="settings-logo-placeholder"><ImagePlus size={21} /></div>}<label className="settings-logo-picker">{t("Choose image")}<input id="settings-logo" type="file" accept="image/*" onChange={handleLogo} /></label><small>{t("Image file, up to 2MB. Uploading a new logo replaces the current logo.")}</small></div>{fieldErrors.logo && <em>{t(fieldErrors.logo)}</em>}</div>
         </div>
-        <footer className="settings-form-footer"><button className="settings-save" type="submit" disabled={saving}>{saving ? <LoaderCircle className="settings-spin" size={16} /> : <CheckCircle2 size={16} />}{t(saving ? "Saving…" : "Save Settings")}</button></footer>
+        <footer className="settings-form-footer">
+          {setting && <button className="settings-delete" type="button" disabled={saving || deleting} onClick={() => void deleteSettings()}>{deleting ? <LoaderCircle className="settings-spin" size={16} /> : <Trash2 size={16} />}{t(deleting ? "Deleting…" : "Delete company settings")}</button>}
+          <button className="settings-save" type="submit" disabled={saving || deleting}>{saving ? <LoaderCircle className="settings-spin" size={16} /> : <CheckCircle2 size={16} />}{t(saving ? "Saving…" : "Save Settings")}</button>
+        </footer>
       </form>}
     </div>
   );

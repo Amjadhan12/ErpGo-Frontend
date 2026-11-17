@@ -934,7 +934,7 @@ export default function Warehouses() {
                         : t(
                             warehouseDetails.isActive
                               ? "Deactivate"
-                              : "Activate",
+                              : "Reactivate",
                           )}
                     </button>
                   </div>

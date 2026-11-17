@@ -945,7 +945,7 @@ export default function Customers() {
                       disabled={isPartnerActionProcessing}
                     >
                       <Power size={15} aria-hidden="true" />
-                      {t(customerDetails.isActive ? "Deactivate" : "Activate")}
+                      {t(customerDetails.isActive ? "Deactivate" : "Reactivate")}
                     </button>
                     <button
                       className="partner-delete-button"

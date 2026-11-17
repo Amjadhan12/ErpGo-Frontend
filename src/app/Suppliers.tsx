@@ -945,7 +945,7 @@ export default function Suppliers() {
                       disabled={isPartnerActionProcessing}
                     >
                       <Power size={15} aria-hidden="true" />
-                      {t(supplierDetails.isActive ? "Deactivate" : "Activate")}
+                      {t(supplierDetails.isActive ? "Deactivate" : "Reactivate")}
                     </button>
                     <button
                       className="partner-delete-button"

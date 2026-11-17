@@ -448,6 +448,14 @@ function LoginExperience() {
         <footer className="login-footer">
           <span>© {new Date().getFullYear()} ERPGO</span>
           <span>{t("One business. One clear view.")}</span>
+          <a
+            className="login-footer__portfolio"
+            href="https://amjid-shinwari-full-stack-developer.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("Developed by Amjid Shinwari")}
+          </a>
         </footer>
       </section>
     </main>
