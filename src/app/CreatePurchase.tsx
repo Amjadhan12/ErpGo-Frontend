@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
+import { useLocale } from '@/lib/locale'
 
 interface SelectOption {
   id: number
@@ -48,6 +49,7 @@ interface PurchaseValues {
 
 type FieldErrors = Record<string, string>
 type OptionState<T> = { data: T[]; loading: boolean; error: string | null }
+type Translate = (text: string) => string
 
 const initialValues: PurchaseValues = {
   purchaseNumber: '',
@@ -81,14 +83,20 @@ function rounded4(value: number): number {
   return Math.round((value + Number.EPSILON) * 10_000) / 10_000
 }
 
-function localErrorMessage(error: unknown): string {
+function localErrorMessage(error: unknown, t: Translate, language: 'en' | 'ps'): string {
+  const translate = (message: string) => {
+    const translated = t(message)
+    return translated !== message || language === 'en'
+      ? translated
+      : t('The requested data could not be loaded. Please try again.')
+  }
   if (axios.isAxiosError(error)) {
     const body: unknown = error.response?.data
-    if (isRecord(body) && typeof body.message === 'string') return body.message
-    if (!error.response) return 'Could not connect to the server. Check your connection and try again.'
+    if (isRecord(body) && typeof body.message === 'string') return translate(body.message)
+    if (!error.response) return t('Could not connect to the server. Check your connection and try again.')
   }
-  if (error instanceof Error) return error.message
-  return 'The requested data could not be loaded. Please try again.'
+  if (error instanceof Error) return translate(error.message)
+  return t('The requested data could not be loaded. Please try again.')
 }
 
 function parsePaginatedResponse(value: unknown): { records: unknown[]; lastPage: number } {
@@ -202,9 +210,9 @@ function parseAccount(value: unknown): AccountOption {
   }
 }
 
-function formatCurrency(value: number, currencyCode: string): string {
+function formatCurrency(value: number, currencyCode: string, language: 'en' | 'ps'): string {
   if (!currencyCode) return '—'
-  return `${new Intl.NumberFormat(undefined, {
+  return `${new Intl.NumberFormat(language === 'ps' ? 'ps-AF' : 'en', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 4,
   }).format(value)} ${currencyCode}`
@@ -222,16 +230,16 @@ function makeLine(key: number): PurchaseLine {
   }
 }
 
-function getValidationErrors(error: unknown, lines: PurchaseLine[]): {
+function getValidationErrors(error: unknown, lines: PurchaseLine[], t: Translate, language: 'en' | 'ps'): {
   fields: FieldErrors
   general: string | null
 } {
   if (!axios.isAxiosError(error)) {
-    return { fields: {}, general: localErrorMessage(error) }
+    return { fields: {}, general: localErrorMessage(error, t, language) }
   }
 
   const body: unknown = error.response?.data
-  if (!isRecord(body)) return { fields: {}, general: localErrorMessage(error) }
+  if (!isRecord(body)) return { fields: {}, general: localErrorMessage(error, t, language) }
 
   const fields: FieldErrors = {}
   if (isRecord(body.errors)) {
@@ -252,19 +260,28 @@ function getValidationErrors(error: unknown, lines: PurchaseLine[]): {
       const field = itemMatch
         ? `item.${lines[Number(itemMatch[1])]?.key ?? itemMatch[1]}.${itemMatch[2]}`
         : topLevelField[serverField] ?? serverField
-      fields[field] = messages[0]
+      const translated = t(messages[0])
+      fields[field] = translated !== messages[0] || language === 'en'
+        ? translated
+        : t('Please correct the highlighted fields.')
     }
   }
 
   return {
     fields,
     general: Object.keys(fields).length === 0 && typeof body.message === 'string'
-      ? body.message
+      ? (() => {
+          const translated = t(body.message as string)
+          return translated !== body.message || language === 'en'
+            ? translated
+            : t('The purchase could not be saved. Please try again.')
+        })()
       : null,
   }
 }
 
 export default function CreatePurchase() {
+  const { direction, language, t } = useLocale()
   const navigate = useNavigate()
   const nextLineKey = useRef(1)
   const [values, setValues] = useState(initialValues)
@@ -307,7 +324,7 @@ export default function CreatePurchase() {
         })
       } catch (error: unknown) {
         if (!signal.aborted) {
-          update({ data: [], loading: false, error: localErrorMessage(error) })
+          update({ data: [], loading: false, error: localErrorMessage(error, t, language) })
         }
       }
     }
@@ -320,7 +337,7 @@ export default function CreatePurchase() {
     ])
 
     return () => controller.abort()
-  }, [optionsRetry])
+  }, [language, optionsRetry, t])
 
   const selectedCurrency = currencies.data.find((currency) => String(currency.id) === values.currencyId)
   const isAfn = selectedCurrency?.code.toUpperCase() === 'AFN'
@@ -348,12 +365,12 @@ export default function CreatePurchase() {
       setAccounts({ data: matchingAccounts, loading: false, error: null })
     }).catch((error: unknown) => {
       if (!controller.signal.aborted) {
-        setAccounts({ data: [], loading: false, error: localErrorMessage(error) })
+        setAccounts({ data: [], loading: false, error: localErrorMessage(error, t, language) })
       }
     })
 
     return () => controller.abort()
-  }, [accountsRetry, paymentType, values.currencyId])
+  }, [accountsRetry, language, paymentType, t, values.currencyId])
 
   const lineTotals = useMemo(() => lines.map((line) => {
     const quantity = parseNumber(line.quantity)
@@ -426,23 +443,23 @@ export default function CreatePurchase() {
 
   const validate = (): FieldErrors => {
     const next: FieldErrors = {}
-    if (!values.purchaseNumber.trim()) next.purchaseNumber = 'Purchase number is required.'
-    if (values.purchaseNumber.length > 50) next.purchaseNumber = 'Purchase number must be 50 characters or fewer.'
-    if (!values.purchaseDate) next.purchaseDate = 'Purchase date is required.'
-    if (!values.supplierId) next.supplierId = 'Select a supplier.'
-    if (!values.warehouseId) next.warehouseId = 'Select a warehouse.'
-    if (!values.currencyId) next.currencyId = 'Select a currency.'
+    if (!values.purchaseNumber.trim()) next.purchaseNumber = t('Purchase number is required.')
+    if (values.purchaseNumber.length > 50) next.purchaseNumber = t('Purchase number must be 50 characters or fewer.')
+    if (!values.purchaseDate) next.purchaseDate = t('Purchase date is required.')
+    if (!values.supplierId) next.supplierId = t('Select a supplier.')
+    if (!values.warehouseId) next.warehouseId = t('Select a warehouse.')
+    if (!values.currencyId) next.currencyId = t('Select a currency.')
     const exchangeRate = parseNumber(values.exchangeRate)
     if (!Number.isFinite(exchangeRate) || exchangeRate <= 0 || exchangeRate > 999_999_999_999) {
-      next.exchangeRate = 'Enter a positive exchange rate within the allowed range.'
+      next.exchangeRate = t('Enter a positive exchange rate within the allowed range.')
     } else if (isAfn && exchangeRate !== 1) {
-      next.exchangeRate = 'The AFN exchange rate must be 1.'
+      next.exchangeRate = t('The AFN exchange rate must be 1.')
     }
-    if (lines.length === 0) next.items = 'Add at least one product.'
+    if (lines.length === 0) next.items = t('Add at least one product.')
 
     const selectedProductIds = lines.map((line) => line.productId).filter(Boolean)
     if (new Set(selectedProductIds).size !== selectedProductIds.length) {
-      next.items = 'A product can only be selected once.'
+      next.items = t('A product can only be selected once.')
     }
 
     let beforeDiscount = 0
@@ -451,18 +468,18 @@ export default function CreatePurchase() {
       const unitCost = parseNumber(line.unitCost)
       const itemDiscount = parseNumber(line.discountAmount)
       const prefix = `item.${line.key}.`
-      if (!line.productId) next[`${prefix}product_id`] = 'Select a product.'
+      if (!line.productId) next[`${prefix}product_id`] = t('Select a product.')
       if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 999_999_999_999) {
-        next[`${prefix}quantity`] = 'Quantity must be greater than zero and within the allowed range.'
+        next[`${prefix}quantity`] = t('Quantity must be greater than zero and within the allowed range.')
       }
       if (!Number.isFinite(unitCost) || unitCost < 0 || unitCost > 999_999_999_999) {
-        next[`${prefix}unit_cost`] = 'Unit cost must be zero or greater and within the allowed range.'
+        next[`${prefix}unit_cost`] = t('Unit cost must be zero or greater and within the allowed range.')
       }
-      if (!Number.isFinite(itemDiscount) || itemDiscount < 0) next[`${prefix}discount_amount`] = 'Discount must be zero or greater.'
+      if (!Number.isFinite(itemDiscount) || itemDiscount < 0) next[`${prefix}discount_amount`] = t('Discount must be zero or greater.')
       if (Number.isFinite(quantity) && quantity > 0 && Number.isFinite(unitCost) && unitCost >= 0) {
         const gross = rounded4(quantity * unitCost)
         if (Number.isFinite(itemDiscount) && itemDiscount > gross) {
-          next[`${prefix}discount_amount`] = 'Discount cannot exceed this item’s gross amount.'
+          next[`${prefix}discount_amount`] = t('Discount cannot exceed this item’s gross amount.')
         } else {
           beforeDiscount += rounded4(gross - (Number.isFinite(itemDiscount) ? itemDiscount : 0))
         }
@@ -472,22 +489,22 @@ export default function CreatePurchase() {
         values.purchaseDate &&
         line.expiryDate < values.purchaseDate
       ) {
-        next[`${prefix}expiry_date`] = 'Expiry date cannot be before the purchase date.'
+        next[`${prefix}expiry_date`] = t('Expiry date cannot be before the purchase date.')
       }
     }
 
     const purchaseDiscount = parseNumber(values.purchaseDiscount)
     if (!Number.isFinite(purchaseDiscount) || purchaseDiscount < 0) {
-      next.purchaseDiscount = 'Purchase discount must be zero or greater.'
+      next.purchaseDiscount = t('Purchase discount must be zero or greater.')
     } else if (purchaseDiscount > rounded4(beforeDiscount)) {
-      next.purchaseDiscount = 'Purchase discount cannot exceed the total after item discounts.'
+      next.purchaseDiscount = t('Purchase discount cannot exceed the total after item discounts.')
     }
     if (paymentType === 'cash') {
-      if (!values.currencyId) next.currencyId = 'Select a currency before choosing a cash account.'
-      if (accounts.loading) next.financialAccountId = 'Wait for financial accounts to load.'
-      else if (accounts.error) next.financialAccountId = 'Resolve the financial account loading error.'
-      else if (accounts.data.length === 0) next.financialAccountId = 'No active account is available for this currency.'
-      else if (!financialAccountId) next.financialAccountId = 'Select a financial account.'
+      if (!values.currencyId) next.currencyId = t('Select a currency before choosing a cash account.')
+      if (accounts.loading) next.financialAccountId = t('Wait for financial accounts to load.')
+      else if (accounts.error) next.financialAccountId = t('Resolve the financial account loading error.')
+      else if (accounts.data.length === 0) next.financialAccountId = t('No active account is available for this currency.')
+      else if (!financialAccountId) next.financialAccountId = t('Select a financial account.')
     }
     return next
   }
@@ -500,7 +517,7 @@ export default function CreatePurchase() {
     setErrors(validationErrors)
     setGeneralError(null)
     if (Object.keys(validationErrors).length > 0) {
-      setGeneralError('Review the highlighted fields before saving.')
+      setGeneralError(t('Review the highlighted fields before saving.'))
       return
     }
 
@@ -532,7 +549,7 @@ export default function CreatePurchase() {
         state: { purchaseCreated: true },
       })
     } catch (error: unknown) {
-      const result = getValidationErrors(error, lines)
+      const result = getValidationErrors(error, lines, t, language)
       setErrors(result.fields)
       setGeneralError(result.general)
     } finally {
@@ -543,27 +560,32 @@ export default function CreatePurchase() {
   const accountError = errors.financialAccountId
 
   return (
-    <div className="purchases-page create-purchase-page">
-      <header className="purchases-heading">
+    <div className="purchases-page create-purchase-page purchase-redesign" dir={direction}>
+      <header className="purchases-heading purchase-redesign__heading">
         <div>
-          <h1>Create Purchase</h1>
+          <p className="overview-eyebrow purchase-redesign__eyebrow">{t('OPERATIONS')}</p>
+          <h1>{t('Create Purchase')}</h1>
+          <p className="overview-heading__description">{t('Record a supplier purchase, its items, and payment method.')}</p>
         </div>
-        <button className="overview-refresh" type="button" onClick={() => navigate('/secretary/purchases')}>
-          Cancel
+        <button className="overview-refresh purchase-redesign__secondary" type="button" onClick={() => navigate('/secretary/purchases')}>
+          {t('Cancel')}
         </button>
       </header>
 
-      <form className="create-purchase-form" onSubmit={(event) => void submit(event)} noValidate>
+      <form className="create-purchase-form purchase-redesign__form" onSubmit={(event) => void submit(event)} noValidate>
         {generalError && <p className="create-purchase-alert" role="alert">{generalError}</p>}
-        <div className="create-purchase-main">
-          <section className="purchase-form-section">
-            <header className="purchase-form-section__heading">
-              <h2>Purchase Information</h2>
+        <div className="create-purchase-main purchase-redesign__main">
+          <section className="purchase-form-section purchase-redesign__section">
+            <header className="purchase-form-section__heading purchase-redesign__section-heading">
+              <div>
+                <h2>{t('Purchase Information')}</h2>
+                <p>{t('Enter the purchase reference, supplier, warehouse, and currency.')}</p>
+              </div>
             </header>
 
-            <div className="purchase-form-grid">
+            <div className="purchase-form-grid purchase-redesign__information-grid">
             <label className="purchase-field">
-              <span>Purchase Number <i>*</i></span>
+              <span>{t('Purchase Number')} <i>*</i></span>
               <input
                 value={values.purchaseNumber}
                 onChange={(event) => setField('purchaseNumber', event.target.value)}
@@ -575,7 +597,7 @@ export default function CreatePurchase() {
             </label>
 
             <label className="purchase-field">
-              <span>Purchase Date <i>*</i></span>
+              <span>{t('Purchase Date')} <i>*</i></span>
               <input
                 type="date"
                 value={values.purchaseDate}
@@ -586,11 +608,11 @@ export default function CreatePurchase() {
             </label>
 
             <div className="purchase-field purchase-field--supplier">
-              <label htmlFor="supplier-search"><span>Supplier <i>*</i></span></label>
+              <label htmlFor="supplier-search"><span>{t('Supplier')} <i>*</i></span></label>
               <input
                 id="supplier-search"
                 type="search"
-                placeholder="Search active suppliers"
+                placeholder={t('Search active suppliers')}
                 value={supplierSearch}
                 onChange={(event) => setSupplierSearch(event.target.value)}
                 disabled={suppliers.loading || Boolean(suppliers.error)}
@@ -599,15 +621,15 @@ export default function CreatePurchase() {
                 value={values.supplierId}
                 onChange={(event) => setField('supplierId', event.target.value)}
                 disabled={suppliers.loading || Boolean(suppliers.error)}
-                aria-label="Supplier"
+                aria-label={t('Supplier')}
                 aria-invalid={Boolean(errors.supplierId)}
               >
                 <option value="">
                   {suppliers.loading
-                    ? 'Loading suppliers…'
+                    ? t('Loading suppliers…')
                     : suppliers.data.length === 0
-                      ? 'No active suppliers available'
-                      : 'Select supplier'}
+                      ? t('No active suppliers available')
+                      : t('Select supplier')}
                 </option>
                 {filteredSuppliers.map((supplier) => (
                   <option value={supplier.id} key={supplier.id}>{supplier.label}</option>
@@ -615,13 +637,13 @@ export default function CreatePurchase() {
               </select>
               {suppliers.error ? (
                 <small className="purchase-field__error">
-                  {suppliers.error} <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>Retry</button>
+                  {suppliers.error} <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>{t('Retry')}</button>
                 </small>
               ) : errors.supplierId ? <small className="purchase-field__error">{errors.supplierId}</small> : null}
             </div>
 
             <div className="purchase-field">
-              <label htmlFor="purchase-warehouse"><span>Warehouse <i>*</i></span></label>
+              <label htmlFor="purchase-warehouse"><span>{t('Warehouse')} <i>*</i></span></label>
               <select
                 id="purchase-warehouse"
                 value={values.warehouseId}
@@ -631,22 +653,22 @@ export default function CreatePurchase() {
               >
                 <option value="">
                   {warehouses.loading
-                    ? 'Loading warehouses…'
+                    ? t('Loading warehouses…')
                     : warehouses.data.length === 0
-                      ? 'No active warehouses available'
-                      : 'Select warehouse'}
+                      ? t('No active warehouses available')
+                      : t('Select warehouse')}
                 </option>
                 {warehouses.data.map((warehouse) => <option value={warehouse.id} key={warehouse.id}>{warehouse.label}</option>)}
               </select>
               {warehouses.error ? (
                 <small className="purchase-field__error">
-                  {warehouses.error} <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>Retry</button>
+                  {warehouses.error} <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>{t('Retry')}</button>
                 </small>
               ) : errors.warehouseId ? <small className="purchase-field__error">{errors.warehouseId}</small> : null}
             </div>
 
             <div className="purchase-field">
-              <label htmlFor="purchase-currency"><span>Currency <i>*</i></span></label>
+              <label htmlFor="purchase-currency"><span>{t('Currency')} <i>*</i></span></label>
               <select
                 id="purchase-currency"
                 value={values.currencyId}
@@ -656,22 +678,22 @@ export default function CreatePurchase() {
               >
                 <option value="">
                   {currencies.loading
-                    ? 'Loading currencies…'
+                    ? t('Loading currencies…')
                     : currencies.data.length === 0
-                      ? 'No active currencies available'
-                      : 'Select currency'}
+                      ? t('No active currencies available')
+                      : t('Select currency')}
                 </option>
                 {currencies.data.map((currency) => <option value={currency.id} key={currency.id}>{currency.label}</option>)}
               </select>
               {currencies.error ? (
                 <small className="purchase-field__error">
-                  {currencies.error} <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>Retry</button>
+                  {currencies.error} <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>{t('Retry')}</button>
                 </small>
               ) : errors.currencyId ? <small className="purchase-field__error">{errors.currencyId}</small> : null}
             </div>
 
             <label className="purchase-field">
-              <span>Exchange Rate to AFN <i>*</i></span>
+              <span>{t('Exchange Rate to AFN')} <i>*</i></span>
               <input
                 type="number"
                 min="0"
@@ -679,16 +701,16 @@ export default function CreatePurchase() {
                 value={values.exchangeRate}
                 onChange={(event) => setField('exchangeRate', event.target.value)}
                 disabled={!values.currencyId || isAfn}
-                placeholder={isAfn ? '1' : 'Enter rate'}
+                placeholder={isAfn ? '1' : t('Enter rate')}
                 aria-invalid={Boolean(errors.exchangeRate)}
               />
               {errors.exchangeRate
                 ? <small className="purchase-field__error">{errors.exchangeRate}</small>
-                : <small className="purchase-field__hint">{isAfn ? 'AFN base currency rate is fixed at 1.' : 'Enter the current rate; no rate is assumed.'}</small>}
+                : <small className="purchase-field__hint">{isAfn ? t('AFN base currency rate is fixed at 1.') : t('Enter the current rate; no rate is assumed.')}</small>}
             </label>
 
             <label className="purchase-field">
-              <span>Invoice Number</span>
+              <span>{t('Invoice Number')}</span>
               <input
                 value={values.invoiceNumber}
                 onChange={(event) => setField('invoiceNumber', event.target.value)}
@@ -699,33 +721,36 @@ export default function CreatePurchase() {
             </div>
           </section>
 
-          <section className="purchase-form-section">
-            <header className="purchase-form-section__heading purchase-form-section__heading--actions">
-              <h2>Purchase Items</h2>
+          <section className="purchase-form-section purchase-redesign__section">
+            <header className="purchase-form-section__heading purchase-form-section__heading--actions purchase-redesign__section-heading">
+              <div>
+                <h2>{t('Purchase Items')}</h2>
+                <p>{t('Add products, quantities, costs, and optional batch details.')}</p>
+              </div>
               <button type="button" className="purchase-add-item" onClick={addLine} disabled={products.loading}>
-                + Add Item
+                + {t('Add Item')}
               </button>
             </header>
 
             {products.error && (
               <div className="purchase-options-error" role="alert">
                 {products.error}
-                <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>Retry</button>
+                <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>{t('Retry')}</button>
               </div>
             )}
 
-            <div className="purchase-items-scroll purchase-items-scroll--form">
-              <table className="purchase-entry-table">
+            <div className="purchase-items-scroll purchase-items-scroll--form purchase-redesign__entry-scroll">
+              <table className="purchase-entry-table purchase-redesign__entry-table">
                 <thead>
                   <tr>
-                    <th>Product</th>
-                    <th>Quantity</th>
-                    <th>Unit Cost</th>
-                    <th>Discount</th>
-                    <th>Batch</th>
-                    <th>Expiry</th>
-                    <th>Total</th>
-                    <th><span className="visually-hidden">Actions</span></th>
+                    <th>{t('Product')}</th>
+                    <th>{t('Quantity')}</th>
+                    <th>{t('Unit Cost')}</th>
+                    <th>{t('Discount')}</th>
+                    <th>{t('Batch')}</th>
+                    <th>{t('Expiry')}</th>
+                    <th>{t('Total')}</th>
+                    <th><span className="visually-hidden">{t('Actions')}</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -740,11 +765,11 @@ export default function CreatePurchase() {
                             value={line.productId}
                             onChange={(event) => updateLine(line.key, 'productId', event.target.value)}
                             disabled={products.loading || Boolean(products.error)}
-                            aria-label="Product"
+                            aria-label={t('Product')}
                             aria-invalid={Boolean(errors[`${keyPrefix}product_id`])}
                           >
                             <option value="">
-                              {products.loading ? 'Loading…' : products.data.length === 0 ? 'No products' : 'Select product'}
+                              {products.loading ? t('Loading…') : products.data.length === 0 ? t('No products') : t('Select product')}
                             </option>
                             {products.data
                               .filter((product) => !duplicateIds.has(String(product.id)) || String(product.id) === line.productId)
@@ -757,28 +782,28 @@ export default function CreatePurchase() {
                           {errors[`${keyPrefix}product_id`] && <small className="purchase-field__error">{errors[`${keyPrefix}product_id`]}</small>}
                         </td>
                         <td>
-                          <input type="number" min="0" step="any" value={line.quantity} onChange={(event) => updateLine(line.key, 'quantity', event.target.value)} aria-label="Quantity" aria-invalid={Boolean(errors[`${keyPrefix}quantity`])} />
+                          <input type="number" min="0" step="any" value={line.quantity} onChange={(event) => updateLine(line.key, 'quantity', event.target.value)} aria-label={t('Quantity')} aria-invalid={Boolean(errors[`${keyPrefix}quantity`])} />
                           {errors[`${keyPrefix}quantity`] && <small className="purchase-field__error">{errors[`${keyPrefix}quantity`]}</small>}
                         </td>
                         <td>
-                          <input type="number" min="0" step="any" value={line.unitCost} onChange={(event) => updateLine(line.key, 'unitCost', event.target.value)} aria-label="Unit cost" aria-invalid={Boolean(errors[`${keyPrefix}unit_cost`])} />
+                          <input type="number" min="0" step="any" value={line.unitCost} onChange={(event) => updateLine(line.key, 'unitCost', event.target.value)} aria-label={t('Unit cost')} aria-invalid={Boolean(errors[`${keyPrefix}unit_cost`])} />
                           {errors[`${keyPrefix}unit_cost`] && <small className="purchase-field__error">{errors[`${keyPrefix}unit_cost`]}</small>}
                         </td>
                         <td>
-                          <input type="number" min="0" step="any" value={line.discountAmount} onChange={(event) => updateLine(line.key, 'discountAmount', event.target.value)} aria-label="Item discount" aria-invalid={Boolean(errors[`${keyPrefix}discount_amount`])} />
+                          <input type="number" min="0" step="any" value={line.discountAmount} onChange={(event) => updateLine(line.key, 'discountAmount', event.target.value)} aria-label={t('Item discount')} aria-invalid={Boolean(errors[`${keyPrefix}discount_amount`])} />
                           {errors[`${keyPrefix}discount_amount`] && <small className="purchase-field__error">{errors[`${keyPrefix}discount_amount`]}</small>}
                         </td>
                         <td>
-                          <input value={line.batchNumber} onChange={(event) => updateLine(line.key, 'batchNumber', event.target.value)} maxLength={100} aria-label="Batch number (optional)" />
+                          <input value={line.batchNumber} onChange={(event) => updateLine(line.key, 'batchNumber', event.target.value)} maxLength={100} aria-label={t('Batch number (optional)')} />
                           {errors[`${keyPrefix}batch_number`] && <small className="purchase-field__error">{errors[`${keyPrefix}batch_number`]}</small>}
                         </td>
                         <td>
-                          <input type="date" min={values.purchaseDate} value={line.expiryDate} onChange={(event) => updateLine(line.key, 'expiryDate', event.target.value)} aria-label="Expiry date (optional)" aria-invalid={Boolean(errors[`${keyPrefix}expiry_date`])} />
+                          <input type="date" min={values.purchaseDate} value={line.expiryDate} onChange={(event) => updateLine(line.key, 'expiryDate', event.target.value)} aria-label={t('Expiry date (optional)')} aria-invalid={Boolean(errors[`${keyPrefix}expiry_date`])} />
                           {errors[`${keyPrefix}expiry_date`] && <small className="purchase-field__error">{errors[`${keyPrefix}expiry_date`]}</small>}
                         </td>
                         <td className="purchase-entry-total">
-                          <strong>{formatCurrency(totals?.total ?? 0, selectedCurrency?.code ?? '')}</strong>
-                          <small>Gross {formatCurrency(totals?.gross ?? 0, selectedCurrency?.code ?? '')}</small>
+                          <strong>{formatCurrency(totals?.total ?? 0, selectedCurrency?.code ?? '', language)}</strong>
+                          <small>{t('Gross')} {formatCurrency(totals?.gross ?? 0, selectedCurrency?.code ?? '', language)}</small>
                         </td>
                         <td>
                           <button
@@ -786,9 +811,9 @@ export default function CreatePurchase() {
                             className="purchase-remove-item"
                             onClick={() => removeLine(line.key)}
                             disabled={lines.length === 1}
-                            aria-label="Remove item"
+                            aria-label={t('Remove item')}
                           >
-                            Remove
+                            {t('Remove')}
                           </button>
                         </td>
                       </tr>
@@ -801,8 +826,13 @@ export default function CreatePurchase() {
           </section>
         </div>
 
-        <section className="purchase-form-section purchase-payment-summary">
-          <header className="purchase-form-section__heading"><h2>Payment &amp; Summary</h2></header>
+        <section className="purchase-form-section purchase-payment-summary purchase-redesign__section">
+          <header className="purchase-form-section__heading purchase-redesign__section-heading">
+            <div>
+              <h2>{t('Payment & Summary')}</h2>
+              <p>{t('Choose credit or cash payment and review the purchase totals.')}</p>
+            </div>
+          </header>
           <div className="purchase-payment-options">
             <label className={`purchase-payment-option${paymentType === 'credit' ? ' purchase-payment-option--selected' : ''}`}>
               <input type="radio" name="payment-type" value="credit" checked={paymentType === 'credit'} onChange={() => {
@@ -810,18 +840,18 @@ export default function CreatePurchase() {
                 setFinancialAccountId('')
                 setErrors((current) => { const next = { ...current }; delete next.financialAccountId; return next })
               }} />
-              <span>Credit</span>
+              <span>{t('Credit')}</span>
             </label>
             <label className={`purchase-payment-option${paymentType === 'cash' ? ' purchase-payment-option--selected' : ''}`}>
               <input type="radio" name="payment-type" value="cash" checked={paymentType === 'cash'} onChange={() => setPaymentType('cash')} />
-              <span>Cash</span>
+              <span>{t('Cash')}</span>
             </label>
           </div>
 
           {paymentType === 'cash' && (
             <div className="purchase-account-select">
               <label className="purchase-field">
-                <span>Financial Account <i>*</i></span>
+                <span>{t('Financial Account')} <i>*</i></span>
                 <select
                   value={financialAccountId}
                   onChange={(event) => {
@@ -832,21 +862,21 @@ export default function CreatePurchase() {
                   aria-invalid={Boolean(accountError)}
                 >
                   <option value="">
-                    {!values.currencyId ? 'Select a currency first' : accounts.loading ? 'Loading accounts…' : 'Select account'}
+                    {!values.currencyId ? t('Select a currency first') : accounts.loading ? t('Loading accounts…') : accounts.data.length === 0 ? t('No active accounts available') : t('Select account')}
                   </option>
                   {accounts.data.map((account) => (
                     <option value={account.id} key={account.id}>{account.label} · {account.accountType}</option>
                   ))}
                 </select>
-                {accounts.loading && <small className="purchase-field__hint">Loading accounts…</small>}
+                {accounts.loading && <small className="purchase-field__hint">{t('Loading accounts…')}</small>}
                 {accounts.error && (
                   <small className="purchase-field__error">
                     {accounts.error}
-                    <button type="button" onClick={() => setAccountsRetry((value) => value + 1)}>Retry</button>
+                    <button type="button" onClick={() => setAccountsRetry((value) => value + 1)}>{t('Retry')}</button>
                   </small>
                 )}
                 {!accounts.loading && !accounts.error && values.currencyId && accounts.data.length === 0 && (
-                  <small className="purchase-field__error">No active account for this currency.</small>
+                  <small className="purchase-field__error">{t('No active account for this currency.')}</small>
                 )}
                 {accountError && <small className="purchase-field__error">{accountError}</small>}
               </label>
@@ -854,7 +884,7 @@ export default function CreatePurchase() {
           )}
 
           <label className="purchase-field purchase-notes-field">
-            <span>Notes <small>(optional)</small></span>
+            <span>{t('Notes')} <small>({t('optional')})</small></span>
             <textarea
               value={values.notes}
               onChange={(event) => setField('notes', event.target.value)}
@@ -863,11 +893,11 @@ export default function CreatePurchase() {
             />
           </label>
 
-          <div className="purchase-summary-panel">
-            <div className="purchase-summary-row"><span>Subtotal</span><strong>{formatCurrency(subtotal, selectedCurrency?.code ?? '')}</strong></div>
-            <div className="purchase-summary-row"><span>Item discounts</span><strong>− {formatCurrency(itemDiscountTotal, selectedCurrency?.code ?? '')}</strong></div>
+          <div className="purchase-summary-panel purchase-redesign__summary">
+            <div className="purchase-summary-row"><span>{t('Subtotal')}</span><strong>{formatCurrency(subtotal, selectedCurrency?.code ?? '', language)}</strong></div>
+            <div className="purchase-summary-row"><span>{t('Item discounts')}</span><strong>− {formatCurrency(itemDiscountTotal, selectedCurrency?.code ?? '', language)}</strong></div>
             <label className="purchase-summary-row purchase-summary-row--discount">
-              <span>Purchase discount</span>
+              <span>{t('Purchase discount')}</span>
               <span className="purchase-summary-input-wrap">
                 <input
                   type="number"
@@ -875,21 +905,21 @@ export default function CreatePurchase() {
                   step="any"
                   value={values.purchaseDiscount}
                   onChange={(event) => setField('purchaseDiscount', event.target.value)}
-                  aria-label="Purchase-level discount"
+                  aria-label={t('Purchase-level discount')}
                   aria-invalid={Boolean(errors.purchaseDiscount)}
                 />
                 <small>{selectedCurrency?.code ?? ''}</small>
               </span>
             </label>
             {errors.purchaseDiscount && <small className="purchase-field__error">{errors.purchaseDiscount}</small>}
-            <div className="purchase-summary-row purchase-summary-row--grand"><span>Grand Total</span><strong>{formatCurrency(grandTotal, selectedCurrency?.code ?? '')}</strong></div>
+            <div className="purchase-summary-row purchase-summary-row--grand"><span>{t('Grand Total')}</span><strong>{formatCurrency(grandTotal, selectedCurrency?.code ?? '', language)}</strong></div>
           </div>
 
           {errors.items && <small className="purchase-field__error">{errors.items}</small>}
-          <div className="purchase-form-actions">
-            <button type="button" className="purchase-cancel-button" onClick={() => navigate('/secretary/purchases')} disabled={isSaving}>Cancel</button>
-            <button type="submit" className="purchase-save-button" disabled={isSaving}>
-              {isSaving ? 'Saving…' : 'Save Purchase'}
+          <div className="purchase-form-actions purchase-redesign__actions">
+            <button type="button" className="purchase-cancel-button" onClick={() => navigate('/secretary/purchases')} disabled={isSaving}>{t('Cancel')}</button>
+            <button type="submit" className="purchase-save-button purchase-redesign__primary" disabled={isSaving}>
+              {isSaving ? t('Saving…') : t('Save Purchase')}
             </button>
           </div>
         </section>

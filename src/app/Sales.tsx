@@ -3,10 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, Plus, Printer, Trash2 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { api, getPublicStorageUrl } from "@/lib/api";
+import { useLocale } from "@/lib/locale";
 import {
   fetchAllPages,
-  formatCurrency,
-  formatQuantity,
   getErrorMessage,
   getValidationResult,
   isRecord,
@@ -65,10 +64,52 @@ function parseNumeric(value: string): number { const parsed = Number(value); ret
 function round4(value: number): number { return Math.round((value + Number.EPSILON) * 10000) / 10000; }
 function dateTimeNumber(prefix: string): string { return `${prefix}-${new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14)}`; }
 function statusText(value: string): string { return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+type Translate = (text: string) => string;
+type Language = "en" | "ps";
+
+function formatSaleCurrency(value: number, currency: string, language: Language): string {
+  if (!currency) return "—";
+  return `${new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(value)} ${currency}`;
+}
+
+function formatSaleQuantity(value: number, language: Language): string {
+  return new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US", { maximumFractionDigits: 4 }).format(value);
+}
+
+function formatSaleDate(value: string, language: Language): string {
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(language === "ps" ? "ps-AF" : "en-US", { day: "numeric", month: "short", year: "numeric" }).format(date);
+}
+
+function interpolate(template: string, values: Record<string, string>): string {
+  return Object.entries(values).reduce(
+    (message, [key, value]) => message.replaceAll(`{${key}}`, value),
+    template,
+  );
+}
+
+function translateSalesMessage(message: string, t: Translate, language: Language): string {
+  const eligibleStock = message.match(/^Only ([\d.,۰-۹٠-٩]+) eligible units are available\.$/);
+  if (eligibleStock) {
+    return interpolate(t("Only {available} eligible units are available."), {
+      available: eligibleStock[1],
+    });
+  }
+  const translated = t(message);
+  if (translated !== message) return translated;
+  if (language === "en") return message;
+  if (/field is required\.$/i.test(message)) return t("This field is required.");
+  if (/must be a number\.$/i.test(message)) return t("Enter a valid number.");
+  if (/selected .* is invalid\.$/i.test(message)) return t("Choose a valid option.");
+  return t("The sale could not be completed. Please try again.");
+}
 
 export default function Sales() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { direction, language, t } = useLocale();
   const { companyBranding } = useAuth();
   const isCreate = location.pathname.endsWith("/create");
   const [page, setPage] = useState<LaravelPage<Sale> | null>(null);
@@ -226,7 +267,7 @@ export default function Sales() {
       if (!Number.isFinite(price) || price < 0) errors[`items.${index}.unit_price`] = "Price must be zero or greater.";
       if (!Number.isFinite(discount) || discount < 0 || discount > round4(quantity * price)) errors[`items.${index}.discount_amount`] = "Discount must be within the item gross amount.";
       const eligible = availableStock[line.productId];
-      if (line.productId && Number.isFinite(quantity) && eligible !== undefined && quantity > eligible) errors[`items.${index}.quantity`] = `Only ${formatQuantity(eligible)} eligible units are available.`;
+      if (line.productId && Number.isFinite(quantity) && eligible !== undefined && quantity > eligible) errors[`items.${index}.quantity`] = `Only ${formatSaleQuantity(eligible, language)} eligible units are available.`;
     });
     const itemDiscounts = lines.reduce((sum, line) => sum + parseNumeric(line.discount), 0);
     if (!Number.isFinite(discountValue) || discountValue < 0 || discountValue > round4(subtotal - itemDiscounts)) errors.discount_amount = "Header discount cannot exceed the amount after item discounts.";
@@ -269,64 +310,163 @@ export default function Sales() {
   }
 
   function openSale(id: number) { setSelectedId(id); }
-  if (isCreate) return <div className="purchases-page sales-page"><header className="purchases-heading"><div><p className="overview-eyebrow">OPERATIONS</p><h1>Create Sale</h1><p className="overview-heading__description">Record a customer sale and initial payment.</p></div><button className="overview-refresh" type="button" onClick={() => navigate("/secretary/sales")}><ArrowLeft size={16} />Back to Sales</button></header>
-    {optionsError && <p className="create-purchase-alert" role="alert">{optionsError} <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>Retry</button></p>}
-    {stockError && <p className="create-purchase-alert" role="alert">Eligible stock could not be checked: {stockError} <button type="button" onClick={() => setStockRetry((value) => value + 1)}>Retry stock check</button></p>}
-    <form className="create-purchase-form" onSubmit={(event) => void submit(event)} noValidate>
-      {formError && <p className="create-purchase-alert" role="alert">{formError}</p>}
-      <div className="create-purchase-main"><section className="purchase-form-section"><header className="purchase-form-section__heading"><h2>Sale Information</h2></header><div className="purchase-form-grid">
-        <Field label="Sale number" error={fieldErrors.sale_number}><input required value={saleNumber} onChange={(e) => setSaleNumber(e.target.value)} /></Field>
-        <Field label="Invoice number" error={fieldErrors.invoice_number}><input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} /></Field>
-        <Field label="Customer" error={fieldErrors.business_partner_id}><select required value={customerId} disabled={optionsLoading} onChange={(e) => setCustomerId(e.target.value)}><option value="">Select customer</option>{customers.map((row) => <option key={row.id} value={row.id}>{row.businessName || row.name}{row.phone ? ` · ${row.phone}` : ""}</option>)}</select></Field>
-        <Field label="Warehouse" error={fieldErrors.warehouse_id}><select required value={warehouseId} disabled={optionsLoading} onChange={(e) => setWarehouseId(e.target.value)}><option value="">Select warehouse</option>{warehouses.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field>
-        <Field label="Sale date" error={fieldErrors.sale_date}><input required type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></Field>
-        <Field label="Currency" error={fieldErrors.currency_id}><select required value={currencyId} disabled={optionsLoading} onChange={(e) => setCurrencyId(e.target.value)}><option value="">Select currency</option>{currencies.map((row) => <option key={row.id} value={row.id}>{row.code} — {row.name}</option>)}</select></Field>
-        <Field label="Exchange rate to AFN" error={fieldErrors.exchange_rate_to_afn}><input required type="number" min="0.00000001" step="0.00000001" value={exchangeRate} readOnly={currency?.code.toUpperCase() === "AFN"} onChange={(e) => setExchangeRate(e.target.value)} /></Field>
-        <Field label="Header discount" error={fieldErrors.discount_amount}><input type="number" min="0" step="0.0001" value={headerDiscount} onChange={(e) => setHeaderDiscount(e.target.value)} /></Field>
-        <Field label="Notes"><textarea value={notes} rows={2} onChange={(e) => setNotes(e.target.value)} /></Field>
-      </div></section>
-      <section className="purchase-form-section"><header className="purchase-form-section__heading"><h2>Items</h2><button className="purchase-add-item" type="button" onClick={() => { setLines((current) => [...current, { key: nextKey, productId: "", quantity: "", unitPrice: "", discount: "0", notes: "" }]); setNextKey((key) => key + 1); }}><Plus size={15} />Add item</button></header>
-        <div className="sales-line-list">{lines.map((line, index) => { const available = availableStock[line.productId]; const amount = lineAmounts.find((item) => item.key === line.key); return <div className="sales-line" key={line.key}>
-          <Field label="Product" error={fieldErrors[`items.${index}.product_id`]}><select value={line.productId} disabled={optionsLoading} onChange={(e) => updateLine(line.key, "productId", e.target.value)}><option value="">Select product</option>{products.map((row) => <option key={row.id} value={row.id}>{row.name}{row.sku ? ` · ${row.sku}` : ""}</option>)}</select>{line.productId && <small>{!warehouseId ? "Select a warehouse to check stock" : stockLoading ? "Checking eligible stock…" : stockError ? "Stock could not be checked" : `Eligible stock: ${formatQuantity(available ?? 0)}`}</small>}</Field>
-          <Field label="Quantity" error={fieldErrors[`items.${index}.quantity`]}><input type="number" min="0.0001" max={available} step="0.0001" value={line.quantity} onChange={(e) => updateLine(line.key, "quantity", e.target.value)} /></Field>
-          <Field label="Unit price" error={fieldErrors[`items.${index}.unit_price`]}><input type="number" min="0" step="0.0001" value={line.unitPrice} onChange={(e) => updateLine(line.key, "unitPrice", e.target.value)} /></Field>
-          <Field label="Item discount" error={fieldErrors[`items.${index}.discount_amount`]}><input type="number" min="0" step="0.0001" value={line.discount} onChange={(e) => updateLine(line.key, "discount", e.target.value)} /></Field>
-          <p className="sales-line-total">Line gross {formatCurrency(amount?.gross ?? 0, currency?.code || "")}</p><button className="sales-remove-line" type="button" aria-label="Remove item" disabled={lines.length === 1} onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))}><Trash2 size={16} /></button>
-        </div>; })}</div>
-      </section>
-      <section className="purchase-form-section"><header className="purchase-form-section__heading"><h2>Payment</h2></header><div className="purchase-form-grid">
-        <Field label="Payment type" error={fieldErrors.payment_type}><select value={paymentType} onChange={(e) => setPaymentType(e.target.value as typeof paymentType)}><option value="credit">Credit</option><option value="partial">Partial</option><option value="cash">Cash</option></select></Field>
-        <Field label="Paid amount" error={fieldErrors.paid_amount}><input type="number" min="0" step="0.0001" value={paidAmount} readOnly={paymentType === "credit" || paymentType === "cash"} onChange={(e) => setPaidAmount(e.target.value)} /></Field>
-        {paymentType !== "credit" && <>
-          <Field label="Payment number" error={fieldErrors.payment_number}><input value={paymentNumber} onChange={(e) => setPaymentNumber(e.target.value)} /></Field>
-          <Field label="Financial account" error={fieldErrors.financial_account_id}><select value={accountId} disabled={optionsLoading} onChange={(e) => setAccountId(e.target.value)}><option value="">Select account matching currency</option>{accounts.filter((row) => row.currencyId === Number(currencyId)).map((row) => <option key={row.id} value={row.id}>{row.name} · {row.currencyCode} · {formatCurrency(row.balance, row.currencyCode)}</option>)}</select></Field>
-          <Field label="Payment date" error={fieldErrors.payment_date}><input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} /></Field>
-        </>}
-      </div></section></div>
-      <aside className="purchase-summary-panel"><header className="purchase-summary-panel__heading"><h2>Sale Summary</h2></header><dl className="sales-summary"><div><dt>Item gross</dt><dd>{formatCurrency(subtotal, currency?.code || "")}</dd></div><div><dt>Item discounts</dt><dd>− {formatCurrency(itemDiscountTotal, currency?.code || "")}</dd></div><div><dt>Subtotal</dt><dd>{formatCurrency(round4(subtotal - itemDiscountTotal), currency?.code || "")}</dd></div><div><dt>Header discount</dt><dd>− {formatCurrency(discountValue, currency?.code || "")}</dd></div><div className="sales-summary-grand"><dt>Grand total</dt><dd>{formatCurrency(grandTotal, currency?.code || "")}</dd></div><div><dt>Paid</dt><dd>{formatCurrency(parseNumeric(paidAmount), currency?.code || "")}</dd></div><div><dt>Remaining customer balance</dt><dd>{formatCurrency(balanceDue, currency?.code || "")}</dd></div></dl><button className="purchase-save-button" type="submit" disabled={isSaving || optionsLoading || Boolean(optionsError) || stockLoading || Boolean(stockError)}>{isSaving ? "Saving sale…" : "Record Sale"}</button></aside>
-    </form>
-  </div>;
+  const displayMessage = (message: string | null | undefined) =>
+    message ? translateSalesMessage(message, t, language) : "";
+  const displayStatus = (value: string) => {
+    const label = statusText(value);
+    return t(label) === label && language === "ps" ? t("Unknown") : t(label);
+  };
+  const displayCustomer = (sale: Sale) => sale.customer === "Customer" ? t("Customer") : sale.customer;
+  const displayWarehouse = (sale: Sale) => sale.warehouse === "Warehouse" ? t("Warehouse") : sale.warehouse;
 
-  return <div className="purchases-page sales-page"><header className="purchases-heading"><div><p className="overview-eyebrow">OPERATIONS</p><h1>Sales</h1><p className="overview-heading__description">Review posted customer sales and print customer bills.</p></div><div className="sales-page-actions"><button className="overview-refresh" type="button" disabled={listLoading} onClick={() => setListRetry((value) => value + 1)}>Refresh</button><button className="purchase-create-button" type="button" onClick={() => navigate("/secretary/sales/create")}><Plus size={16} />Create Sale</button></div></header>
-    {success && <p className="purchase-success-message" role="status">{success}</p>}
-    {listLoading ? <section className="purchases-panel purchases-state" role="status">Loading sales…</section> : listError ? <section className="purchases-panel purchases-state purchases-state--error" role="alert">{listError}<button className="purchases-retry" type="button" onClick={() => setListRetry((value) => value + 1)}>Try again</button></section> : page?.data.length ? <section className="purchases-panel"><div className="purchases-table-scroll"><table className="purchases-table"><thead><tr><th>Sale number</th><th>Invoice</th><th>Customer</th><th>Warehouse</th><th>Date</th><th>Currency</th><th>Total</th><th>Payment</th><th>Status</th><th>Details</th></tr></thead><tbody>{page.data.map((sale) => <tr key={sale.id}><td><strong>{sale.saleNumber}</strong></td><td>{sale.invoiceNumber || "—"}</td><td>{sale.customer}</td><td>{sale.warehouse}</td><td>{sale.saleDate}</td><td>{sale.currency}</td><td>{formatCurrency(sale.grandTotal, sale.currency)}</td><td>{statusText(sale.paymentStatus)}</td><td>{statusText(sale.status)}</td><td><button className="purchase-view-button" type="button" onClick={() => openSale(sale.id)}><Eye size={14} />Details</button></td></tr>)}</tbody></table></div><Pagination page={page} pageNumber={pageNumber} setPage={setPageNumber} /></section> : <section className="purchases-panel purchases-state purchases-state--empty"><strong>No sales yet</strong><span>Recorded customer sales will appear here.</span></section>}
-    {selectedId !== null && <div className="purchase-modal-backdrop sales-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedId(null); }}><section className="purchase-modal sales-modal" role="dialog" aria-modal="true" aria-label="Sale details"><header className="purchase-modal__header sales-modal-header"><div><p className="overview-eyebrow">SALE DETAILS</p><h2>{detail?.saleNumber || "Loading sale…"}</h2></div><div className="sales-modal-actions"><button className="overview-refresh" type="button" disabled={!detail} onClick={() => window.print()}><Printer size={15} />Print Bill</button><button className="purchase-modal__close" type="button" aria-label="Close details" onClick={() => setSelectedId(null)}>×</button></div></header><div className="purchase-modal__body sales-detail-body">{detailError ? <div className="purchases-state purchases-state--error" role="alert">{detailError}<button className="purchases-retry" type="button" onClick={() => setDetailRetry((value) => value + 1)}>Retry</button></div> : detail ? <Invoice sale={detail} company={company} /> : <div className="purchases-state" role="status">Loading sale details…</div>}</div></section></div>}
-  </div>;
+  if (isCreate) return (
+    <main className="sales-redesign__page" dir={direction} lang={language}>
+      <header className="sales-redesign__header">
+        <div>
+          <p className="sales-redesign__eyebrow">{t("OPERATIONS")}</p>
+          <h1>{t("Create Sale")}</h1>
+          <p className="sales-redesign__description">{t("Record a customer sale and initial payment.")}</p>
+        </div>
+        <button className="sales-redesign__button" type="button" onClick={() => navigate("/secretary/sales")}>
+          <ArrowLeft size={16} aria-hidden="true" />
+          {t("Back to Sales")}
+        </button>
+      </header>
+      {optionsError && <p className="sales-redesign__notice" role="alert">{displayMessage(optionsError)} <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>{t("Retry")}</button></p>}
+      {stockError && <p className="sales-redesign__notice" role="alert">{interpolate(t("Eligible stock could not be checked: {error}"), { error: displayMessage(stockError) })} <button type="button" onClick={() => setStockRetry((value) => value + 1)}>{t("Retry stock check")}</button></p>}
+      <form className="sales-redesign__form" onSubmit={(event) => void submit(event)} noValidate>
+        {formError && <p className="sales-redesign__notice" role="alert">{displayMessage(formError)}</p>}
+        <div className="sales-redesign__form-layout">
+          <div className="sales-redesign__form-sections">
+            <section className="sales-redesign__card">
+              <header className="sales-redesign__card-heading"><h2>{t("Sale Information")}</h2></header>
+              <div className="sales-redesign__fields">
+                <Field label={t("Sale number")} error={displayMessage(fieldErrors.sale_number)}><input required value={saleNumber} onChange={(e) => setSaleNumber(e.target.value)} /></Field>
+                <Field label={t("Invoice number")} error={displayMessage(fieldErrors.invoice_number)}><input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} /></Field>
+                <Field label={t("Customer")} error={displayMessage(fieldErrors.business_partner_id)}><select required value={customerId} disabled={optionsLoading} onChange={(e) => setCustomerId(e.target.value)}><option value="">{t("Select customer")}</option>{customers.map((row) => <option key={row.id} value={row.id}>{row.businessName || row.name}{row.phone ? ` · ${row.phone}` : ""}</option>)}</select></Field>
+                <Field label={t("Warehouse")} error={displayMessage(fieldErrors.warehouse_id)}><select required value={warehouseId} disabled={optionsLoading} onChange={(e) => setWarehouseId(e.target.value)}><option value="">{t("Select warehouse")}</option>{warehouses.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field>
+                <Field label={t("Sale date")} error={displayMessage(fieldErrors.sale_date)}><input required type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></Field>
+                <Field label={t("Currency")} error={displayMessage(fieldErrors.currency_id)}><select required value={currencyId} disabled={optionsLoading} onChange={(e) => setCurrencyId(e.target.value)}><option value="">{t("Select currency")}</option>{currencies.map((row) => <option key={row.id} value={row.id}>{row.code} — {row.name}</option>)}</select></Field>
+                <Field label={t("Exchange rate to AFN")} error={displayMessage(fieldErrors.exchange_rate_to_afn)}><input required type="number" min="0.00000001" step="0.00000001" value={exchangeRate} readOnly={currency?.code.toUpperCase() === "AFN"} onChange={(e) => setExchangeRate(e.target.value)} /></Field>
+                <Field label={t("Header discount")} error={displayMessage(fieldErrors.discount_amount)}><input type="number" min="0" step="0.0001" value={headerDiscount} onChange={(e) => setHeaderDiscount(e.target.value)} /></Field>
+                <Field label={t("Notes")}><textarea value={notes} rows={2} onChange={(e) => setNotes(e.target.value)} /></Field>
+              </div>
+            </section>
+            <section className="sales-redesign__card">
+              <header className="sales-redesign__card-heading">
+                <h2>{t("Items")}</h2>
+                <button className="sales-redesign__button sales-redesign__button--secondary" type="button" onClick={() => { setLines((current) => [...current, { key: nextKey, productId: "", quantity: "", unitPrice: "", discount: "0", notes: "" }]); setNextKey((key) => key + 1); }}>
+                  <Plus size={15} aria-hidden="true" />{t("Add item")}
+                </button>
+              </header>
+              <div className="sales-redesign__line-list">
+                {lines.map((line, index) => {
+                  const available = availableStock[line.productId];
+                  const amount = lineAmounts.find((item) => item.key === line.key);
+                  return <div className="sales-redesign__line" key={line.key}>
+                    <Field label={t("Product")} error={displayMessage(fieldErrors[`items.${index}.product_id`])}>
+                      <select value={line.productId} disabled={optionsLoading} onChange={(e) => updateLine(line.key, "productId", e.target.value)}>
+                        <option value="">{t("Select product")}</option>
+                        {products.map((row) => <option key={row.id} value={row.id}>{row.name}{row.sku ? ` · ${row.sku}` : ""}</option>)}
+                      </select>
+                      {line.productId && <small className="sales-redesign__stock-hint">{!warehouseId ? t("Select a warehouse to check stock") : stockLoading ? t("Checking eligible stock…") : stockError ? t("Stock could not be checked") : interpolate(t("Eligible stock: {quantity}"), { quantity: formatSaleQuantity(available ?? 0, language) })}</small>}
+                    </Field>
+                    <Field label={t("Quantity")} error={displayMessage(fieldErrors[`items.${index}.quantity`])}><input type="number" min="0.0001" max={available} step="0.0001" value={line.quantity} onChange={(e) => updateLine(line.key, "quantity", e.target.value)} /></Field>
+                    <Field label={t("Unit price")} error={displayMessage(fieldErrors[`items.${index}.unit_price`])}><input type="number" min="0" step="0.0001" value={line.unitPrice} onChange={(e) => updateLine(line.key, "unitPrice", e.target.value)} /></Field>
+                    <Field label={t("Item discount")} error={displayMessage(fieldErrors[`items.${index}.discount_amount`])}><input type="number" min="0" step="0.0001" value={line.discount} onChange={(e) => updateLine(line.key, "discount", e.target.value)} /></Field>
+                    <p className="sales-redesign__line-total">{t("Line gross")} {formatSaleCurrency(amount?.gross ?? 0, currency?.code || "", language)}</p>
+                    <button className="sales-redesign__remove" type="button" aria-label={t("Remove item")} disabled={lines.length === 1} onClick={() => setLines((current) => current.filter((item) => item.key !== line.key))}><Trash2 size={16} aria-hidden="true" /></button>
+                  </div>;
+                })}
+              </div>
+            </section>
+            <section className="sales-redesign__card">
+              <header className="sales-redesign__card-heading"><h2>{t("Payment")}</h2></header>
+              <div className="sales-redesign__fields">
+                <Field label={t("Payment type")} error={displayMessage(fieldErrors.payment_type)}><select value={paymentType} onChange={(e) => setPaymentType(e.target.value as typeof paymentType)}><option value="credit">{t("Credit")}</option><option value="partial">{t("Partial")}</option><option value="cash">{t("Cash")}</option></select></Field>
+                <Field label={t("Paid amount")} error={displayMessage(fieldErrors.paid_amount)}><input type="number" min="0" step="0.0001" value={paidAmount} readOnly={paymentType === "credit" || paymentType === "cash"} onChange={(e) => setPaidAmount(e.target.value)} /></Field>
+                {paymentType !== "credit" && <>
+                  <Field label={t("Payment number")} error={displayMessage(fieldErrors.payment_number)}><input value={paymentNumber} onChange={(e) => setPaymentNumber(e.target.value)} /></Field>
+                  <Field label={t("Financial account")} error={displayMessage(fieldErrors.financial_account_id)}><select value={accountId} disabled={optionsLoading} onChange={(e) => setAccountId(e.target.value)}><option value="">{t("Select account matching currency")}</option>{accounts.filter((row) => row.currencyId === Number(currencyId)).map((row) => <option key={row.id} value={row.id}>{row.name} · {row.currencyCode} · {formatSaleCurrency(row.balance, row.currencyCode, language)}</option>)}</select></Field>
+                  <Field label={t("Payment date")} error={displayMessage(fieldErrors.payment_date)}><input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} /></Field>
+                </>}
+              </div>
+            </section>
+          </div>
+          <aside className="sales-redesign__summary">
+            <header className="sales-redesign__card-heading"><h2>{t("Sale Summary")}</h2></header>
+            <dl className="sales-redesign__summary-list">
+              <div><dt>{t("Item gross")}</dt><dd>{formatSaleCurrency(subtotal, currency?.code || "", language)}</dd></div>
+              <div><dt>{t("Item discounts")}</dt><dd>− {formatSaleCurrency(itemDiscountTotal, currency?.code || "", language)}</dd></div>
+              <div><dt>{t("Subtotal")}</dt><dd>{formatSaleCurrency(round4(subtotal - itemDiscountTotal), currency?.code || "", language)}</dd></div>
+              <div><dt>{t("Header discount")}</dt><dd>− {formatSaleCurrency(discountValue, currency?.code || "", language)}</dd></div>
+              <div className="sales-redesign__summary-grand"><dt>{t("Grand total")}</dt><dd>{formatSaleCurrency(grandTotal, currency?.code || "", language)}</dd></div>
+              <div><dt>{t("Paid")}</dt><dd>{formatSaleCurrency(parseNumeric(paidAmount), currency?.code || "", language)}</dd></div>
+              <div><dt>{t("Remaining customer balance")}</dt><dd>{formatSaleCurrency(balanceDue, currency?.code || "", language)}</dd></div>
+            </dl>
+            <button className="sales-redesign__button sales-redesign__button--primary" type="submit" disabled={isSaving || optionsLoading || Boolean(optionsError) || stockLoading || Boolean(stockError)}>{isSaving ? t("Saving sale…") : t("Record Sale")}</button>
+          </aside>
+        </div>
+      </form>
+    </main>
+  );
+
+  return (
+    <main className="sales-redesign__page" dir={direction} lang={language}>
+      <header className="sales-redesign__header">
+        <div>
+          <p className="sales-redesign__eyebrow">{t("OPERATIONS")}</p>
+          <h1>{t("Sales")}</h1>
+          <p className="sales-redesign__description">{t("Review posted customer sales and print customer bills.")}</p>
+        </div>
+        <div className="sales-redesign__actions">
+          <button className="sales-redesign__button" type="button" disabled={listLoading} onClick={() => setListRetry((value) => value + 1)}>{t("Refresh")}</button>
+          <button className="sales-redesign__button sales-redesign__button--primary" type="button" onClick={() => navigate("/secretary/sales/create")}><Plus size={16} aria-hidden="true" />{t("Create Sale")}</button>
+        </div>
+      </header>
+      {success && <p className="sales-redesign__success" role="status">{t(success)}</p>}
+      {listLoading ? <section className="sales-redesign__state" role="status">{t("Loading sales…")}</section> : listError ? <section className="sales-redesign__state sales-redesign__state--error" role="alert">{displayMessage(listError)} <button className="sales-redesign__button" type="button" onClick={() => setListRetry((value) => value + 1)}>{t("Try again")}</button></section> : page?.data.length ? (
+        <section className="sales-redesign__panel">
+          <div className="sales-redesign__table-scroll">
+            <table className="sales-redesign__table">
+              <thead><tr><th>{t("Sale number")}</th><th>{t("Invoice")}</th><th>{t("Customer")}</th><th>{t("Warehouse")}</th><th>{t("Date")}</th><th>{t("Currency")}</th><th>{t("Total")}</th><th>{t("Payment")}</th><th>{t("Status")}</th><th>{t("Details")}</th></tr></thead>
+              <tbody>{page.data.map((sale) => <tr key={sale.id}><td><strong>{sale.saleNumber}</strong></td><td>{sale.invoiceNumber || "—"}</td><td>{displayCustomer(sale)}</td><td>{displayWarehouse(sale)}</td><td>{formatSaleDate(sale.saleDate, language)}</td><td>{sale.currency}</td><td>{formatSaleCurrency(sale.grandTotal, sale.currency, language)}</td><td>{displayStatus(sale.paymentStatus)}</td><td>{displayStatus(sale.status)}</td><td><button className="sales-redesign__button sales-redesign__button--detail" type="button" onClick={() => openSale(sale.id)}><Eye size={14} aria-hidden="true" />{t("Details")}</button></td></tr>)}</tbody>
+            </table>
+          </div>
+          <Pagination page={page} pageNumber={pageNumber} setPage={setPageNumber} t={t} />
+        </section>
+      ) : <section className="sales-redesign__state sales-redesign__state--empty"><strong>{t("No sales yet")}</strong><span>{t("Recorded customer sales will appear here.")}</span></section>}
+      {selectedId !== null && <div className="sales-redesign__modal-backdrop purchase-modal-backdrop sales-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedId(null); }}>
+        <section className="sales-redesign__modal purchase-modal sales-modal" role="dialog" aria-modal="true" aria-label={t("Sale details")}>
+          <header className="sales-redesign__modal-header purchase-modal__header sales-modal-header">
+            <div><p className="sales-redesign__eyebrow">{t("SALE DETAILS")}</p><h2>{detail?.saleNumber || t("Loading sale…")}</h2></div>
+            <div className="sales-redesign__modal-actions sales-modal-actions">
+              <button className="sales-redesign__button" type="button" disabled={!detail} onClick={() => window.print()}><Printer size={15} aria-hidden="true" />{t("Print Bill")}</button>
+              <button className="sales-redesign__button sales-redesign__button--close purchase-modal__close" type="button" aria-label={t("Close details")} onClick={() => setSelectedId(null)}>×</button>
+            </div>
+          </header>
+          <div className="sales-redesign__detail-body purchase-modal__body sales-detail-body">
+            {detailError ? <div className="sales-redesign__state sales-redesign__state--error" role="alert">{displayMessage(detailError)} <button className="sales-redesign__button" type="button" onClick={() => setDetailRetry((value) => value + 1)}>{t("Retry")}</button></div> : detail ? <Invoice sale={detail} company={company} t={t} language={language} displayStatus={displayStatus} displayCustomer={displayCustomer} displayWarehouse={displayWarehouse} /> : <div className="sales-redesign__state" role="status">{t("Loading sale details…")}</div>}
+          </div>
+        </section>
+      </div>}
+    </main>
+  );
 }
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return <label className="purchase-field"><span>{label}</span>{children}{error && <small className="sales-field-error" role="alert">{error}</small>}</label>;
+  return <label className="sales-redesign__field"><span>{label}</span>{children}{error && <small className="sales-redesign__field-error" role="alert">{error}</small>}</label>;
 }
-function Pagination({ page, pageNumber, setPage }: { page: LaravelPage<Sale>; pageNumber: number; setPage: (page: number) => void }) {
-  return <footer className="purchases-pagination"><span>{page.total} sales</span><div className="purchases-pagination__controls"><button type="button" disabled={pageNumber <= 1} onClick={() => setPage(pageNumber - 1)}>Previous</button><span>Page {pageNumber} of {page.lastPage}</span><button type="button" disabled={pageNumber >= page.lastPage} onClick={() => setPage(pageNumber + 1)}>Next</button></div></footer>;
+function Pagination({ page, pageNumber, setPage, t }: { page: LaravelPage<Sale>; pageNumber: number; setPage: (page: number) => void; t: Translate }) {
+  return <footer className="sales-redesign__pagination"><span>{interpolate(t("{count} sales"), { count: String(page.total) })}</span><div className="sales-redesign__pagination-controls"><button type="button" disabled={pageNumber <= 1} onClick={() => setPage(pageNumber - 1)}>{t("Previous")}</button><span>{interpolate(t("Page {current} of {total}"), { current: String(pageNumber), total: String(page.lastPage) })}</span><button type="button" disabled={pageNumber >= page.lastPage} onClick={() => setPage(pageNumber + 1)}>{t("Next")}</button></div></footer>;
 }
-function Invoice({ sale, company }: { sale: Sale; company: CompanyInfo }) {
+function Invoice({ sale, company, t, language, displayStatus, displayCustomer, displayWarehouse }: { sale: Sale; company: CompanyInfo; t: Translate; language: Language; displayStatus: (value: string) => string; displayCustomer: (sale: Sale) => string; displayWarehouse: (sale: Sale) => string }) {
   const balance = round4(sale.grandTotal - sale.paidAmount);
-  return <article className="sales-invoice-print"><header className="sales-invoice-company">{company.logo && <img src={company.logo} alt="" /> }<div><h1>{company.name}</h1>{company.phone && <p>{company.phone}</p>}{company.address && <p>{company.address}</p>}</div><strong>CUSTOMER INVOICE</strong></header>
-    <dl className="sales-invoice-meta"><div><dt>Invoice number</dt><dd>{sale.invoiceNumber || "—"}</dd></div><div><dt>Sale number</dt><dd>{sale.saleNumber}</dd></div><div><dt>Sale date</dt><dd>{sale.saleDate}</dd></div><div><dt>Customer</dt><dd>{sale.customer}</dd></div>{sale.customerPhone && <div><dt>Customer phone</dt><dd>{sale.customerPhone}</dd></div>}{sale.customerEmail && <div><dt>Customer email</dt><dd>{sale.customerEmail}</dd></div>}{sale.customerAddress && <div><dt>Customer address</dt><dd>{sale.customerAddress}</dd></div>}<div><dt>Warehouse</dt><dd>{sale.warehouse}</dd></div><div><dt>Currency</dt><dd>{sale.currency}</dd></div></dl>
-    <div className="purchases-table-scroll"><table className="purchases-table sales-invoice-table"><thead><tr><th>#</th><th>Product</th><th>SKU</th><th>Quantity</th><th>Unit</th><th>Unit price</th><th>Discount</th><th>Line total</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={item.id}><td>{index + 1}</td><td>{item.productName}</td><td>{item.sku || "—"}</td><td>{formatQuantity(item.quantity)}</td><td>{item.unit || "—"}</td><td>{formatCurrency(item.unitPrice, sale.currency)}</td><td>{formatCurrency(item.discount, sale.currency)}</td><td>{formatCurrency(item.lineTotal, sale.currency)}</td></tr>)}</tbody></table></div>
-    <section className="sales-invoice-totals"><dl><div><dt>Subtotal</dt><dd>{formatCurrency(sale.subtotal, sale.currency)}</dd></div><div><dt>Total discount</dt><dd>{formatCurrency(sale.discount, sale.currency)}</dd></div><div className="sales-summary-grand"><dt>Grand total</dt><dd>{formatCurrency(sale.grandTotal, sale.currency)}</dd></div><div><dt>Paid amount</dt><dd>{formatCurrency(sale.paidAmount, sale.currency)}</dd></div><div><dt>Remaining balance</dt><dd>{formatCurrency(balance, sale.currency)}</dd></div><div><dt>Payment status</dt><dd>{statusText(sale.paymentStatus)}</dd></div></dl></section>
-    {sale.notes && <p className="sales-invoice-notes"><strong>Notes:</strong> {sale.notes}</p>}{company.billText && <p className="sales-invoice-notes">{company.billText}</p>}
-    <footer className="sales-invoice-footer"><p>Thank you for your business.</p><div><span>Customer signature</span><span>Company representative</span></div></footer>
+  return <article className="sales-invoice-print"><header className="sales-invoice-company">{company.logo && <img src={company.logo} alt="" /> }<div><h1>{company.name}</h1>{company.phone && <p>{company.phone}</p>}{company.address && <p>{company.address}</p>}</div><strong>{t("CUSTOMER INVOICE")}</strong></header>
+    <dl className="sales-invoice-meta"><div><dt>{t("Invoice number")}</dt><dd>{sale.invoiceNumber || "—"}</dd></div><div><dt>{t("Sale number")}</dt><dd>{sale.saleNumber}</dd></div><div><dt>{t("Sale date")}</dt><dd>{formatSaleDate(sale.saleDate, language)}</dd></div><div><dt>{t("Customer")}</dt><dd>{displayCustomer(sale)}</dd></div>{sale.customerPhone && <div><dt>{t("Customer phone")}</dt><dd>{sale.customerPhone}</dd></div>}{sale.customerEmail && <div><dt>{t("Customer email")}</dt><dd>{sale.customerEmail}</dd></div>}{sale.customerAddress && <div><dt>{t("Customer address")}</dt><dd>{sale.customerAddress}</dd></div>}<div><dt>{t("Warehouse")}</dt><dd>{displayWarehouse(sale)}</dd></div><div><dt>{t("Currency")}</dt><dd>{sale.currency}</dd></div></dl>
+    <div className="purchases-table-scroll"><table className="purchases-table sales-invoice-table"><thead><tr><th>#</th><th>{t("Product")}</th><th>{t("SKU")}</th><th>{t("Quantity")}</th><th>{t("Unit")}</th><th>{t("Unit price")}</th><th>{t("Discount")}</th><th>{t("Line total")}</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={item.id}><td>{new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US").format(index + 1)}</td><td>{item.productName}</td><td>{item.sku || "—"}</td><td>{formatSaleQuantity(item.quantity, language)}</td><td>{item.unit || "—"}</td><td>{formatSaleCurrency(item.unitPrice, sale.currency, language)}</td><td>{formatSaleCurrency(item.discount, sale.currency, language)}</td><td>{formatSaleCurrency(item.lineTotal, sale.currency, language)}</td></tr>)}</tbody></table></div>
+    <section className="sales-invoice-totals"><dl><div><dt>{t("Subtotal")}</dt><dd>{formatSaleCurrency(sale.subtotal, sale.currency, language)}</dd></div><div><dt>{t("Total discount")}</dt><dd>{formatSaleCurrency(sale.discount, sale.currency, language)}</dd></div><div className="sales-summary-grand"><dt>{t("Grand total")}</dt><dd>{formatSaleCurrency(sale.grandTotal, sale.currency, language)}</dd></div><div><dt>{t("Paid amount")}</dt><dd>{formatSaleCurrency(sale.paidAmount, sale.currency, language)}</dd></div><div><dt>{t("Remaining balance")}</dt><dd>{formatSaleCurrency(balance, sale.currency, language)}</dd></div><div><dt>{t("Payment status")}</dt><dd>{displayStatus(sale.paymentStatus)}</dd></div></dl></section>
+    {sale.notes && <p className="sales-invoice-notes"><strong>{t("Notes:")}</strong> {sale.notes}</p>}{company.billText && <p className="sales-invoice-notes">{company.billText}</p>}
+    <footer className="sales-invoice-footer"><p>{t("Thank you for your business.")}</p><div><span>{t("Customer signature")}</span><span>{t("Company representative")}</span></div></footer>
   </article>;
 }
