@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import axios from "axios";
 import {
   AlertCircle,
@@ -40,6 +40,11 @@ interface WarehouseForm {
 
 type FieldErrors = Record<string, string>;
 type WarehouseFormMode = "create" | "edit";
+
+interface WarehouseModalHistoryEntry {
+  state: unknown;
+  url: string;
+}
 
 const emptyForm: WarehouseForm = {
   name: "",
@@ -269,6 +274,35 @@ export default function Warehouses() {
   const [detailRetry, setDetailRetry] = useState(0);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isChangingStatus, setIsChangingStatus] = useState(false);
+  const modalHistoryEntry = useRef<WarehouseModalHistoryEntry | null>(null);
+  const isClosingModalHistoryEntry = useRef(false);
+
+  useEffect(() => {
+    function handlePopState(event: PopStateEvent) {
+      if (isClosingModalHistoryEntry.current) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        isClosingModalHistoryEntry.current = false;
+        modalHistoryEntry.current = null;
+        setFormMode(null);
+        setForm(emptyForm);
+        setFormFields({});
+        setFormError(null);
+        setSelectedWarehouseId(null);
+        return;
+      }
+
+      const entry = modalHistoryEntry.current;
+      if (!entry) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.history.pushState(entry.state, "", entry.url);
+    }
+
+    window.addEventListener("popstate", handlePopState, true);
+    return () => window.removeEventListener("popstate", handlePopState, true);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -363,11 +397,28 @@ export default function Warehouses() {
 
   function closeDetails() {
     if (isSaving) return;
+    if (modalHistoryEntry.current) {
+      isClosingModalHistoryEntry.current = true;
+      window.history.back();
+      return;
+    }
+    finishClosingDetails();
+  }
+
+  function finishClosingDetails() {
     setFormMode(null);
     setForm(emptyForm);
     setFormFields({});
     setFormError(null);
     setSelectedWarehouseId(null);
+  }
+
+  function openDetails(warehouseId: number) {
+    const url = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const state = window.history.state;
+    window.history.pushState(state, "", url);
+    modalHistoryEntry.current = { state, url };
+    setSelectedWarehouseId(warehouseId);
   }
 
   function setField(field: keyof WarehouseForm, value: string) {
@@ -693,7 +744,7 @@ export default function Warehouses() {
                         <button
                           className="purchase-view-button"
                           type="button"
-                          onClick={() => setSelectedWarehouseId(warehouse.id)}
+                          onClick={() => openDetails(warehouse.id)}
                           aria-label={`${t("Details")}: ${warehouse.name}`}
                         >
                           <Eye size={15} aria-hidden="true" />

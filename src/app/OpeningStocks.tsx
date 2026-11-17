@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -7,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useLocale } from "@/lib/locale";
 import {
   formatCurrency,
   formatQuantity,
@@ -96,7 +99,7 @@ function parseOpeningStock(value: unknown): OpeningStock {
   return {
     id: parseId(value.id, "opening stock ID"),
     number: value.opening_number,
-    date: value.opening_date,
+    date: value.opening_date.slice(0, 10),
     warehouse: value.warehouse.name,
     creator: isRecord(value.creator) ? optionalText(value.creator.name) : null,
     notes: optionalText(value.notes),
@@ -104,7 +107,20 @@ function parseOpeningStock(value: unknown): OpeningStock {
   };
 }
 
-export default function OpeningStocks() {
+export default function OpeningStocks({
+  createMode = false,
+}: {
+  createMode?: boolean;
+}) {
+  const { t } = useLocale();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id: routeId } = useParams();
+  const isDetailsPage = routeId !== undefined;
+  const detailId =
+    routeId && /^\d+$/.test(routeId) && Number(routeId) > 0
+      ? Number(routeId)
+      : null;
   const [records, setRecords] = useState<LaravelPage<OpeningStock> | null>(
     null,
   );
@@ -118,7 +134,6 @@ export default function OpeningStocks() {
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [optionsRetry, setOptionsRetry] = useState(0);
-  const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<OpeningForm>({
     warehouseId: "",
     date: todayValue(),
@@ -137,13 +152,17 @@ export default function OpeningStocks() {
   const [fields, setFields] = useState<InventoryFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<OpeningStock | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailRetry, setDetailRetry] = useState(0);
 
+  function translateError(message: string): string {
+    return t(message.replace(/\bitems\.\d+\./g, "items.*."));
+  }
+
   useEffect(() => {
+    if (createMode || isDetailsPage) return;
     const controller = new AbortController();
     setIsLoading(true);
     setListError(null);
@@ -163,9 +182,10 @@ export default function OpeningStocks() {
         if (!controller.signal.aborted) setIsLoading(false);
       });
     return () => controller.abort();
-  }, [page, retry]);
+  }, [createMode, isDetailsPage, page, retry]);
 
   useEffect(() => {
+    if (!createMode) return;
     const controller = new AbortController();
     setOptionsLoading(true);
     Promise.all([
@@ -184,16 +204,39 @@ export default function OpeningStocks() {
         if (!controller.signal.aborted) setOptionsLoading(false);
       });
     return () => controller.abort();
-  }, [optionsRetry]);
+  }, [createMode, optionsRetry]);
 
   useEffect(() => {
-    if (selectedId === null) return;
+    if (!createMode) return;
+    setForm({ warehouseId: "", date: todayValue(), notes: "" });
+    setLines([
+      {
+        key: 1,
+        productId: "",
+        quantity: "",
+        unitCostAfn: "",
+        batchNumber: "",
+        expiryDate: "",
+      },
+    ]);
+    setFields({});
+    setFormError(null);
+  }, [createMode, location.pathname]);
+
+  useEffect(() => {
+    if (!isDetailsPage) return;
+    if (detailId === null) {
+      setDetail(null);
+      setDetailError("Invalid opening stock reference.");
+      setDetailLoading(false);
+      return;
+    }
     const controller = new AbortController();
     setDetailLoading(true);
     setDetailError(null);
     setDetail(null);
     api
-      .get<unknown>(`/api/opening-stocks/${selectedId}`, {
+      .get<unknown>(`/api/opening-stocks/${detailId}`, {
         signal: controller.signal,
       })
       .then(({ data }) => {
@@ -208,16 +251,22 @@ export default function OpeningStocks() {
         if (!controller.signal.aborted) setDetailLoading(false);
       });
     return () => controller.abort();
-  }, [selectedId, detailRetry]);
+  }, [detailId, detailRetry, isDetailsPage]);
 
   useEffect(() => {
-    if (selectedId === null) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedId(null);
+    if (
+      createMode ||
+      isDetailsPage ||
+      !isRecord(location.state) ||
+      location.state.openingStockCreated !== true
+    ) {
+      return;
     }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedId]);
+    setSuccess("Opening stock recorded successfully.");
+    setPage(1);
+    setRetry((current) => current + 1);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [createMode, isDetailsPage, location.pathname, location.state, navigate]);
 
   useEffect(() => {
     if (!success) return;
@@ -226,20 +275,7 @@ export default function OpeningStocks() {
   }, [success]);
 
   function startCreate() {
-    setForm({ warehouseId: "", date: todayValue(), notes: "" });
-    setLines([
-      {
-        key: 1,
-        productId: "",
-        quantity: "",
-        unitCostAfn: "",
-        batchNumber: "",
-        expiryDate: "",
-      },
-    ]);
-    setFields({});
-    setFormError(null);
-    setFormOpen(true);
+    navigate("/secretary/opening-stocks/create");
   }
 
   function setLineField(
@@ -326,10 +362,10 @@ export default function OpeningStocks() {
           expiry_date: line.expiryDate || null,
         })),
       });
-      setFormOpen(false);
-      setPage(1);
-      setRetry((current) => current + 1);
-      setSuccess("Opening stock recorded successfully.");
+      navigate("/secretary/opening-stocks", {
+        replace: true,
+        state: { openingStockCreated: true },
+      });
     } catch (error: unknown) {
       applyValidation(error);
     } finally {
@@ -351,310 +387,516 @@ export default function OpeningStocks() {
     ]);
   const pageSize = records?.perPage ?? 15;
 
+  if (isDetailsPage) {
+    return (
+      <main className="purchases-page inventory-operation-page opening-stock-details-page">
+        <header className="purchases-heading">
+          <div>
+            <p className="overview-eyebrow">{t("INVENTORY")}</p>
+            <h1>{t("Opening Stock Details")}</h1>
+            <p className="overview-heading__description">
+              {detail?.number ?? t("Review the saved opening stock entry.")}
+            </p>
+          </div>
+          <button
+            className="overview-refresh"
+            type="button"
+            onClick={() => navigate("/secretary/opening-stocks")}
+          >
+            <ArrowLeft size={16} aria-hidden="true" />
+            {t("Back to Opening Stocks")}
+          </button>
+        </header>
+        {detailLoading ? (
+          <section className="purchases-panel purchases-state" role="status">
+            <span className="loading-spinner" /> {t("Loading opening stock…")}
+          </section>
+        ) : detailError ? (
+          <section
+            className="purchases-panel purchases-state purchases-state--error"
+            role="alert"
+          >
+            <span>{t(detailError)}</span>
+            {detailId !== null && (
+              <button
+                className="purchases-retry"
+                type="button"
+                onClick={() => setDetailRetry((value) => value + 1)}
+              >
+                {t("Try again")}
+              </button>
+            )}
+          </section>
+        ) : detail ? (
+          <>
+            <section
+              className="opening-stock-summary"
+              aria-label={t("Opening stock summary")}
+            >
+              <article className="opening-stock-summary__primary">
+                <span>{t("Opening Number")}</span>
+                <strong>{detail.number}</strong>
+              </article>
+              <article>
+                <span>{t("Opening Date")}</span>
+                <strong>{detail.date}</strong>
+              </article>
+              <article>
+                <span>{t("Warehouse")}</span>
+                <strong>{detail.warehouse}</strong>
+              </article>
+              <article>
+                <span>{t("Products")}</span>
+                <strong>{detail.items.length}</strong>
+              </article>
+            </section>
+            <section className="purchases-panel opening-stock-details-panel">
+              <header className="opening-stock-section-heading">
+                <div>
+                  <h2>{t("Product entries")}</h2>
+                  <p>{t("Saved quantities and cost information.")}</p>
+                </div>
+              </header>
+              <div className="purchases-table-scroll">
+                <table className="purchases-table inventory-detail-table opening-stock-detail-table">
+                  <thead>
+                    <tr>
+                      <th>{t("Product")}</th>
+                      <th>{t("Quantity")}</th>
+                      <th>{t("Unit")}</th>
+                      <th>{t("Unit Cost")}</th>
+                      <th>{t("Total Cost")}</th>
+                      <th>{t("Currency")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.items.map((item) => (
+                      <tr key={item.id}>
+                        <td data-label={t("Product")}>
+                          <span className="opening-stock-product-name">
+                            <strong>{item.product}</strong>
+                            {item.sku && (
+                              <small className="opening-stock-item-sku">
+                                {t("SKU")}: {item.sku}
+                              </small>
+                            )}
+                          </span>
+                        </td>
+                        <td data-label={t("Quantity")}>
+                          {formatQuantity(item.quantity)}
+                        </td>
+                        <td data-label={t("Unit")}>{item.unit || "—"}</td>
+                        <td data-label={t("Unit Cost")}>
+                          {formatCurrency(item.unitCostAfn)}
+                        </td>
+                        <td data-label={t("Total Cost")}>
+                          {formatCurrency(item.totalCostAfn)}
+                        </td>
+                        <td data-label={t("Currency")}>
+                          <span className="opening-stock-currency">AFN</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <dl className="opening-stock-notes">
+                <div>
+                  <dt>{t("Created By")}</dt>
+                  <dd>{detail.creator || "—"}</dd>
+                </div>
+                <div>
+                  <dt>{t("Notes")}</dt>
+                  <dd>{detail.notes || "—"}</dd>
+                </div>
+              </dl>
+            </section>
+          </>
+        ) : null}
+      </main>
+    );
+  }
+
+  if (createMode) {
+    return (
+      <main className="purchases-page inventory-operation-page opening-stock-create-page">
+        <header className="purchases-heading">
+          <div>
+            <p className="overview-eyebrow">{t("INVENTORY")}</p>
+            <h1>{t("Create Opening Stock")}</h1>
+            <p className="overview-heading__description">
+              {t("Enter the starting stock and its known purchase details.")}
+            </p>
+          </div>
+          <button
+            className="overview-refresh"
+            type="button"
+            onClick={() => navigate("/secretary/opening-stocks")}
+            disabled={isSaving}
+          >
+            <ArrowLeft size={16} aria-hidden="true" />
+            {t("Back to Opening Stocks")}
+          </button>
+        </header>
+        {formError && (
+          <p
+            className="create-purchase-alert inventory-form-alert"
+            role="alert"
+          >
+            {translateError(formError)}
+          </p>
+        )}
+        {optionsError && (
+          <div className="purchase-options-error" role="alert">
+            {translateError(optionsError)}{" "}
+            <button
+              type="button"
+              onClick={() => setOptionsRetry((value) => value + 1)}
+            >
+              {t("Try again")}
+            </button>
+          </div>
+        )}
+        <form
+          className="opening-stock-form"
+          onSubmit={(event) => void submit(event)}
+          noValidate
+        >
+          <section className="purchases-panel opening-stock-form-section">
+            <header className="opening-stock-section-heading">
+              <div>
+                <h2>{t("General Information")}</h2>
+                <p>{t("Choose where and when the opening stock applies.")}</p>
+              </div>
+              <span className="opening-stock-required-note">
+                <i>*</i> {t("Required")}
+              </span>
+            </header>
+            <div className="opening-stock-general-grid">
+              <label className="purchase-field">
+                <span>
+                  {t("Warehouse")} <i>*</i>
+                </span>
+                <select
+                  value={form.warehouseId}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      warehouseId: event.target.value,
+                    }))
+                  }
+                  disabled={optionsLoading || Boolean(optionsError)}
+                  aria-invalid={Boolean(fields.warehouse_id)}
+                >
+                  <option value="">{t("Select a warehouse")}</option>
+                  {warehouses.map((warehouse) => (
+                    <option value={warehouse.id} key={warehouse.id}>
+                      {warehouse.name}
+                    </option>
+                  ))}
+                </select>
+                {fields.warehouse_id && (
+                  <small className="purchase-field__error">
+                    {translateError(fields.warehouse_id)}
+                  </small>
+                )}
+              </label>
+              <label className="purchase-field">
+                <span>
+                  {t("Opening Date")} <i>*</i>
+                </span>
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      date: event.target.value,
+                    }))
+                  }
+                  aria-invalid={Boolean(fields.opening_date)}
+                />
+                {fields.opening_date && (
+                  <small className="purchase-field__error">
+                    {translateError(fields.opening_date)}
+                  </small>
+                )}
+              </label>
+              <label className="purchase-field opening-stock-notes-field">
+                <span>{t("Notes")}</span>
+                <textarea
+                  rows={3}
+                  value={form.notes}
+                  placeholder={t("Add any helpful notes (optional)")}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="purchases-panel opening-stock-form-section">
+            <header className="opening-stock-section-heading">
+              <div>
+                <h2>{t("Product Entries")}</h2>
+                <p>
+                  {t("Select each product and enter its quantity and AFN unit cost.")}
+                </p>
+              </div>
+              <button
+                className="purchase-add-item"
+                type="button"
+                onClick={addLine}
+                disabled={optionsLoading || isSaving}
+              >
+                <Plus size={14} aria-hidden="true" /> {t("Add Product")}
+              </button>
+            </header>
+            <div className="opening-stock-lines">
+              {lines.map((line, index) => {
+                const selectedProduct = products.find(
+                  (product) => String(product.id) === line.productId,
+                );
+                return (
+                  <fieldset className="opening-stock-line" key={line.key}>
+                    <legend>
+                      {t("Product")} {index + 1}
+                    </legend>
+                    <div className="opening-stock-line-grid">
+                      <label className="purchase-field opening-stock-product-field">
+                        <span>
+                          {t("Product")} <i>*</i>
+                        </span>
+                        <select
+                          value={line.productId}
+                          onChange={(event) =>
+                            setLineField(
+                              line.key,
+                              "productId",
+                              event.target.value,
+                            )
+                          }
+                          disabled={optionsLoading || Boolean(optionsError)}
+                          aria-invalid={Boolean(
+                            fields[`items.${line.key}.product_id`],
+                          )}
+                        >
+                          <option value="">{t("Select a product")}</option>
+                          {products.map((product) => (
+                            <option value={product.id} key={product.id}>
+                              {product.name}
+                              {product.sku ? ` · ${product.sku}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        {fields[`items.${line.key}.product_id`] && (
+                          <small className="purchase-field__error">
+                            {translateError(fields[`items.${line.key}.product_id`])}
+                          </small>
+                        )}
+                      </label>
+                      <label className="purchase-field">
+                        <span>
+                          {t("Quantity")} <i>*</i>
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.0001"
+                          value={line.quantity}
+                          placeholder={t("Enter quantity")}
+                          onChange={(event) =>
+                            setLineField(
+                              line.key,
+                              "quantity",
+                              event.target.value,
+                            )
+                          }
+                          aria-invalid={Boolean(
+                            fields[`items.${line.key}.quantity`],
+                          )}
+                        />
+                        {fields[`items.${line.key}.quantity`] && (
+                          <small className="purchase-field__error">
+                            {translateError(fields[`items.${line.key}.quantity`])}
+                          </small>
+                        )}
+                      </label>
+                      <label className="purchase-field">
+                        <span>{t("Unit")}</span>
+                        <input
+                          value={selectedProduct?.unit ?? ""}
+                          placeholder={t("Selected product unit")}
+                          readOnly
+                        />
+                      </label>
+                      <label className="purchase-field">
+                        <span>
+                          {t("Unit Cost (AFN)")} <i>*</i>
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.000001"
+                          value={line.unitCostAfn}
+                          placeholder={t("Enter unit cost")}
+                          onChange={(event) =>
+                            setLineField(
+                              line.key,
+                              "unitCostAfn",
+                              event.target.value,
+                            )
+                          }
+                          aria-invalid={Boolean(
+                            fields[`items.${line.key}.unit_cost_afn`],
+                          )}
+                        />
+                        {fields[`items.${line.key}.unit_cost_afn`] && (
+                          <small className="purchase-field__error">
+                            {translateError(fields[`items.${line.key}.unit_cost_afn`])}
+                          </small>
+                        )}
+                      </label>
+                      <label className="purchase-field">
+                        <span>{t("Batch Number (optional)")}</span>
+                        <input
+                          maxLength={100}
+                          value={line.batchNumber}
+                          placeholder={t("Enter batch number")}
+                          onChange={(event) =>
+                            setLineField(
+                              line.key,
+                              "batchNumber",
+                              event.target.value,
+                            )
+                          }
+                        />
+                        {fields[`items.${line.key}.batch_number`] && (
+                          <small className="purchase-field__error">
+                            {translateError(fields[`items.${line.key}.batch_number`])}
+                          </small>
+                        )}
+                      </label>
+                      <label className="purchase-field">
+                        <span>{t("Expiry Date (optional)")}</span>
+                        <input
+                          type="date"
+                          min={form.date || undefined}
+                          value={line.expiryDate}
+                          onChange={(event) =>
+                            setLineField(
+                              line.key,
+                              "expiryDate",
+                              event.target.value,
+                            )
+                          }
+                          aria-invalid={Boolean(
+                            fields[`items.${line.key}.expiry_date`],
+                          )}
+                        />
+                        {fields[`items.${line.key}.expiry_date`] && (
+                          <small className="purchase-field__error">
+                            {translateError(fields[`items.${line.key}.expiry_date`])}
+                          </small>
+                        )}
+                      </label>
+                    </div>
+                    <button
+                      className="opening-stock-line-remove"
+                      type="button"
+                      onClick={() =>
+                        setLines((current) =>
+                          current.filter((entry) => entry.key !== line.key),
+                        )
+                      }
+                      disabled={lines.length <= 1 || isSaving}
+                      aria-label={`${t("Remove opening stock product")} ${index + 1}`}
+                    >
+                      <X size={15} aria-hidden="true" />
+                      {t("Remove")}
+                    </button>
+                  </fieldset>
+                );
+              })}
+            </div>
+            <p className="opening-stock-form-hint">
+              {t("Leave batch and expiry blank when the original lot details are unknown.")}
+            </p>
+          </section>
+
+          <footer className="opening-stock-form-actions">
+            <button
+              className="purchase-cancel-button"
+              type="button"
+              onClick={() => navigate("/secretary/opening-stocks")}
+              disabled={isSaving}
+            >
+              {t("Cancel")}
+            </button>
+            <button
+              className="purchase-save-button"
+              type="submit"
+              disabled={isSaving || optionsLoading || Boolean(optionsError)}
+            >
+              {isSaving ? t("Saving…") : t("Record Opening Stock")}
+            </button>
+          </footer>
+        </form>
+      </main>
+    );
+  }
+
   return (
-    <div className="purchases-page inventory-operation-page">
+    <main className="purchases-page inventory-operation-page opening-stock-list-page">
       <header className="purchases-heading">
         <div>
-          <p className="overview-eyebrow">INVENTORY</p>
-          <h1>Opening Stock</h1>
+          <p className="overview-eyebrow">{t("INVENTORY")}</p>
+          <h1>{t("Opening Stock")}</h1>
           <p className="overview-heading__description">
-            Record initial quantities and known lot details.
+            {t("Record initial quantities and known lot details.")}
           </p>
         </div>
         <button
           className="purchase-create-button"
           type="button"
           onClick={startCreate}
-          disabled={formOpen}
         >
           <Plus size={16} aria-hidden="true" />
-          <span>New Opening Stock</span>
+          <span>{t("New Opening Stock")}</span>
         </button>
       </header>
       {success && (
         <p className="purchase-success-message inventory-success" role="status">
-          {success}
+          {t(success)}
         </p>
       )}
-      {formOpen && (
-        <section
-          className="purchases-panel inventory-form-panel"
-          aria-labelledby="opening-form-title"
-        >
-          <header className="inventory-form-heading">
-            <h2 id="opening-form-title">Create Opening Stock</h2>
-            <button
-              className="purchase-cancel-button"
-              type="button"
-              onClick={() => setFormOpen(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </button>
-          </header>
-          {formError && (
-            <p
-              className="create-purchase-alert inventory-form-alert"
-              role="alert"
-            >
-              {formError}
-            </p>
-          )}
-          {optionsError && (
-            <div className="purchase-options-error" role="alert">
-              {optionsError}{" "}
-              <button
-                type="button"
-                onClick={() => setOptionsRetry((value) => value + 1)}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-          <form
-            className="inventory-form"
-            onSubmit={(event) => void submit(event)}
-            noValidate
-          >
-            <label className="purchase-field">
-              <span>
-                Warehouse <i>*</i>
-              </span>
-              <select
-                value={form.warehouseId}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    warehouseId: event.target.value,
-                  }))
-                }
-                disabled={optionsLoading || Boolean(optionsError)}
-                aria-invalid={Boolean(fields.warehouse_id)}
-              >
-                <option value="">Select warehouse</option>
-                {warehouses.map((warehouse) => (
-                  <option value={warehouse.id} key={warehouse.id}>
-                    {warehouse.name}
-                  </option>
-                ))}
-              </select>
-              {fields.warehouse_id && (
-                <small className="purchase-field__error">
-                  {fields.warehouse_id}
-                </small>
-              )}
-            </label>
-            <label className="purchase-field">
-              <span>
-                Opening Date <i>*</i>
-              </span>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    date: event.target.value,
-                  }))
-                }
-                aria-invalid={Boolean(fields.opening_date)}
-              />
-              {fields.opening_date && (
-                <small className="purchase-field__error">
-                  {fields.opening_date}
-                </small>
-              )}
-            </label>
-            <label className="purchase-field">
-              <span>Notes</span>
-              <textarea
-                rows={2}
-                value={form.notes}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    notes: event.target.value,
-                  }))
-                }
-              />
-            </label>
-            <div className="inventory-lines inventory-form-wide">
-              <div className="inventory-lines__heading">
-                <strong>Products</strong>
-                <button
-                  className="purchase-add-item"
-                  type="button"
-                  onClick={addLine}
-                  disabled={optionsLoading}
-                >
-                  <Plus size={14} aria-hidden="true" /> Add Product
-                </button>
-              </div>
-              {lines.map((line) => (
-                <div className="inventory-line" key={line.key}>
-                  <label className="purchase-field">
-                    <span>Product</span>
-                    <select
-                      value={line.productId}
-                      onChange={(event) =>
-                        setLineField(line.key, "productId", event.target.value)
-                      }
-                      disabled={optionsLoading || Boolean(optionsError)}
-                      aria-invalid={Boolean(
-                        fields[`items.${line.key}.product_id`],
-                      )}
-                    >
-                      <option value="">Select product</option>
-                      {products.map((product) => (
-                        <option value={product.id} key={product.id}>
-                          {product.name}
-                          {product.sku ? ` · ${product.sku}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    {fields[`items.${line.key}.product_id`] && (
-                      <small className="purchase-field__error">
-                        {fields[`items.${line.key}.product_id`]}
-                      </small>
-                    )}
-                  </label>
-                  <label className="purchase-field">
-                    <span>Quantity</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.0001"
-                      value={line.quantity}
-                      onChange={(event) =>
-                        setLineField(line.key, "quantity", event.target.value)
-                      }
-                      aria-invalid={Boolean(
-                        fields[`items.${line.key}.quantity`],
-                      )}
-                    />
-                    {fields[`items.${line.key}.quantity`] && (
-                      <small className="purchase-field__error">
-                        {fields[`items.${line.key}.quantity`]}
-                      </small>
-                    )}
-                  </label>
-                  <label className="purchase-field">
-                    <span>Unit Cost AFN</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.000001"
-                      value={line.unitCostAfn}
-                      onChange={(event) =>
-                        setLineField(
-                          line.key,
-                          "unitCostAfn",
-                          event.target.value,
-                        )
-                      }
-                      aria-invalid={Boolean(
-                        fields[`items.${line.key}.unit_cost_afn`],
-                      )}
-                    />
-                    {fields[`items.${line.key}.unit_cost_afn`] && (
-                      <small className="purchase-field__error">
-                        {fields[`items.${line.key}.unit_cost_afn`]}
-                      </small>
-                    )}
-                  </label>
-                  <label className="purchase-field">
-                    <span>Batch Number (optional)</span>
-                    <input
-                      maxLength={100}
-                      value={line.batchNumber}
-                      onChange={(event) =>
-                        setLineField(
-                          line.key,
-                          "batchNumber",
-                          event.target.value,
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="purchase-field">
-                    <span>Expiry Date (optional)</span>
-                    <input
-                      type="date"
-                      min={form.date || undefined}
-                      value={line.expiryDate}
-                      onChange={(event) =>
-                        setLineField(line.key, "expiryDate", event.target.value)
-                      }
-                      aria-invalid={Boolean(
-                        fields[`items.${line.key}.expiry_date`],
-                      )}
-                    />
-                    {fields[`items.${line.key}.expiry_date`] && (
-                      <small className="purchase-field__error">
-                        {fields[`items.${line.key}.expiry_date`]}
-                      </small>
-                    )}
-                  </label>
-                  <button
-                    className="purchase-modal__close inventory-line__remove"
-                    type="button"
-                    onClick={() =>
-                      setLines((current) =>
-                        current.filter((entry) => entry.key !== line.key),
-                      )
-                    }
-                    disabled={lines.length <= 1}
-                    aria-label="Remove opening stock product"
-                  >
-                    <X size={16} aria-hidden="true" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <p className="inventory-form-hint inventory-form-wide">
-              Leave batch and expiry blank when the original lot details are
-              unknown.
-            </p>
-            <div className="inventory-form-actions">
-              <button
-                className="purchase-cancel-button"
-                type="button"
-                onClick={() => setFormOpen(false)}
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                className="purchase-save-button"
-                type="submit"
-                disabled={isSaving || optionsLoading || Boolean(optionsError)}
-              >
-                {isSaving ? "Saving…" : "Record Opening Stock"}
-              </button>
-            </div>
-          </form>
-        </section>
-      )}
-      <section className="purchases-panel" aria-label="Opening stock records">
+      <section
+        className="purchases-panel"
+        aria-label={t("Opening stock records")}
+      >
         {isLoading ? (
           <div className="purchases-state" role="status">
-            <span className="loading-spinner" /> Loading opening stock...
+            <span className="loading-spinner" /> {t("Loading opening stock…")}
           </div>
         ) : listError ? (
           <div className="purchases-state purchases-state--error" role="alert">
-            <span>{listError}</span>
+            <span>{t(listError)}</span>
             <button
               className="purchases-retry"
               type="button"
               onClick={() => setRetry((value) => value + 1)}
             >
-              Try again
+              {t("Try again")}
             </button>
           </div>
         ) : records && records.data.length === 0 ? (
           <div className="purchases-state purchases-state--empty">
-            <strong>No opening stock records</strong>
-            <span>Opening entries will appear here.</span>
+            <strong>{t("No opening stock records")}</strong>
+            <span>{t("Opening entries will appear here.")}</span>
           </div>
         ) : records ? (
           <>
@@ -662,12 +904,12 @@ export default function OpeningStocks() {
               <table className="purchases-table inventory-table">
                 <thead>
                   <tr>
-                    <th>Opening Number</th>
-                    <th>Date</th>
-                    <th>Warehouse</th>
-                    <th>Products</th>
-                    <th>Created By</th>
-                    <th>Details</th>
+                    <th>{t("Opening Number")}</th>
+                    <th>{t("Date")}</th>
+                    <th>{t("Warehouse")}</th>
+                    <th>{t("Products")}</th>
+                    <th>{t("Created By")}</th>
+                    <th>{t("Details")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -686,9 +928,11 @@ export default function OpeningStocks() {
                         <button
                           className="purchase-view-button"
                           type="button"
-                          onClick={() => setSelectedId(record.id)}
+                          onClick={() =>
+                            navigate(`/secretary/opening-stocks/${record.id}`)
+                          }
                         >
-                          <Eye size={14} aria-hidden="true" /> Details
+                          <Eye size={14} aria-hidden="true" /> {t("Details")}
                         </button>
                       </td>
                     </tr>
@@ -702,109 +946,12 @@ export default function OpeningStocks() {
               total={records.total}
               lastPage={records.lastPage}
               setPage={setPage}
+              translate={t}
             />
           </>
         ) : null}
       </section>
-      {selectedId !== null && (
-        <div
-          className="purchase-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSelectedId(null);
-          }}
-        >
-          <section
-            className="purchase-modal inventory-detail-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="opening-detail-title"
-          >
-            <header className="purchase-modal__header">
-              <div>
-                <p className="overview-eyebrow">OPENING STOCK DETAILS</p>
-                <h2 id="opening-detail-title">
-                  {detail?.number ?? "Opening Stock"}
-                </h2>
-                <p>{detail?.date ?? ""}</p>
-              </div>
-              <button
-                className="purchase-modal__close"
-                type="button"
-                onClick={() => setSelectedId(null)}
-                aria-label="Close details"
-              >
-                <X size={18} aria-hidden="true" />
-              </button>
-            </header>
-            <div className="purchase-modal__body">
-              {detailLoading ? (
-                <div className="purchases-state" role="status">
-                  <span className="loading-spinner" /> Loading opening stock...
-                </div>
-              ) : detailError ? (
-                <div
-                  className="purchases-state purchases-state--error"
-                  role="alert"
-                >
-                  <span>{detailError}</span>
-                  <button
-                    className="purchases-retry"
-                    type="button"
-                    onClick={() => setDetailRetry((value) => value + 1)}
-                  >
-                    Try again
-                  </button>
-                </div>
-              ) : detail ? (
-                <>
-                  <dl className="purchase-detail-grid inventory-detail-grid">
-                    <div>
-                      <dt>Warehouse</dt>
-                      <dd>{detail.warehouse}</dd>
-                    </div>
-                    <div>
-                      <dt>Created By</dt>
-                      <dd>{detail.creator || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Notes</dt>
-                      <dd>{detail.notes || "—"}</dd>
-                    </div>
-                  </dl>
-                  <div className="purchases-table-scroll">
-                    <table className="purchases-table inventory-detail-table">
-                      <thead>
-                        <tr>
-                          <th>Product</th>
-                          <th>Quantity</th>
-                          <th>Unit Cost</th>
-                          <th>Total Cost</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detail.items.map((item) => (
-                          <tr key={item.id}>
-                            <td>
-                              {item.product}
-                              {item.sku ? ` · ${item.sku}` : ""}
-                            </td>
-                            <td>
-                              {formatQuantity(item.quantity)} {item.unit || ""}
-                            </td>
-                            <td>{formatCurrency(item.unitCostAfn)}</td>
-                            <td>{formatCurrency(item.totalCostAfn)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : null}
-            </div>
-          </section>
-        </div>
-      )}
-    </div>
+    </main>
   );
 }
 
@@ -814,20 +961,22 @@ function OpeningPagination({
   total,
   lastPage,
   setPage,
+  translate,
 }: {
   page: number;
   pageSize: number;
   total: number;
   lastPage: number;
   setPage: (page: number) => void;
+  translate: (text: string) => string;
 }) {
   const start = total ? (page - 1) * pageSize + 1 : 0;
   const end = Math.min(page * pageSize, total);
   return (
     <footer className="purchases-pagination">
       <span>
-        Showing {start}-{end} of {new Intl.NumberFormat().format(total)} opening
-        records
+        {translate("Showing")} {start}-{end} {translate("of")}{" "}
+        {new Intl.NumberFormat().format(total)} {translate("opening records")}
       </span>
       <div className="purchases-pagination__controls">
         <button
@@ -835,17 +984,18 @@ function OpeningPagination({
           onClick={() => setPage(page - 1)}
           disabled={page <= 1}
         >
-          <ChevronLeft size={16} aria-hidden="true" /> Previous
+          <ChevronLeft size={16} aria-hidden="true" /> {translate("Previous")}
         </button>
         <span>
-          Page <strong>{page}</strong> of <strong>{lastPage}</strong>
+          {translate("Page")} <strong>{page}</strong> {translate("of")}{" "}
+          <strong>{lastPage}</strong>
         </span>
         <button
           type="button"
           onClick={() => setPage(page + 1)}
           disabled={page >= lastPage}
         >
-          Next <ChevronRight size={16} aria-hidden="true" />
+          {translate("Next")} <ChevronRight size={16} aria-hidden="true" />
         </button>
       </div>
     </footer>

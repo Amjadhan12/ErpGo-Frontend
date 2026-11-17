@@ -522,6 +522,11 @@ export default function App() {
             <Route path="warehouses" element={<Warehouses />} />
             <Route path="inventory" element={<Inventory />} />
             <Route path="opening-stocks" element={<OpeningStocks />} />
+            <Route
+              path="opening-stocks/create"
+              element={<OpeningStocks createMode />}
+            />
+            <Route path="opening-stocks/:id" element={<OpeningStocks />} />
             <Route path="opening-balances" element={<PartnerOpeningBalances />} />
             <Route path="stock-transfers" element={<StockTransfers />} />
             <Route path="stock-adjustments" element={<StockAdjustments />} />
