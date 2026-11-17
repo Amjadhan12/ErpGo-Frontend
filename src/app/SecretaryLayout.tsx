@@ -30,8 +30,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { LanguageSwitcher, useLocale } from "@/lib/locale";
-import { api } from "@/lib/api";
-import { isRecord } from "@/app/InventoryShared";
+import ChatNotifications, { ChatNotificationsProvider, useChatNotifications } from "@/app/ChatNotifications";
 
 interface MenuItem {
   label: string;
@@ -291,16 +290,15 @@ function SecretarySidebar({
   );
 }
 
-export default function SecretaryLayout() {
+function SecretaryLayoutContent() {
   const { direction, t } = useLocale();
   const { user, companyBranding, signOut } = useAuth();
+  const { unreadCount, error: unreadError } = useChatNotifications();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [unreadCount, setUnreadCount] = useState<number | null>(null);
-  const [unreadError, setUnreadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(
     () => window.matchMedia("(max-width: 760px)").matches,
   );
@@ -312,34 +310,6 @@ export default function SecretaryLayout() {
 
     mediaQuery.addEventListener("change", updateViewport);
     return () => mediaQuery.removeEventListener("change", updateViewport);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    const refreshUnreadCount = () => {
-      void api.get<unknown>("/api/chat/unread-count").then(({ data }) => {
-        if (!isRecord(data) || !isRecord(data.data) || typeof data.data.unread_count !== "number") {
-          throw new Error("The unread count response is incomplete.");
-        }
-        if (active) {
-          setUnreadCount(data.data.unread_count);
-          setUnreadError(null);
-        }
-      }).catch((error: unknown) => {
-        if (active) setUnreadError(error instanceof Error ? error.message : "Could not load unread message count.");
-      });
-    };
-    const onChatRead = () => refreshUnreadCount();
-    refreshUnreadCount();
-    const intervalId = window.setInterval(refreshUnreadCount, 60_000);
-    window.addEventListener("focus", refreshUnreadCount);
-    window.addEventListener("erpgo:chat-read", onChatRead);
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", refreshUnreadCount);
-      window.removeEventListener("erpgo:chat-read", onChatRead);
-    };
   }, []);
 
   if (!user) return null;
@@ -436,6 +406,7 @@ export default function SecretaryLayout() {
                 <small>{t("Secretary")}</small>
               </span>
             </div>
+            <ChatNotifications />
             <LanguageSwitcher />
             <span className="secretary-header__divider" aria-hidden="true" />
             <button
@@ -459,4 +430,8 @@ export default function SecretaryLayout() {
       </div>
     </div>
   );
+}
+
+export default function SecretaryLayout() {
+  return <ChatNotificationsProvider><SecretaryLayoutContent /></ChatNotificationsProvider>;
 }

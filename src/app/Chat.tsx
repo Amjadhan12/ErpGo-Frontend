@@ -4,6 +4,8 @@ import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import { fetchAllPages, getErrorMessage, isRecord, optionalText, parseId } from "@/app/InventoryShared";
 import { useLocale } from "@/lib/locale";
+import { useSearchParams } from "react-router-dom";
+import { useChatNotifications } from "@/app/ChatNotifications";
 
 type Partner = { id: number; name: string; businessName: string | null; email: string | null; phone: string | null; type: "Customer" | "Supplier"; active: boolean };
 type ChatMessage = { id: number; businessPartnerId: number; senderId: string; recipientId: string; senderName: string; senderRole: string; message: string; createdAt: string; readAt: string | null };
@@ -53,12 +55,20 @@ function initials(name: string): string {
 export default function Chat() {
   const { t, language, direction } = useLocale();
   const { user } = useAuth();
+  const { unreadCount, error: unreadError, notifications, refresh } = useChatNotifications();
+  const [searchParams] = useSearchParams();
+  const appliedPartnerQuery = useRef<string | null>(null);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [notificationPartners, setNotificationPartners] = useState<Partner[]>([]);
   const [partnersLoading, setPartnersLoading] = useState(true);
   const [partnersError, setPartnersError] = useState<string | null>(null);
   const [partnersRetry, setPartnersRetry] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const selectedPartner = partners.find((partner) => partner.id === selectedId) ?? null;
+  const chatPartners = useMemo(() => {
+    const activeIds = new Set(partners.map((partner) => partner.id));
+    return [...partners, ...notificationPartners.filter((partner) => !activeIds.has(partner.id))];
+  }, [partners, notificationPartners]);
+  const selectedPartner = chatPartners.find((partner) => partner.id === selectedId) ?? null;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
@@ -68,9 +78,6 @@ export default function Chat() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
-  const [unreadCount, setUnreadCount] = useState<number | null>(null);
-  const [unreadError, setUnreadError] = useState<string | null>(null);
-  const [unreadRetry, setUnreadRetry] = useState(0);
   const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
@@ -86,6 +93,40 @@ export default function Chat() {
       .finally(() => { if (!signal.aborted) setPartnersLoading(false); });
     return () => controller.abort();
   }, [partnersRetry]);
+
+  useEffect(() => {
+    setNotificationPartners((current) => {
+      const byId = new Map(current.map((partner) => [partner.id, partner]));
+      for (const notification of notifications) {
+        if (notification.partnerType !== "Customer" && notification.partnerType !== "Supplier") continue;
+        if (partners.some((partner) => partner.id === notification.businessPartnerId)) continue;
+        byId.set(notification.businessPartnerId, {
+          id: notification.businessPartnerId,
+          name: notification.partnerName,
+          businessName: null,
+          email: null,
+          phone: null,
+          type: notification.partnerType,
+          active: false,
+        });
+      }
+      return [...byId.values()];
+    });
+  }, [notifications, partners]);
+
+  useEffect(() => {
+    const requestedId = searchParams.get("business_partner_id");
+    if (partnersLoading || !requestedId || appliedPartnerQuery.current === requestedId) return;
+    const partner = chatPartners.find((item) => item.id === Number(requestedId));
+    if (!partner) return;
+    appliedPartnerQuery.current = requestedId;
+    setSelectedId(partner.id);
+    setPage(1);
+    setMessages([]);
+    setMobileThreadOpen(true);
+    setDraft("");
+    setSendError(null);
+  }, [chatPartners, partnersLoading, searchParams]);
 
   useEffect(() => {
     if (selectedId === null) { setMessages([]); setLastPage(1); return; }
@@ -109,25 +150,12 @@ export default function Chat() {
           });
           if (markedAt.size) setMessages((current) => current.map((message) => markedAt.has(message.id) ? { ...message, readAt: markedAt.get(message.id) ?? message.readAt } : message));
           window.dispatchEvent(new Event("erpgo:chat-read"));
-          setUnreadRetry((value) => value + 1);
         }
       })
       .catch((error: unknown) => { if (!signal.aborted) setMessagesError(getErrorMessage(error)); })
       .finally(() => { if (!signal.aborted) setMessagesLoading(false); });
     return () => controller.abort();
   }, [selectedId, page, threadRetry, user?.id]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setUnreadError(null);
-    void api.get<unknown>("/api/chat/unread-count", { signal: controller.signal })
-      .then(({ data }) => {
-        if (!isRecord(data) || !isRecord(data.data) || typeof data.data.unread_count !== "number") throw new Error("The unread count response is incomplete.");
-        setUnreadCount(data.data.unread_count);
-      })
-      .catch((error: unknown) => { if (!controller.signal.aborted) setUnreadError(getErrorMessage(error)); });
-    return () => controller.abort();
-  }, [unreadRetry]);
 
   const ownId = String(user?.id ?? "");
   const participantSubtitle = useMemo(() => selectedPartner?.businessName || selectedPartner?.email || selectedPartner?.phone || selectedPartner?.type || "", [selectedPartner]);
@@ -137,7 +165,7 @@ export default function Chat() {
     if (selectedId === partner.id) setThreadRetry((value) => value + 1);
   }
   function refreshThread() {
-    setRefreshing(true); setPage(1); setMessages([]); setThreadRetry((value) => value + 1); setUnreadRetry((value) => value + 1); setPartnersRetry((value) => value + 1);
+    setRefreshing(true); setPage(1); setMessages([]); setThreadRetry((value) => value + 1); setPartnersRetry((value) => value + 1);
     window.setTimeout(() => setRefreshing(false), 400);
   }
   async function submitMessage(event: FormEvent<HTMLFormElement>) {
@@ -152,6 +180,7 @@ export default function Chat() {
       setMessages((current) => [...new Map([...current, saved].map((item) => [item.id, item])).values()].sort((a, b) => a.id - b.id));
       setDraft("");
       setPage(1); setThreadRetry((value) => value + 1);
+      window.dispatchEvent(new Event("erpgo:chat-sent"));
     } catch (error) {
       setSendError(getErrorMessage(error));
     } finally { setSending(false); }
@@ -166,7 +195,7 @@ export default function Chat() {
         {partnersLoading ? <div className="chat-list-state" role="status">{t("Loading conversations…")}</div> : partnersError ? <div className="chat-list-state chat-list-state--error" role="alert">{t(partnersError)}<button type="button" onClick={() => setPartnersRetry((value) => value + 1)}>{t("Try again")}</button></div> : partners.length ? <div className="chat-partner-list">{partners.map((partner) => <button type="button" key={partner.id} className={`chat-partner${selectedId === partner.id ? " chat-partner--selected" : ""}`} onClick={() => selectPartner(partner)}><span className={`chat-avatar chat-avatar--${partner.type.toLowerCase()}`}>{initials(partner.name)}</span><span className="chat-partner-copy"><strong>{partner.name}</strong><small>{t(partner.type)}{partner.businessName ? ` · ${partner.businessName}` : ""}</small></span></button>)}</div> : <div className="chat-list-state">{t("No active customer or supplier accounts.")}</div>}
       </aside>
       <section className="chat-thread" aria-label={selectedPartner ? `${t("Conversation with")} ${selectedPartner.name}` : t("Conversation")}>
-        {selectedPartner ? <><header className="chat-thread-header"><button className="chat-back-button" type="button" aria-label={t("Back to conversations")} onClick={() => setMobileThreadOpen(false)}><ArrowLeft size={18} /></button><span className={`chat-avatar chat-avatar--${selectedPartner.type.toLowerCase()}`}>{initials(selectedPartner.name)}</span><div className="chat-thread-contact"><strong>{selectedPartner.name}</strong><small>{participantSubtitle}</small></div><div className="chat-thread-status">{unreadError ? <span title={t("Unread message count unavailable")}>{t("Unread unavailable")}</span> : unreadCount !== null ? <span>{unreadCount} {t("unread")}</span> : <span>{t("Loading unread…")}</span>}<button type="button" aria-label={t("Refresh unread count")} onClick={() => setUnreadRetry((value) => value + 1)}><RefreshCw size={14} /></button></div></header>
+        {selectedPartner ? <><header className="chat-thread-header"><button className="chat-back-button" type="button" aria-label={t("Back to conversations")} onClick={() => setMobileThreadOpen(false)}><ArrowLeft size={18} /></button><span className={`chat-avatar chat-avatar--${selectedPartner.type.toLowerCase()}`}>{initials(selectedPartner.name)}</span><div className="chat-thread-contact"><strong>{selectedPartner.name}</strong><small>{participantSubtitle}</small></div><div className="chat-thread-status">{unreadError ? <span title={t("Unread message count unavailable")}>{t("Unread unavailable")}</span> : unreadCount !== null ? <span>{unreadCount} {t("unread")}</span> : <span>{t("Loading unread…")}</span>}<button type="button"         aria-label={t("Refresh unread count")} onClick={() => refresh(true)}><RefreshCw size={14} /></button></div></header>
           <div className="chat-messages-area" aria-live="polite">{lastPage > page && <button className="chat-older-button" type="button" disabled={messagesLoading} onClick={() => setPage((value) => value + 1)}>{t("Load older messages")}</button>}{messagesLoading && messages.length === 0 ? <div className="chat-thread-state" role="status">{t("Loading messages…")}</div> : messagesError && messages.length === 0 ? <div className="chat-thread-state chat-thread-state--error" role="alert">{t(messagesError)}<button type="button" onClick={() => setThreadRetry((value) => value + 1)}>{t("Try again")}</button></div> : messages.length ? messages.map((message) => { const sent = message.senderId === ownId; return <article className={`chat-message${sent ? " chat-message--sent" : " chat-message--received"}`} key={message.id}><div className="chat-message-bubble"><p>{message.message}</p><footer><time dateTime={message.createdAt}>{formatMessageDate(message.createdAt, language)}</time>{sent && message.readAt && <span title={t("Read")}><Check size={12} /> {t("Read")}</span>}</footer></div></article>; }) : !messagesLoading && !messagesError ? <div className="chat-thread-state chat-thread-state--empty"><MessageCircle size={28} /><strong>{t("Start the conversation")}</strong><span>{t("Send a message to")} {selectedPartner.name}.</span></div> : null}{messagesError && messages.length > 0 && <div className="chat-load-error" role="alert">{t(messagesError)}<button type="button" onClick={() => setThreadRetry((value) => value + 1)}>{t("Retry")}</button></div>}<div ref={endOfMessagesRef} /></div>
           <form className="chat-composer" onSubmit={submitMessage}><div className="chat-compose-field"><textarea value={draft} maxLength={10000} rows={2} placeholder={t("Write a message…")} aria-label={t("Message text")} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} disabled={sending} /></div>{sendError && <div className="chat-send-error" role="alert">{t(sendError)}</div>}<div className="chat-composer-footer"><span>{t("Enter to send · Shift + Enter for a new line")}</span><button type="submit" disabled={sending || !draft.trim()}><Send size={15} /> {t(sending ? "Sending…" : "Send")}</button></div></form>
         </> : <div className="chat-no-selection"><span><MessageCircle size={28} /></span><strong>{t("Select a conversation")}</strong><p>{t("Choose a customer or supplier to view messages.")}</p></div>}

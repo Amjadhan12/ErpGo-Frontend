@@ -71,6 +71,7 @@ function BrandMark({
   imageUrl?: string;
   compact?: boolean;
 }) {
+  const { t } = useLocale();
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
@@ -78,7 +79,7 @@ function BrandMark({
       {imageUrl && !imageFailed && (
         <img
           src={imageUrl}
-          alt="Company logo"
+          alt={t("Company logo")}
           onError={() => setImageFailed(true)}
         />
       )}
@@ -185,7 +186,7 @@ function LoginExperience() {
 
   return (
     <main className="login-shell">
-      <section className="brand-panel" aria-label="ERPGO company information">
+      <section className="brand-panel" aria-label={t("ERPGO company information")}>
         <div className="brand-panel__texture" aria-hidden="true" />
         <header className="brand-header">
           <BrandMark imageUrl={companyBranding?.logoUrl} />
@@ -477,6 +478,11 @@ function ProtectedSecretaryRoute() {
   return <SecretaryLayout />;
 }
 
+function ReportsLoadingFallback() {
+  const { t } = useLocale();
+  return <div className="reports-loading" role="status"><span className="loading-spinner" /><span>{t("Loading reports…")}</span></div>;
+}
+
 export default function App() {
   return (
     <LocaleProvider>
@@ -509,7 +515,7 @@ export default function App() {
             <Route path="account-opening-balances" element={<OpeningBalances />} />
             <Route path="cash-book" element={<CashBook />} />
             <Route path="cash-transfers" element={<CashTransfers />} />
-            <Route path="reports" element={<Suspense fallback={<div className="reports-loading" role="status"><span className="loading-spinner" /><span>Loading reports…</span></div>}><Reports /></Suspense>} />
+            <Route path="reports" element={<Suspense fallback={<ReportsLoadingFallback />}><Reports /></Suspense>} />
             <Route path="chat" element={<Chat />} />
             <Route path="/secretary/documents" element={<Documents />} />
             <Route path="settings" element={<SettingsPage />} />

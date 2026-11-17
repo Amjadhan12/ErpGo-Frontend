@@ -436,7 +436,7 @@ export default function Sales() {
           <Pagination page={page} pageNumber={pageNumber} setPage={setPageNumber} t={t} />
         </section>
       ) : <section className="sales-redesign__state sales-redesign__state--empty"><strong>{t("No sales yet")}</strong><span>{t("Recorded customer sales will appear here.")}</span></section>}
-      {selectedId !== null && <div className="sales-redesign__modal-backdrop purchase-modal-backdrop sales-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedId(null); }}>
+      {selectedId !== null && <div className="sales-redesign__modal-backdrop purchase-modal-backdrop sales-modal-backdrop" role="presentation">
         <section className="sales-redesign__modal purchase-modal sales-modal" role="dialog" aria-modal="true" aria-label={t("Sale details")}>
           <header className="sales-redesign__modal-header purchase-modal__header sales-modal-header">
             <div><p className="sales-redesign__eyebrow">{t("SALE DETAILS")}</p><h2>{detail?.saleNumber || t("Loading sale…")}</h2></div>

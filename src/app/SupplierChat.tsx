@@ -62,7 +62,10 @@ export default function SupplierChat() {
           results.forEach((result, index) => {
             if (result.status === "fulfilled" && isRecord(result.value.data) && isRecord(result.value.data.data) && typeof result.value.data.data.read_at === "string") marked.set(unread[index].id, result.value.data.data.read_at);
           });
-          if (marked.size && !controller.signal.aborted) setMessages((current) => current.map((message) => marked.has(message.id) ? { ...message, readAt: marked.get(message.id) ?? message.readAt } : message));
+          if (marked.size && !controller.signal.aborted) {
+            setMessages((current) => current.map((message) => marked.has(message.id) ? { ...message, readAt: marked.get(message.id) ?? message.readAt } : message));
+            window.dispatchEvent(new Event("erpgo:chat-read"));
+          }
         }
       })
       .catch((requestError: unknown) => { if (!controller.signal.aborted) setError(getErrorMessage(requestError)); })
@@ -82,6 +85,7 @@ export default function SupplierChat() {
       const saved = parseMessage(data.data);
       setMessages((current) => [...new Map([...current, saved].map((item) => [item.id, item])).values()].sort((a, b) => a.id - b.id));
       setDraft(""); setPage(1); setRetry((value) => value + 1);
+      window.dispatchEvent(new Event("erpgo:chat-sent"));
     } catch (requestError: unknown) { setSendError(getErrorMessage(requestError)); }
     finally { setSending(false); }
   }
@@ -95,7 +99,7 @@ export default function SupplierChat() {
       <div className="supplier-chat-messages" aria-live="polite">
         {lastPage > page && <button className="supplier-chat-older" type="button" disabled={loading} onClick={() => setPage((value) => value + 1)}>{t("Load older messages")}</button>}
         {loading && messages.length === 0 ? <div className="supplier-chat-state" role="status"><LoaderCircle className="partner-portal-spin" size={18} /> {t("Loading messages…")}</div>
-          : error && messages.length === 0 ? <div className="supplier-chat-state supplier-chat-state--error" role="alert"><AlertCircle size={17} />{error}<button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Try again")}</button></div>
+          : error && messages.length === 0 ? <div className="supplier-chat-state supplier-chat-state--error" role="alert"><AlertCircle size={17} />{t(error)}<button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Try again")}</button></div>
             : messages.length === 0 ? <div className="supplier-chat-state supplier-chat-state--empty"><MessageCircle size={26} /><strong>{t("No messages yet")}</strong><span>{t("Send a message to start your conversation.")}</span></div>
               : messages.map((message) => {
                 const sent = message.senderId === String(user?.id);
@@ -104,10 +108,10 @@ export default function SupplierChat() {
                   <div className="supplier-chat-bubble"><p>{message.message}</p><time dateTime={message.createdAt}>{timestamp(message.createdAt, language)}</time></div>
                 </article>;
               })}
-        {error && messages.length > 0 && <div className="supplier-chat-inline-error" role="alert">{error}<button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Retry")}</button></div>}
+        {error && messages.length > 0 && <div className="supplier-chat-inline-error" role="alert">{t(error)}<button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Retry")}</button></div>}
         <div ref={endRef} />
       </div>
-      <form className="supplier-chat-composer" onSubmit={(event) => void sendMessage(event)}><textarea value={draft} rows={2} maxLength={10000} aria-label={t("Message to Secretary")} placeholder={t("Write a message…")} disabled={sending} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />{sendError && <p role="alert">{sendError}</p>}<footer><span>{t("Enter to send · Shift + Enter for a new line")}</span><button type="submit" disabled={sending || !draft.trim()}><Send size={15} /> {t(sending ? "Sending…" : "Send")}</button></footer></form>
+      <form className="supplier-chat-composer" onSubmit={(event) => void sendMessage(event)}><textarea value={draft} rows={2} maxLength={10000} aria-label={t("Message to Secretary")} placeholder={t("Write a message…")} disabled={sending} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />{sendError && <p role="alert">{t(sendError)}</p>}<footer><span>{t("Enter to send · Shift + Enter for a new line")}</span><button type="submit" disabled={sending || !draft.trim()}><Send size={15} /> {t(sending ? "Sending…" : "Send")}</button></footer></form>
     </section>
   </main>;
 }
