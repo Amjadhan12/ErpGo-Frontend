@@ -1,16 +1,17 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertCircle,
+  ArrowLeftRight,
   ChevronLeft,
   ChevronRight,
   Eye,
   Plus,
-  X,
+  Trash2,
+  Warehouse,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
   formatCurrency,
-  formatQuantity,
   getErrorMessage,
   getValidationResult,
   isRecord,
@@ -26,6 +27,7 @@ import {
   type InventoryWarehouseOption,
   type LaravelPage,
 } from "@/app/InventoryShared";
+import { useLocale } from "@/lib/locale";
 
 interface TransferItem {
   id: number;
@@ -63,6 +65,7 @@ interface TransferForm {
 }
 
 type TransferPage = LaravelPage<StockTransfer>;
+type Translate = (text: string) => string;
 
 const emptyForm: TransferForm = {
   fromWarehouseId: "",
@@ -116,11 +119,113 @@ function parseTransfer(value: unknown): StockTransfer {
   };
 }
 
+function parseSourceBalances(value: unknown): Record<string, number> {
+  if (!isRecord(value) || !Array.isArray(value.data)) {
+    throw new Error("The inventory report response was incomplete.");
+  }
+  const balances: Record<string, number> = {};
+  for (const row of value.data) {
+    if (!isRecord(row) || !isRecord(row.product)) {
+      throw new Error("The inventory report contains an incomplete balance row.");
+    }
+    const productId = parseId(row.product.id, "product ID");
+    balances[String(productId)] = numberValue(
+      row.quantity,
+      "inventory quantity",
+    );
+  }
+  return balances;
+}
+
 function nextLineKey(lines: TransferLine[]): number {
   return lines.reduce((max, line) => Math.max(max, line.key), 0) + 1;
 }
 
+function interpolate(
+  template: string,
+  values: Record<string, string>,
+): string {
+  return Object.entries(values).reduce(
+    (message, [key, value]) => message.replaceAll(`{${key}}`, value),
+    template,
+  );
+}
+
+function translateTransferMessage(
+  message: string,
+  t: Translate,
+  language: "en" | "ps",
+  fallback = true,
+): string {
+  const insufficient = message.match(
+    /^Insufficient stock for (.+)\. Available: ([\d.,]+)\. Requested: ([\d.,]+)\.$/,
+  );
+  if (insufficient) {
+    return interpolate(
+      t("Insufficient stock for {product}. Available: {available}. Requested: {requested}."),
+      {
+        product: insufficient[1],
+        available: insufficient[2],
+        requested: insufficient[3],
+      },
+    );
+  }
+
+  const noStock = message.match(
+    /^Product (.+) has no stock in the source warehouse\.$/,
+  );
+  if (noStock) {
+    return interpolate(t("Product {product} has no stock in the source warehouse."), {
+      product: noStock[1],
+    });
+  }
+
+  const batchStock = message.match(
+    /^Insufficient batch stock for (.+) in the source warehouse\.$/,
+  );
+  if (batchStock) {
+    return interpolate(
+      t("Insufficient batch stock for {product} in the source warehouse."),
+      { product: batchStock[1] },
+    );
+  }
+
+  const translated = t(message);
+  if (translated !== message) return translated;
+  return language === "ps" && fallback
+    ? t("The transfer could not be completed. Please try again.")
+    : message;
+}
+
+function translateFieldMessage(
+  message: string,
+  t: Translate,
+  language: "en" | "ps",
+): string {
+  const translated = translateTransferMessage(message, t, language, false);
+  if (translated !== message || language === "en") return translated;
+  if (/field is required\.$/i.test(message)) return t("This field is required.");
+  if (/must be greater than 0\.$/i.test(message))
+    return t("Enter a quantity greater than zero.");
+  if (/must be a number\.$/i.test(message))
+    return t("Enter a valid number.");
+  if (/must be a date\.$/i.test(message))
+    return t("Enter a valid date.");
+  if (/must be different\.$/i.test(message))
+    return t("Choose a different destination warehouse.");
+  if (/must be distinct\.$/i.test(message))
+    return t("A product may only appear once in a transfer.");
+  if (/has a duplicate value\.$/i.test(message))
+    return t("A product may only appear once in a transfer.");
+  if (/selected .* is invalid\.$/i.test(message))
+    return t("Choose a valid option.");
+  if (/given data was invalid/i.test(message))
+    return t("Please correct the highlighted fields.");
+  return t("Please check this field and try again.");
+}
+
 export default function StockTransfers() {
+  const { direction, language, t } = useLocale();
   const [transfers, setTransfers] = useState<TransferPage | null>(null);
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
@@ -140,11 +245,26 @@ export default function StockTransfers() {
   const [fields, setFields] = useState<InventoryFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [sourceBalances, setSourceBalances] = useState<Record<string, number>>(
+    {},
+  );
+  const [stockLoading, setStockLoading] = useState(false);
+  const [stockLoaded, setStockLoaded] = useState(false);
+  const [stockError, setStockError] = useState<string | null>(null);
+  const [stockRetry, setStockRetry] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<StockTransfer | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailRetry, setDetailRetry] = useState(0);
+
+  const quantityFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US", {
+        maximumFractionDigits: 4,
+      }),
+    [language],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -161,14 +281,16 @@ export default function StockTransfers() {
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
           setTransfers(null);
-          setListError(getErrorMessage(error));
+          setListError(
+            translateTransferMessage(getErrorMessage(error), t, language),
+          );
         }
       })
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
       });
     return () => controller.abort();
-  }, [page, retry]);
+  }, [page, retry, t, language]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -183,13 +305,54 @@ export default function StockTransfers() {
         setOptionsError(null);
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) setOptionsError(getErrorMessage(error));
+        if (!controller.signal.aborted) {
+          setWarehouses([]);
+          setProducts([]);
+          setOptionsError(
+            translateTransferMessage(getErrorMessage(error), t, language),
+          );
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setOptionsLoading(false);
       });
     return () => controller.abort();
-  }, [optionsRetry]);
+  }, [optionsRetry, t, language]);
+
+  useEffect(() => {
+    if (!formOpen || !form.fromWarehouseId) {
+      setSourceBalances({});
+      setStockLoading(false);
+      setStockLoaded(false);
+      setStockError(null);
+      return;
+    }
+    const controller = new AbortController();
+    setSourceBalances({});
+    setStockLoading(true);
+    setStockLoaded(false);
+    setStockError(null);
+    api
+      .get<unknown>("/api/reports/inventory", {
+        params: { warehouse_id: Number(form.fromWarehouseId) },
+        signal: controller.signal,
+      })
+      .then(({ data }) => {
+        setSourceBalances(parseSourceBalances(data));
+        setStockLoaded(true);
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setStockError(
+            translateTransferMessage(getErrorMessage(error), t, language),
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setStockLoading(false);
+      });
+    return () => controller.abort();
+  }, [formOpen, form.fromWarehouseId, stockRetry, t, language]);
 
   useEffect(() => {
     if (selectedId === null) return;
@@ -207,22 +370,17 @@ export default function StockTransfers() {
         setDetail(parseTransfer(data.data));
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) setDetailError(getErrorMessage(error));
+        if (!controller.signal.aborted) {
+          setDetailError(
+            translateTransferMessage(getErrorMessage(error), t, language),
+          );
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setDetailLoading(false);
       });
     return () => controller.abort();
-  }, [selectedId, detailRetry]);
-
-  useEffect(() => {
-    if (selectedId === null) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedId(null);
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedId]);
+  }, [selectedId, detailRetry, t, language]);
 
   useEffect(() => {
     if (!success) return;
@@ -231,11 +389,39 @@ export default function StockTransfers() {
   }, [success]);
 
   function startCreate() {
-    setForm(emptyForm);
+    setForm({ ...emptyForm, transferDate: todayValue() });
     setLines([{ key: 1, productId: "", quantity: "" }]);
     setFields({});
     setFormError(null);
+    setStockRetry(0);
     setFormOpen(true);
+  }
+
+  function updateForm(field: keyof TransferForm, value: string) {
+    setForm((current) => {
+      if (
+        field === "fromWarehouseId" &&
+        value &&
+        value === current.toWarehouseId
+      ) {
+        return { ...current, fromWarehouseId: value, toWarehouseId: "" };
+      }
+      return { ...current, [field]: value };
+    });
+    const fieldName =
+      field === "fromWarehouseId"
+        ? "from_warehouse_id"
+        : field === "toWarehouseId"
+          ? "to_warehouse_id"
+          : field === "transferDate"
+            ? "transfer_date"
+            : field;
+    setFields((current) => {
+      const next = { ...current };
+      delete next[fieldName];
+      return next;
+    });
+    setFormError(null);
   }
 
   function setLineField(
@@ -266,13 +452,25 @@ export default function StockTransfers() {
       const match = field.match(/^items\.(\d+)\.(product_id|quantity)$/);
       if (match) {
         const line = lines[Number(match[1])];
-        if (line) mapped[`item.${line.key}.${match[2]}`] = message;
+        if (line) {
+          mapped[`item.${line.key}.${match[2]}`] = translateFieldMessage(
+            message,
+            t,
+            language,
+          );
+        } else {
+          mapped[field] = translateFieldMessage(message, t, language);
+        }
       } else {
-        mapped[field] = message;
+        mapped[field] = translateFieldMessage(message, t, language);
       }
     }
     setFields(mapped);
-    setFormError(result.message);
+    setFormError(
+      result.message === "The given data was invalid."
+        ? t("Please correct the highlighted fields.")
+        : translateTransferMessage(result.message, t, language),
+    );
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -280,33 +478,70 @@ export default function StockTransfers() {
     if (isSaving) return;
     const nextFields: InventoryFieldErrors = {};
     if (!form.fromWarehouseId)
-      nextFields.from_warehouse_id = "Select a source warehouse.";
+      nextFields.from_warehouse_id = t("Select a source warehouse.");
     if (!form.toWarehouseId)
-      nextFields.to_warehouse_id = "Select a destination warehouse.";
+      nextFields.to_warehouse_id = t("Select a destination warehouse.");
     if (form.fromWarehouseId && form.fromWarehouseId === form.toWarehouseId) {
-      nextFields.to_warehouse_id = "Choose a different destination warehouse.";
+      nextFields.to_warehouse_id = t(
+        "Choose a different destination warehouse.",
+      );
     }
     if (!form.transferDate)
-      nextFields.transfer_date = "Select a transfer date.";
-    if (lines.length === 0) nextFields.items = "Add at least one product.";
+      nextFields.transfer_date = t("Select a transfer date.");
+    if (lines.length === 0)
+      nextFields.items = t("Add at least one product.");
+
     const selectedProductIds = lines
       .map((line) => line.productId)
       .filter(Boolean);
     if (new Set(selectedProductIds).size !== selectedProductIds.length) {
-      nextFields.items = "A product may only appear once in a transfer.";
+      nextFields.items = t("A product may only appear once in a transfer.");
     }
+
     for (const [index, line] of lines.entries()) {
-      if (!line.productId)
-        nextFields[`items.${index}.product_id`] = "Select a product.";
+      if (!line.productId) {
+        nextFields[`item.${line.key}.product_id`] = t("Select a product.");
+      }
       const quantity = Number(line.quantity);
       if (!line.quantity || !Number.isFinite(quantity) || quantity <= 0) {
-        nextFields[`items.${index}.quantity`] =
-          "Enter a quantity greater than zero.";
+        nextFields[`item.${line.key}.quantity`] = t(
+          "Enter a quantity greater than zero.",
+        );
+      } else if (
+        (line.quantity.split(/[eE]/)[0].split(".")[1] ?? "").length > 4
+      ) {
+        nextFields[`item.${line.key}.quantity`] = t(
+          "Enter a quantity with up to 4 decimal places.",
+        );
+      } else if (
+        stockLoaded &&
+        line.productId &&
+        quantity > (sourceBalances[line.productId] ?? 0)
+      ) {
+        nextFields[`item.${line.key}.quantity`] = interpolate(
+          t("Quantity cannot exceed available stock ({available})."),
+          {
+            available: quantityFormatter.format(
+              sourceBalances[line.productId] ?? 0,
+            ),
+          },
+        );
+      }
+      if (line.productId && !stockLoaded) {
+        nextFields[`item.${line.key}.product_id`] = t(
+          "Available stock must be checked before recording the transfer.",
+        );
+      }
+      if (index > 0 && line.productId === lines[index - 1]?.productId) {
+        nextFields.items = t(
+          "A product may only appear once in a transfer.",
+        );
       }
     }
+
     setFields(nextFields);
     if (Object.keys(nextFields).length) {
-      setFormError("Check the highlighted fields.");
+      setFormError(t("Please correct the highlighted fields."));
       return;
     }
 
@@ -326,7 +561,7 @@ export default function StockTransfers() {
       setFormOpen(false);
       setPage(1);
       setRetry((current) => current + 1);
-      setSuccess("Stock transfer recorded successfully.");
+      setSuccess(t("Stock transfer recorded successfully."));
     } catch (error: unknown) {
       applyValidation(error);
     } finally {
@@ -340,330 +575,606 @@ export default function StockTransfers() {
       { key: nextLineKey(current), productId: "", quantity: "" },
     ]);
   const pageSize = transfers?.perPage ?? 15;
+  const selectedProductIds = new Set(
+    lines.map((line) => line.productId).filter(Boolean),
+  );
+  const numberFormat = new Intl.NumberFormat(
+    language === "ps" ? "ps-AF" : "en-US",
+  );
 
   return (
-    <div className="purchases-page inventory-operation-page">
-      <header className="purchases-heading">
+    <div
+      className="stock-transfers"
+      dir={direction}
+      lang={language}
+    >
+      <header className="stock-transfers__heading">
         <div>
-          <p className="overview-eyebrow">INVENTORY</p>
-          <h1>Stock Transfers</h1>
-          <p className="overview-heading__description">
-            Move stock between active warehouses.
-          </p>
+          <p className="stock-transfers__eyebrow">{t("STOCK TRANSFERS")}</p>
+          <h1>{t("Stock Transfers")}</h1>
+          <p>{t("Move stock between active warehouses.")}</p>
         </div>
         <button
-          className="purchase-create-button"
+          className="stock-transfers__primary"
           type="button"
           onClick={startCreate}
           disabled={formOpen}
         >
-          <Plus size={16} aria-hidden="true" />
-          <span>New Transfer</span>
+          <Plus size={18} aria-hidden="true" />
+          <span>{t("New Transfer")}</span>
         </button>
       </header>
+
       {success && (
-        <p className="purchase-success-message inventory-success" role="status">
+        <p className="stock-transfers__success" role="status">
+          <span aria-hidden="true">✓</span>
           {success}
         </p>
       )}
 
       {formOpen && (
         <section
-          className="purchases-panel inventory-form-panel"
-          aria-labelledby="transfer-form-title"
+          className="stock-transfers__form-card"
+          aria-labelledby="stock-transfer-form-title"
         >
-          <header className="inventory-form-heading">
-            <h2 id="transfer-form-title">Create Stock Transfer</h2>
+          <header className="stock-transfers__card-heading">
+            <div>
+              <span className="stock-transfers__form-mark">
+                <ArrowLeftRight size={19} aria-hidden="true" />
+              </span>
+              <div>
+                <p className="stock-transfers__eyebrow">
+                  {t("NEW STOCK TRANSFER")}
+                </p>
+                <h2 id="stock-transfer-form-title">
+                  {t("Create Stock Transfer")}
+                </h2>
+              </div>
+            </div>
             <button
-              className="purchase-cancel-button"
+              className="stock-transfers__secondary"
               type="button"
               onClick={() => setFormOpen(false)}
               disabled={isSaving}
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </header>
-          {formError && (
-            <p
-              className="create-purchase-alert inventory-form-alert"
-              role="alert"
-            >
-              {formError}
-            </p>
-          )}
+
           {optionsError && (
-            <div className="purchase-options-error" role="alert">
-              {optionsError}{" "}
+            <div className="stock-transfers__alert" role="alert">
+              <AlertCircle size={18} aria-hidden="true" />
+              <span>{optionsError}</span>
               <button
+                className="stock-transfers__page-prev"
                 type="button"
                 onClick={() => setOptionsRetry((value) => value + 1)}
               >
-                Retry
+                {t("Retry")}
               </button>
             </div>
           )}
+          {optionsLoading && (
+            <p className="stock-transfers__stock-hint" role="status">
+              <span className="stock-transfers__spinner" />
+              {t("Loading warehouses and products…")}
+            </p>
+          )}
+          {!optionsLoading && !optionsError && warehouses.length === 0 && (
+            <p className="stock-transfers__form-error" role="alert">
+              <AlertCircle size={17} aria-hidden="true" />
+              {t("No active warehouses are available.")}
+            </p>
+          )}
+          {!optionsLoading &&
+            !optionsError &&
+            warehouses.length === 1 && (
+              <p className="stock-transfers__form-error" role="alert">
+                <AlertCircle size={17} aria-hidden="true" />
+                {t(
+                  "At least two active warehouses are needed to record a transfer.",
+                )}
+              </p>
+            )}
+
           <form
-            className="inventory-form"
+            className="stock-transfers__form"
             onSubmit={(event) => void submit(event)}
             noValidate
           >
-            <label className="purchase-field">
-              <span>
-                From Warehouse <i>*</i>
-              </span>
-              <select
-                value={form.fromWarehouseId}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    fromWarehouseId: event.target.value,
-                  }))
-                }
-                disabled={optionsLoading || Boolean(optionsError)}
-                aria-invalid={Boolean(fields.from_warehouse_id)}
-              >
-                <option value="">Select source</option>
-                {warehouses.map((warehouse) => (
-                  <option key={warehouse.id} value={warehouse.id}>
-                    {warehouse.name}
-                  </option>
-                ))}
-              </select>
-              {fields.from_warehouse_id && (
-                <small className="purchase-field__error">
-                  {fields.from_warehouse_id}
-                </small>
-              )}
-            </label>
-            <label className="purchase-field">
-              <span>
-                To Warehouse <i>*</i>
-              </span>
-              <select
-                value={form.toWarehouseId}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    toWarehouseId: event.target.value,
-                  }))
-                }
-                disabled={optionsLoading || Boolean(optionsError)}
-                aria-invalid={Boolean(fields.to_warehouse_id)}
-              >
-                <option value="">Select destination</option>
-                {warehouses.map((warehouse) => (
-                  <option
-                    key={warehouse.id}
-                    value={warehouse.id}
-                    disabled={String(warehouse.id) === form.fromWarehouseId}
+            <section
+              className="stock-transfers__form-section"
+              aria-labelledby="transfer-information-title"
+            >
+              <div className="stock-transfers__section-heading">
+                <span className="stock-transfers__step">1</span>
+                <div>
+                  <h3 id="transfer-information-title">
+                    {t("Transfer Information")}
+                  </h3>
+                  <p>
+                    {t(
+                      "Choose where the stock is coming from and where it is going.",
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="stock-transfers__fields">
+                <label className="stock-transfers__field">
+                  <span>
+                    {t("Source Warehouse (From)")} <i>*</i>
+                  </span>
+                  <select
+                    value={form.fromWarehouseId}
+                    onChange={(event) =>
+                      updateForm("fromWarehouseId", event.target.value)
+                    }
+                    disabled={optionsLoading || Boolean(optionsError)}
+                    aria-invalid={Boolean(fields.from_warehouse_id)}
+                    aria-describedby={
+                      fields.from_warehouse_id
+                        ? "stock-transfer-from-error"
+                        : undefined
+                    }
                   >
-                    {warehouse.name}
-                  </option>
-                ))}
-              </select>
-              {fields.to_warehouse_id && (
-                <small className="purchase-field__error">
-                  {fields.to_warehouse_id}
-                </small>
-              )}
-            </label>
-            <label className="purchase-field">
-              <span>
-                Transfer Date <i>*</i>
-              </span>
-              <input
-                type="date"
-                value={form.transferDate}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    transferDate: event.target.value,
-                  }))
-                }
-                aria-invalid={Boolean(fields.transfer_date)}
-              />
-              {fields.transfer_date && (
-                <small className="purchase-field__error">
-                  {fields.transfer_date}
-                </small>
-              )}
-            </label>
-            <label className="purchase-field">
-              <span>Notes</span>
-              <textarea
-                rows={2}
-                value={form.notes}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    notes: event.target.value,
-                  }))
-                }
-              />
-            </label>
-            <div className="inventory-lines inventory-form-wide">
-              <div className="inventory-lines__heading">
-                <strong>Products</strong>
+                    <option value="">{t("Select source warehouse")}</option>
+                    {warehouses.map((warehouse) => (
+                      <option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fields.from_warehouse_id && (
+                    <small
+                      id="stock-transfer-from-error"
+                      className="stock-transfers__field-error"
+                    >
+                      {fields.from_warehouse_id}
+                    </small>
+                  )}
+                </label>
+
+                <label className="stock-transfers__field">
+                  <span>
+                    {t("Destination Warehouse (To)")} <i>*</i>
+                  </span>
+                  <select
+                    value={form.toWarehouseId}
+                    onChange={(event) =>
+                      updateForm("toWarehouseId", event.target.value)
+                    }
+                    disabled={optionsLoading || Boolean(optionsError)}
+                    aria-invalid={Boolean(fields.to_warehouse_id)}
+                    aria-describedby={
+                      fields.to_warehouse_id
+                        ? "stock-transfer-to-error"
+                        : undefined
+                    }
+                  >
+                    <option value="">
+                      {t("Select destination warehouse")}
+                    </option>
+                    {warehouses.map((warehouse) => (
+                      <option
+                        key={warehouse.id}
+                        value={warehouse.id}
+                        disabled={
+                          String(warehouse.id) === form.fromWarehouseId
+                        }
+                      >
+                        {warehouse.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fields.to_warehouse_id && (
+                    <small
+                      id="stock-transfer-to-error"
+                      className="stock-transfers__field-error"
+                    >
+                      {fields.to_warehouse_id}
+                    </small>
+                  )}
+                </label>
+
+                <label className="stock-transfers__field">
+                  <span>
+                    {t("Transfer Date")} <i>*</i>
+                  </span>
+                  <input
+                    type="date"
+                    value={form.transferDate}
+                    onChange={(event) =>
+                      updateForm("transferDate", event.target.value)
+                    }
+                    aria-invalid={Boolean(fields.transfer_date)}
+                    aria-describedby={
+                      fields.transfer_date
+                        ? "stock-transfer-date-error"
+                        : undefined
+                    }
+                  />
+                  {fields.transfer_date && (
+                    <small
+                      id="stock-transfer-date-error"
+                      className="stock-transfers__field-error"
+                    >
+                      {fields.transfer_date}
+                    </small>
+                  )}
+                </label>
+
+                <label className="stock-transfers__field stock-transfers__field--notes">
+                  <span>{t("Notes")}</span>
+                  <textarea
+                    rows={2}
+                    value={form.notes}
+                    onChange={(event) =>
+                      updateForm("notes", event.target.value)
+                    }
+                    placeholder={t("Add an optional note for this transfer")}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section
+              className="stock-transfers__form-section stock-transfers__products-section"
+              aria-labelledby="transfer-products-title"
+            >
+              <div className="stock-transfers__section-heading">
+                <span className="stock-transfers__step">2</span>
+                <div>
+                  <h3 id="transfer-products-title">
+                    {t("Products to Transfer")}
+                  </h3>
+                  <p>
+                    {t(
+                      "Choose a source warehouse first, then select products and quantities.",
+                    )}
+                  </p>
+                </div>
                 <button
-                  className="purchase-add-item"
+                  className="stock-transfers__add-product"
                   type="button"
                   onClick={addLine}
-                  disabled={optionsLoading}
+                  disabled={
+                    optionsLoading ||
+                    Boolean(optionsError) ||
+                    !form.fromWarehouseId ||
+                    stockLoading ||
+                    Boolean(stockError) ||
+                    products.length === 0
+                  }
                 >
-                  <Plus size={14} aria-hidden="true" /> Add Product
+                  <Plus size={16} aria-hidden="true" />
+                  {t("Add Product")}
                 </button>
               </div>
-              {lines.map((line, index) => (
-                <div className="inventory-line" key={line.key}>
-                  <label className="purchase-field">
-                    <span>Product</span>
-                    <select
-                      value={line.productId}
-                      onChange={(event) =>
-                        setLineField(line.key, "productId", event.target.value)
-                      }
-                      disabled={optionsLoading || Boolean(optionsError)}
-                      aria-invalid={Boolean(
-                        fields[`item.${line.key}.product_id`] ||
-                        fields[`items.${index}.product_id`],
-                      )}
-                    >
-                      <option value="">Select product</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name}
-                          {product.sku ? ` · ${product.sku}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    {(fields[`item.${line.key}.product_id`] ||
-                      fields[`items.${index}.product_id`]) && (
-                      <small className="purchase-field__error">
-                        {fields[`item.${line.key}.product_id`] ||
-                          fields[`items.${index}.product_id`]}
-                      </small>
-                    )}
-                  </label>
-                  <label className="purchase-field">
-                    <span>Quantity</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.0001"
-                      value={line.quantity}
-                      onChange={(event) =>
-                        setLineField(line.key, "quantity", event.target.value)
-                      }
-                      aria-invalid={Boolean(
-                        fields[`item.${line.key}.quantity`] ||
-                        fields[`items.${index}.quantity`],
-                      )}
-                    />
-                    {(fields[`item.${line.key}.quantity`] ||
-                      fields[`items.${index}.quantity`]) && (
-                      <small className="purchase-field__error">
-                        {fields[`item.${line.key}.quantity`] ||
-                          fields[`items.${index}.quantity`]}
-                      </small>
-                    )}
-                  </label>
+
+              {!form.fromWarehouseId && (
+                <p className="stock-transfers__stock-hint">
+                  <Warehouse size={15} aria-hidden="true" />
+                  {t("Select a warehouse first to see available stock.")}
+                </p>
+              )}
+              {stockLoading && (
+                <p className="stock-transfers__stock-hint" role="status">
+                  <span className="stock-transfers__spinner" />
+                  {t("Checking source stock…")}
+                </p>
+              )}
+              {stockError && (
+                <div
+                  className="stock-transfers__alert stock-transfers__alert--inline"
+                  role="alert"
+                >
+                  <AlertCircle size={18} aria-hidden="true" />
+                  <span>{stockError}</span>
                   <button
-                    className="purchase-modal__close inventory-line__remove"
+                    className="stock-transfers__page-next"
                     type="button"
-                    onClick={() =>
-                      setLines((current) =>
-                        current.filter((entry) => entry.key !== line.key),
-                      )
-                    }
-                    disabled={lines.length <= 1}
-                    aria-label="Remove transfer product"
+                    onClick={() => setStockRetry((value) => value + 1)}
                   >
-                    <X size={16} aria-hidden="true" />
+                    {t("Retry")}
                   </button>
                 </div>
-              ))}
-            </div>
-            <p className="inventory-form-hint inventory-form-wide">
-              The server allocates available batches in FEFO order.
-            </p>
-            <div className="inventory-form-actions">
-              <button
-                className="purchase-cancel-button"
-                type="button"
-                onClick={() => setFormOpen(false)}
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                className="purchase-save-button"
-                type="submit"
-                disabled={isSaving || optionsLoading || Boolean(optionsError)}
-              >
-                {isSaving ? "Saving…" : "Record Transfer"}
-              </button>
-            </div>
+              )}
+              {fields.items && (
+                <p className="stock-transfers__field-error" role="alert">
+                  {fields.items}
+                </p>
+              )}
+              {products.length === 0 && stockLoaded && !optionsLoading && (
+                <p className="stock-transfers__stock-hint">
+                  {t("No active products are available.")}
+                </p>
+              )}
+
+              <div className="stock-transfers__lines">
+                {lines.map((line, index) => {
+                  const product = products.find(
+                    (option) => String(option.id) === line.productId,
+                  );
+                  const available = line.productId
+                    ? (sourceBalances[line.productId] ?? 0)
+                    : null;
+                  const productError =
+                    fields[`item.${line.key}.product_id`] ??
+                    fields[`items.${index}.product_id`];
+                  const quantityError =
+                    fields[`item.${line.key}.quantity`] ??
+                    fields[`items.${index}.quantity`];
+
+                  return (
+                    <div className="stock-transfers__line" key={line.key}>
+                      <label className="stock-transfers__field stock-transfers__line-product">
+                        <span>{t("Product")}</span>
+                        <select
+                          value={line.productId}
+                          onChange={(event) =>
+                            setLineField(
+                              line.key,
+                              "productId",
+                              event.target.value,
+                            )
+                          }
+                          disabled={
+                            optionsLoading ||
+                            Boolean(optionsError) ||
+                            !form.fromWarehouseId ||
+                            stockLoading ||
+                            Boolean(stockError)
+                          }
+                          aria-invalid={Boolean(productError)}
+                        >
+                          <option value="">{t("Select a product")}</option>
+                          {products.map((option) => (
+                            <option
+                              key={option.id}
+                              value={option.id}
+                              disabled={
+                                selectedProductIds.has(String(option.id)) &&
+                                String(option.id) !== line.productId
+                              }
+                            >
+                              {option.name}
+                              {option.sku ? ` · ${option.sku}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        {productError && (
+                          <small className="stock-transfers__field-error">
+                            {productError}
+                          </small>
+                        )}
+                      </label>
+
+                      <div className="stock-transfers__available">
+                        <span>{t("Available Stock")}</span>
+                        {available === null || !stockLoaded ? (
+                          <strong>—</strong>
+                        ) : (
+                          <strong>
+                            {quantityFormatter.format(available)}
+                            <small>{product?.unit ?? ""}</small>
+                          </strong>
+                        )}
+                      </div>
+
+                      <label className="stock-transfers__field stock-transfers__line-quantity">
+                        <span>{t("Transfer Quantity")}</span>
+                        <div className="stock-transfers__quantity-control">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.0001"
+                            value={line.quantity}
+                            onChange={(event) =>
+                              setLineField(
+                                line.key,
+                                "quantity",
+                                event.target.value,
+                              )
+                            }
+                            disabled={!stockLoaded || Boolean(stockError)}
+                            aria-invalid={Boolean(quantityError)}
+                          />
+                          {product?.unit && (
+                            <span className="stock-transfers__unit">
+                              {product.unit}
+                            </span>
+                          )}
+                        </div>
+                        {quantityError && (
+                          <small className="stock-transfers__field-error">
+                            {quantityError}
+                          </small>
+                        )}
+                      </label>
+
+                      <button
+                        className="stock-transfers__remove"
+                        type="button"
+                        onClick={() => {
+                          setLines((current) =>
+                            current.filter((entry) => entry.key !== line.key),
+                          );
+                          setFields((current) => {
+                            const next = { ...current };
+                            delete next[`item.${line.key}.product_id`];
+                            delete next[`item.${line.key}.quantity`];
+                            delete next.items;
+                            return next;
+                          });
+                        }}
+                        disabled={lines.length <= 1 || isSaving}
+                        aria-label={t("Remove product")}
+                      >
+                        <Trash2 size={16} aria-hidden="true" />
+                        <span>{t("Remove")}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="stock-transfers__fefo-note">
+                {t(
+                  "Available batches are allocated by earliest expiry date.",
+                )}
+              </p>
+            </section>
+
+            {formError && (
+              <p className="stock-transfers__form-error" role="alert">
+                <AlertCircle size={17} aria-hidden="true" />
+                {formError}
+              </p>
+            )}
+
+            <footer className="stock-transfers__form-actions">
+              <p>
+                {t(
+                  "Review the warehouses, products and quantities before recording.",
+                )}
+              </p>
+              <div>
+                <button
+                  className="stock-transfers__secondary"
+                  type="button"
+                  onClick={() => setFormOpen(false)}
+                  disabled={isSaving}
+                >
+                  {t("Cancel")}
+                </button>
+                <button
+                  className="stock-transfers__primary"
+                  type="submit"
+                  disabled={
+                    isSaving ||
+                    optionsLoading ||
+                    Boolean(optionsError) ||
+                    stockLoading ||
+                    Boolean(stockError) ||
+                    !stockLoaded
+                  }
+                >
+                  <ArrowLeftRight size={17} aria-hidden="true" />
+                  {isSaving ? t("Saving…") : t("Record Transfer")}
+                </button>
+              </div>
+            </footer>
           </form>
         </section>
       )}
 
-      <section className="purchases-panel" aria-label="Stock transfers">
+      <section
+        className="stock-transfers__list-card"
+        aria-label={t("Stock transfer history")}
+      >
+        <header className="stock-transfers__list-heading">
+          <div className="stock-transfers__list-icon">
+            <ArrowLeftRight size={19} aria-hidden="true" />
+          </div>
+          <div>
+            <h2>{t("Transfer History")}</h2>
+            <p>{t("Review previous stock movements between warehouses.")}</p>
+          </div>
+          {transfers && !isLoading && (
+            <span className="stock-transfers__record-count">
+              {interpolate(
+                t(
+                  transfers.total === 1
+                    ? "{count} transfer"
+                    : "{count} transfers",
+                ),
+                { count: numberFormat.format(transfers.total) },
+              )}
+            </span>
+          )}
+        </header>
+
         {isLoading ? (
-          <div className="purchases-state" role="status">
-            <span className="loading-spinner" /> Loading transfers...
+          <div className="stock-transfers__state" role="status">
+            <span className="stock-transfers__spinner" />
+            {t("Loading transfers…")}
           </div>
         ) : listError ? (
-          <div className="purchases-state purchases-state--error" role="alert">
-            <AlertCircle size={20} aria-hidden="true" />
+          <div className="stock-transfers__state stock-transfers__state--error" role="alert">
+            <AlertCircle size={21} aria-hidden="true" />
             <span>{listError}</span>
             <button
-              className="purchases-retry"
+              className="stock-transfers__text-button"
               type="button"
               onClick={() => setRetry((value) => value + 1)}
             >
-              Try again
+              {t("Try again")}
             </button>
           </div>
         ) : transfers && transfers.data.length === 0 ? (
-          <div className="purchases-state purchases-state--empty">
-            <strong>No stock transfers yet</strong>
-            <span>Posted transfers will appear here.</span>
+          <div className="stock-transfers__state stock-transfers__state--empty">
+            <span className="stock-transfers__empty-icon">
+              <ArrowLeftRight size={21} aria-hidden="true" />
+            </span>
+            <strong>{t("No stock transfers yet")}</strong>
+            <span>{t("Posted transfers will appear here.")}</span>
           </div>
         ) : transfers ? (
           <>
-            <div className="purchases-table-scroll">
-              <table className="purchases-table inventory-table">
+            <div className="stock-transfers__table-scroll">
+              <table className="stock-transfers__table">
                 <thead>
                   <tr>
-                    <th>Transfer</th>
-                    <th>Date</th>
-                    <th>From</th>
-                    <th>To</th>
-                    <th>Products</th>
-                    <th>Created By</th>
-                    <th>Details</th>
+                    <th>{t("Transfer Number")}</th>
+                    <th>{t("Transfer Date")}</th>
+                    <th>{t("Source Warehouse")}</th>
+                    <th>{t("Destination Warehouse")}</th>
+                    <th>{t("Products")}</th>
+                    <th>{t("Created By")}</th>
+                    <th>{t("Details")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {transfers.data.map((transfer) => (
                     <tr key={transfer.id}>
-                      <td>
-                        <strong className="purchases-number">
+                      <td data-label={t("Transfer Number")}>
+                        <strong className="stock-transfers__number">
                           {transfer.transferNumber}
                         </strong>
                       </td>
-                      <td>{transfer.transferDate}</td>
-                      <td>{transfer.fromWarehouse}</td>
-                      <td>{transfer.toWarehouse}</td>
-                      <td>{transfer.items.length}</td>
-                      <td>{transfer.creator || "—"}</td>
-                      <td>
+                      <td data-label={t("Transfer Date")}>
+                        {transfer.transferDate}
+                      </td>
+                      <td data-label={t("Source Warehouse")}>
+                        <span className="stock-transfers__warehouse">
+                          <Warehouse size={15} aria-hidden="true" />
+                          {transfer.fromWarehouse}
+                        </span>
+                      </td>
+                      <td data-label={t("Destination Warehouse")}>
+                        <span className="stock-transfers__warehouse">
+                          <Warehouse size={15} aria-hidden="true" />
+                          {transfer.toWarehouse}
+                        </span>
+                      </td>
+                      <td data-label={t("Products")}>
+                        <span className="stock-transfers__product-count">
+                          {numberFormat.format(transfer.items.length)}
+                        </span>
+                      </td>
+                      <td data-label={t("Created By")}>
+                        {transfer.creator || "—"}
+                      </td>
+                      <td data-label={t("Details")}>
                         <button
-                          className="purchase-view-button"
+                          className="stock-transfers__details-button"
                           type="button"
-                          onClick={() => setSelectedId(transfer.id)}
+                          onClick={() => {
+                            setDetailRetry(0);
+                            setSelectedId(transfer.id);
+                          }}
                         >
-                          <Eye size={14} aria-hidden="true" /> Details
+                          <Eye size={16} aria-hidden="true" />
+                          {t("Details")}
                         </button>
                       </td>
                     </tr>
@@ -671,116 +1182,170 @@ export default function StockTransfers() {
                 </tbody>
               </table>
             </div>
-            <InventoryPagination
+            <TransferPagination
               page={page}
               pageSize={pageSize}
               total={transfers.total}
               lastPage={transfers.lastPage}
               setPage={setPage}
+              numberFormat={numberFormat}
+              t={t}
             />
           </>
         ) : null}
       </section>
 
       {selectedId !== null && (
-        <div
-          className="purchase-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSelectedId(null);
-          }}
-        >
+        <div className="stock-transfers__backdrop">
           <section
-            className="purchase-modal inventory-detail-modal"
+            className="stock-transfers__dialog"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="transfer-detail-title"
+            aria-labelledby="stock-transfer-detail-title"
           >
-            <header className="purchase-modal__header">
+            <header className="stock-transfers__dialog-heading">
               <div>
-                <p className="overview-eyebrow">TRANSFER DETAILS</p>
-                <h2 id="transfer-detail-title">
-                  {detail?.transferNumber ?? "Stock Transfer"}
+                <p className="stock-transfers__eyebrow">
+                  {t("TRANSFER DETAILS")}
+                </p>
+                <h2 id="stock-transfer-detail-title">
+                  {detail?.transferNumber ?? t("Stock Transfer")}
                 </h2>
-                <p>{detail?.transferDate ?? ""}</p>
+                <p>
+                  {detail
+                    ? interpolate(t("Recorded on {date}"), {
+                        date: detail.transferDate,
+                      })
+                    : t("Transfer details")}
+                </p>
               </div>
-              <button
-                className="purchase-modal__close"
-                type="button"
-                onClick={() => setSelectedId(null)}
-                aria-label="Close details"
-              >
-                <X size={18} aria-hidden="true" />
-              </button>
+              <span className="stock-transfers__dialog-mark">
+                <ArrowLeftRight size={21} aria-hidden="true" />
+              </span>
             </header>
-            <div className="purchase-modal__body">
+
+            <div className="stock-transfers__dialog-body">
               {detailLoading ? (
-                <div className="purchases-state" role="status">
-                  <span className="loading-spinner" /> Loading transfer...
+                <div className="stock-transfers__state" role="status">
+                  <span className="stock-transfers__spinner" />
+                  {t("Loading transfer details…")}
                 </div>
               ) : detailError ? (
                 <div
-                  className="purchases-state purchases-state--error"
+                  className="stock-transfers__state stock-transfers__state--error"
                   role="alert"
                 >
+                  <AlertCircle size={20} aria-hidden="true" />
                   <span>{detailError}</span>
                   <button
-                    className="purchases-retry"
+                    className="stock-transfers__text-button"
                     type="button"
                     onClick={() => setDetailRetry((value) => value + 1)}
                   >
-                    Try again
+                    {t("Retry")}
                   </button>
                 </div>
               ) : detail ? (
                 <>
-                  <dl className="purchase-detail-grid inventory-detail-grid">
+                  <div className="stock-transfers__route-summary">
                     <div>
-                      <dt>From</dt>
-                      <dd>{detail.fromWarehouse}</dd>
+                      <span>{t("Source Warehouse")}</span>
+                      <strong>{detail.fromWarehouse}</strong>
+                    </div>
+                    <span className="stock-transfers__route-arrow">
+                      <ArrowLeftRight size={19} aria-hidden="true" />
+                    </span>
+                    <div>
+                      <span>{t("Destination Warehouse")}</span>
+                      <strong>{detail.toWarehouse}</strong>
+                    </div>
+                  </div>
+
+                  <dl className="stock-transfers__meta">
+                    <div>
+                      <dt>{t("Transfer Date")}</dt>
+                      <dd>{detail.transferDate}</dd>
                     </div>
                     <div>
-                      <dt>To</dt>
-                      <dd>{detail.toWarehouse}</dd>
+                      <dt>{t("Reference Number")}</dt>
+                      <dd>{detail.transferNumber}</dd>
                     </div>
                     <div>
-                      <dt>Created By</dt>
+                      <dt>{t("Created By")}</dt>
                       <dd>{detail.creator || "—"}</dd>
                     </div>
-                    <div>
-                      <dt>Notes</dt>
-                      <dd>{detail.notes || "—"}</dd>
+                    <div className="stock-transfers__notes">
+                      <dt>{t("Notes")}</dt>
+                      <dd>{detail.notes || t("No notes")}</dd>
                     </div>
                   </dl>
-                  <div className="purchases-table-scroll">
-                    <table className="purchases-table inventory-detail-table">
-                      <thead>
-                        <tr>
-                          <th>Product</th>
-                          <th>Quantity</th>
-                          <th>Unit Cost</th>
-                          <th>Total Cost</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detail.items.map((item) => (
-                          <tr key={item.id}>
-                            <td>
-                              {item.productName}
-                              {item.sku ? ` · ${item.sku}` : ""}
-                            </td>
-                            <td>
-                              {formatQuantity(item.quantity)} {item.unit || ""}
-                            </td>
-                            <td>{formatCurrency(item.unitCostAfn)}</td>
-                            <td>{formatCurrency(item.totalCostAfn)}</td>
+
+                  <div className="stock-transfers__detail-products">
+                    <div className="stock-transfers__detail-heading">
+                      <h3>{t("Products")}</h3>
+                      <span>
+                        {interpolate(
+                          t(
+                            detail.items.length === 1
+                              ? "{count} product"
+                              : "{count} products",
+                          ),
+                          { count: numberFormat.format(detail.items.length) },
+                        )}
+                      </span>
+                    </div>
+                    <div className="stock-transfers__table-scroll">
+                      <table className="stock-transfers__table stock-transfers__detail-table">
+                        <thead>
+                          <tr>
+                            <th>{t("Product")}</th>
+                            <th>{t("Quantity")}</th>
+                            <th>{t("Unit Cost")}</th>
+                            <th>{t("Total Cost")}</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {detail.items.map((item) => (
+                            <tr key={item.id}>
+                              <td data-label={t("Product")}>
+                                <strong>{item.productName}</strong>
+                                {item.sku && (
+                                  <small className="stock-transfers__sku">
+                                    {item.sku}
+                                  </small>
+                                )}
+                              </td>
+                              <td data-label={t("Quantity")}>
+                                {quantityFormatter.format(item.quantity)}{" "}
+                                {item.unit || "—"}
+                              </td>
+                              <td data-label={t("Unit Cost")}>
+                                {formatCurrency(item.unitCostAfn)}
+                              </td>
+                              <td data-label={t("Total Cost")}>
+                                <strong>
+                                  {formatCurrency(item.totalCostAfn)}
+                                </strong>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </>
               ) : null}
             </div>
+
+            <footer className="stock-transfers__dialog-footer">
+              <button
+                className="stock-transfers__primary"
+                type="button"
+                onClick={() => setSelectedId(null)}
+              >
+                {t("Cancel")}
+              </button>
+            </footer>
           </section>
         </div>
       )}
@@ -788,44 +1353,58 @@ export default function StockTransfers() {
   );
 }
 
-function InventoryPagination({
+function TransferPagination({
   page,
   pageSize,
   total,
   lastPage,
   setPage,
+  numberFormat,
+  t,
 }: {
   page: number;
   pageSize: number;
   total: number;
   lastPage: number;
   setPage: (page: number) => void;
+  numberFormat: Intl.NumberFormat;
+  t: Translate;
 }) {
   const start = total ? (page - 1) * pageSize + 1 : 0;
   const end = Math.min(page * pageSize, total);
   return (
-    <footer className="purchases-pagination">
+    <footer className="stock-transfers__pagination">
       <span>
-        Showing {start}-{end} of {new Intl.NumberFormat().format(total)}{" "}
-        transfers
+        {interpolate(t("Showing {start}-{end} of {total} transfers"), {
+          start: numberFormat.format(start),
+          end: numberFormat.format(end),
+          total: numberFormat.format(total),
+        })}
       </span>
-      <div className="purchases-pagination__controls">
+      <div>
         <button
           type="button"
           onClick={() => setPage(page - 1)}
           disabled={page <= 1}
+          aria-label={t("Previous page")}
         >
-          <ChevronLeft size={16} aria-hidden="true" /> Previous
+          <ChevronLeft size={16} aria-hidden="true" />
+          {t("Previous")}
         </button>
         <span>
-          Page <strong>{page}</strong> of <strong>{lastPage}</strong>
+          {interpolate(t("Page {page} of {lastPage}"), {
+            page: numberFormat.format(page),
+            lastPage: numberFormat.format(lastPage),
+          })}
         </span>
         <button
           type="button"
           onClick={() => setPage(page + 1)}
           disabled={page >= lastPage}
+          aria-label={t("Next page")}
         >
-          Next <ChevronRight size={16} aria-hidden="true" />
+          {t("Next")}
+          <ChevronRight size={16} aria-hidden="true" />
         </button>
       </div>
     </footer>
