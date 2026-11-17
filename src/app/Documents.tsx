@@ -3,6 +3,7 @@ import axios from "axios";
 import { Download, Eye, FileText, LoaderCircle, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { getErrorMessage, getValidationResult, isRecord, optionalText, parseId, parseLaravelPage, type LaravelPage } from "@/app/InventoryShared";
+import { useLocale } from "@/lib/locale";
 
 interface DocumentRecord {
   id: number;
@@ -69,6 +70,7 @@ function filenameFromHeader(header: unknown, fallback: string): string {
 }
 
 export default function Documents() {
+  const { direction, t } = useLocale();
   const [page, setPage] = useState<LaravelPage<DocumentRecord> | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [searchDraft, setSearchDraft] = useState("");
@@ -170,7 +172,7 @@ export default function Documents() {
   }
 
   async function deleteDocument(document: DocumentRecord) {
-    if (!window.confirm(`Delete “${document.title}” and its uploaded file? This cannot be undone.`)) return;
+    if (!window.confirm(t("Delete “{title}” and its uploaded file? This cannot be undone.").replace("{title}", document.title))) return;
     setBusyId(document.id); setActionError(null);
     try {
       await api.delete(`/api/documents/${document.id}`);
@@ -183,50 +185,50 @@ export default function Documents() {
   }
 
   return (
-    <div className="documents-page">
+    <div className="documents-page" dir={direction}>
       <header className="documents-heading">
-        <div><p className="overview-eyebrow">WORKSPACE</p><h1>Documents</h1><p>Store and manage your business files securely.</p></div>
-        <button className="overview-refresh" type="button" onClick={() => setReload((value) => value + 1)} disabled={loading}><RefreshCw size={16} />Refresh</button>
+        <div><p className="overview-eyebrow">{t("WORKSPACE")}</p><h1>{t("Documents")}</h1><p>{t("Store and manage your business files securely.")}</p></div>
+        <button className="overview-refresh" type="button" onClick={() => setReload((value) => value + 1)} disabled={loading}><RefreshCw size={16} />{t("Refresh")}</button>
       </header>
 
-      {success && <div className="documents-notice" role="status"><span>{success}</span><button type="button" aria-label="Dismiss message" onClick={() => setSuccess(null)}><X size={16} /></button></div>}
-      {actionError && <div className="documents-notice documents-notice--error" role="alert"><span>{actionError}</span><button type="button" aria-label="Dismiss error" onClick={() => setActionError(null)}><X size={16} /></button></div>}
+      {success && <div className="documents-notice" role="status"><span>{t(success)}</span><button type="button" aria-label={t("Dismiss message")} onClick={() => setSuccess(null)}><X size={16} /></button></div>}
+      {actionError && <div className="documents-notice documents-notice--error" role="alert"><span>{t(actionError)}</span><button type="button" aria-label={t("Dismiss error")} onClick={() => setActionError(null)}><X size={16} /></button></div>}
 
       <section className="documents-panel documents-upload-panel">
-        <div className="documents-panel-heading"><span className="documents-icon"><Upload size={18} /></span><div><h2>Upload a document</h2><p>PDF, JPG, PNG, DOC, DOCX, or XLSX · Maximum 10MB</p></div></div>
+        <div className="documents-panel-heading"><span className="documents-icon"><Upload size={18} /></span><div><h2>{t("Upload a document")}</h2><p>{t("PDF, JPG, PNG, DOC, DOCX, or XLSX · Maximum 10MB")}</p></div></div>
         <form onSubmit={(event) => void submitUpload(event)} noValidate>
-          {formError && <p className="documents-form-error" role="alert">{formError}</p>}
+          {formError && <p className="documents-form-error" role="alert">{t(formError)}</p>}
           <div className="documents-upload-grid">
-            <label className="documents-field"><span>Title <b>*</b></span><input value={title} maxLength={255} onChange={(event) => setTitle(event.target.value)} aria-invalid={!!fieldErrors.title} />{fieldErrors.title && <small>{fieldErrors.title}</small>}</label>
-            <label className="documents-field"><span>Category</span><input value={uploadCategory} maxLength={100} placeholder="e.g. Contracts" onChange={(event) => setUploadCategory(event.target.value)} aria-invalid={!!fieldErrors.category} />{fieldErrors.category && <small>{fieldErrors.category}</small>}</label>
-            <label className="documents-field documents-field--wide"><span>Description</span><textarea rows={2} value={description} onChange={(event) => setDescription(event.target.value)} aria-invalid={!!fieldErrors.description} />{fieldErrors.description && <small>{fieldErrors.description}</small>}</label>
-            <label className="documents-field documents-field--wide"><span>File <b>*</b></span><input id="document-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xlsx" onChange={(event) => setFile(event.target.files?.[0] ?? null)} aria-invalid={!!fieldErrors.file} />{file && <em>{file.name} · {formatSize(file.size)}</em>}{fieldErrors.file && <small>{fieldErrors.file}</small>}</label>
+            <label className="documents-field"><span>{t("Title")} <b>*</b></span><input value={title} maxLength={255} onChange={(event) => setTitle(event.target.value)} aria-invalid={!!fieldErrors.title} />{fieldErrors.title && <small>{t(fieldErrors.title)}</small>}</label>
+            <label className="documents-field"><span>{t("Category")}</span><input value={uploadCategory} maxLength={100} placeholder={t("e.g. Contracts")} onChange={(event) => setUploadCategory(event.target.value)} aria-invalid={!!fieldErrors.category} />{fieldErrors.category && <small>{t(fieldErrors.category)}</small>}</label>
+            <label className="documents-field documents-field--wide"><span>{t("Description")}</span><textarea rows={2} value={description} onChange={(event) => setDescription(event.target.value)} aria-invalid={!!fieldErrors.description} />{fieldErrors.description && <small>{t(fieldErrors.description)}</small>}</label>
+            <label className="documents-field documents-field--wide"><span>{t("File")} <b>*</b></span><input id="document-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xlsx" onChange={(event) => setFile(event.target.files?.[0] ?? null)} aria-invalid={!!fieldErrors.file} />{file && <em>{file.name} · {formatSize(file.size)}</em>}{fieldErrors.file && <small>{t(fieldErrors.file)}</small>}</label>
           </div>
-          <div className="documents-form-actions"><button className="documents-primary-button" type="submit" disabled={uploading}>{uploading ? <LoaderCircle className="documents-spin" size={16} /> : <Upload size={16} />}{uploading ? "Uploading…" : "Upload document"}</button></div>
+          <div className="documents-form-actions"><button className="documents-primary-button" type="submit" disabled={uploading}>{uploading ? <LoaderCircle className="documents-spin" size={16} /> : <Upload size={16} />}{t(uploading ? "Uploading…" : "Upload document")}</button></div>
         </form>
       </section>
 
       <section className="documents-panel">
-        <div className="documents-panel-heading documents-list-heading"><span className="documents-icon"><FileText size={18} /></span><div><h2>Document library</h2><p>{page ? `${page.total.toLocaleString()} document${page.total === 1 ? "" : "s"}` : "Browse uploaded files"}</p></div></div>
+        <div className="documents-panel-heading documents-list-heading"><span className="documents-icon"><FileText size={18} /></span><div><h2>{t("Document library")}</h2><p>{page ? t(page.total === 1 ? "One document" : "{count} documents").replace("{count}", page.total.toLocaleString()) : t("Browse uploaded files")}</p></div></div>
         <form className="documents-filters" onSubmit={applyFilters}>
-          <label><span className="sr-only">Search documents</span><Search size={16} /><input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder="Search title, description, category, or filename" /></label>
-          <label className="documents-category-filter"><span className="sr-only">Filter category</span><input value={categoryDraft} onChange={(event) => setCategoryDraft(event.target.value)} placeholder="Exact category" /></label>
-          <button type="submit" className="documents-filter-button">Search</button>
+          <label><span className="sr-only">{t("Search documents")}</span><Search size={16} /><input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder={t("Search title, description, category, or filename")} /></label>
+          <label className="documents-category-filter"><span className="sr-only">{t("Filter category")}</span><input value={categoryDraft} onChange={(event) => setCategoryDraft(event.target.value)} placeholder={t("Exact category")} /></label>
+          <button type="submit" className="documents-filter-button">{t("Search")}</button>
         </form>
-        {listError && <div className="documents-state documents-state--error" role="alert">{listError}<button type="button" onClick={() => setReload((value) => value + 1)}>Try again</button></div>}
-        {loading && <div className="documents-state" role="status"><LoaderCircle className="documents-spin" size={18} />Loading documents…</div>}
-        {!loading && !listError && page?.data.length === 0 && <div className="documents-state"><FileText size={24} /><strong>No documents found</strong><span>Upload a file or adjust your search filters.</span></div>}
+        {listError && <div className="documents-state documents-state--error" role="alert">{t(listError)}<button type="button" onClick={() => setReload((value) => value + 1)}>{t("Try again")}</button></div>}
+        {loading && <div className="documents-state" role="status"><LoaderCircle className="documents-spin" size={18} />{t("Loading documents…")}</div>}
+        {!loading && !listError && page?.data.length === 0 && <div className="documents-state"><FileText size={24} /><strong>{t("No documents found")}</strong><span>{t("Upload a file or adjust your search filters.")}</span></div>}
         {!loading && !listError && page && page.data.length > 0 && <>
-          <div className="documents-table-wrap"><table className="documents-table"><thead><tr><th>Document</th><th>Category</th><th>File size</th><th>Uploaded</th><th>Uploader</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{page.data.map((document) => <tr key={document.id}>
+          <div className="documents-table-wrap"><table className="documents-table"><thead><tr><th>{t("Document")}</th><th>{t("Category")}</th><th>{t("File size")}</th><th>{t("Uploaded")}</th><th>{t("Uploader")}</th><th><span className="sr-only">{t("Actions")}</span></th></tr></thead><tbody>{page.data.map((document) => <tr key={document.id}>
             <td><div className="documents-file-cell"><span className="documents-file-icon"><FileText size={17} /></span><span><strong>{document.title}</strong><small>{document.originalName}</small></span></div></td>
             <td>{document.category ? <span className="documents-category-chip">{document.category}</span> : <span className="documents-muted">—</span>}</td><td className="documents-nowrap">{formatSize(document.fileSize)}</td><td className="documents-nowrap">{formatDate(document.createdAt)}</td><td>{document.uploader ?? <span className="documents-muted">—</span>}</td>
-            <td><div className="documents-row-actions"><button type="button" title="View metadata" aria-label={`View ${document.title}`} onClick={() => void viewDocument(document.id)}><Eye size={16} /></button><button type="button" title="Download file" aria-label={`Download ${document.title}`} disabled={busyId === document.id} onClick={() => void downloadDocument(document)}>{busyId === document.id ? <LoaderCircle className="documents-spin" size={16} /> : <Download size={16} />}</button><button type="button" className="documents-delete-action" title="Delete document" aria-label={`Delete ${document.title}`} disabled={busyId === document.id} onClick={() => void deleteDocument(document)}><Trash2 size={16} /></button></div></td>
+            <td><div className="documents-row-actions"><button type="button" title={t("View metadata")} aria-label={t("View {title}").replace("{title}", document.title)} onClick={() => void viewDocument(document.id)}><Eye size={16} /></button><button type="button" title={t("Download file")} aria-label={t("Download {title}").replace("{title}", document.title)} disabled={busyId === document.id} onClick={() => void downloadDocument(document)}>{busyId === document.id ? <LoaderCircle className="documents-spin" size={16} /> : <Download size={16} />}</button><button type="button" className="documents-delete-action" title={t("Delete document")} aria-label={t("Delete {title}").replace("{title}", document.title)} disabled={busyId === document.id} onClick={() => void deleteDocument(document)}><Trash2 size={16} /></button></div></td>
           </tr>)}</tbody></table></div>
-          <div className="documents-pagination"><span>Page {page.currentPage} of {page.lastPage} · {page.total.toLocaleString()} total</span><div><button type="button" disabled={pageNumber <= 1 || loading} onClick={() => setPageNumber((value) => value - 1)}>Previous</button><button type="button" disabled={pageNumber >= page.lastPage || loading} onClick={() => setPageNumber((value) => value + 1)}>Next</button></div></div>
+          <div className="documents-pagination"><span>{t("Page")} {page.currentPage} {t("of")} {page.lastPage} · {t("{count} total").replace("{count}", page.total.toLocaleString())}</span><div><button type="button" disabled={pageNumber <= 1 || loading} onClick={() => setPageNumber((value) => value - 1)}>{t("Previous")}</button><button type="button" disabled={pageNumber >= page.lastPage || loading} onClick={() => setPageNumber((value) => value + 1)}>{t("Next")}</button></div></div>
         </>}
       </section>
 
-      {(detailLoading || detailError || detail) && <div className="documents-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setDetail(null); setDetailError(null); } }}><section className="documents-modal" role="dialog" aria-modal="true" aria-labelledby="documents-detail-title"><header><div><p className="overview-eyebrow">DOCUMENT DETAILS</p><h2 id="documents-detail-title">{detail?.title ?? "Document details"}</h2></div><button type="button" aria-label="Close details" onClick={() => { setDetail(null); setDetailError(null); }}><X size={18} /></button></header>{detailLoading ? <div className="documents-state"><LoaderCircle className="documents-spin" size={18} />Loading details…</div> : detailError ? <div className="documents-state documents-state--error" role="alert">{detailError}</div> : detail && <div className="documents-detail-grid"><Detail label="Original filename" value={detail.originalName} /><Detail label="Category" value={detail.category ?? "—"} /><Detail label="File size" value={formatSize(detail.fileSize)} /><Detail label="File type" value={detail.mimeType || "—"} /><Detail label="Uploaded" value={formatDate(detail.createdAt)} /><Detail label="Uploader" value={detail.uploader ?? "—"} /><Detail label="Description" value={detail.description ?? "—"} wide /></div>}</section></div>}
+      {(detailLoading || detailError || detail) && <div className="documents-modal-backdrop" role="presentation"><section className="documents-modal" role="dialog" aria-modal="true" aria-labelledby="documents-detail-title"><header><div><p className="overview-eyebrow">{t("DOCUMENT DETAILS")}</p><h2 id="documents-detail-title">{detail?.title ?? t("Document details")}</h2></div><button type="button" aria-label={t("Close details")} onClick={() => { setDetail(null); setDetailError(null); }}><X size={18} /></button></header>{detailLoading ? <div className="documents-state"><LoaderCircle className="documents-spin" size={18} />{t("Loading details…")}</div> : detailError ? <div className="documents-state documents-state--error" role="alert">{t(detailError)}</div> : detail && <div className="documents-detail-grid"><Detail label={t("Original filename")} value={detail.originalName} /><Detail label={t("Category")} value={detail.category ?? "—"} /><Detail label={t("File size")} value={formatSize(detail.fileSize)} /><Detail label={t("File type")} value={detail.mimeType || "—"} /><Detail label={t("Uploaded")} value={formatDate(detail.createdAt)} /><Detail label={t("Uploader")} value={detail.uploader ?? "—"} /><Detail label={t("Description")} value={detail.description ?? "—"} wide /></div>}</section></div>}
     </div>
   );
 }

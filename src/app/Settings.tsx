@@ -3,6 +3,7 @@ import { CheckCircle2, ImagePlus, LoaderCircle, RefreshCw } from "lucide-react";
 import { api, getPublicStorageUrl } from "@/lib/api";
 import { getErrorMessage, getValidationResult, isRecord, optionalText, parseId } from "@/app/InventoryShared";
 import { useAuth } from "@/auth/AuthContext";
+import { useLocale } from "@/lib/locale";
 
 interface OrganizationSettings {
   id: number;
@@ -47,6 +48,7 @@ function valuesFromSettings(settings: OrganizationSettings): FormValues {
 }
 
 export default function SettingsPage() {
+  const { direction, t } = useLocale();
   const { refreshCompanyBranding } = useAuth();
   const [setting, setSetting] = useState<OrganizationSettings | null>(null);
   const [values, setValues] = useState<FormValues>(blankValues);
@@ -140,23 +142,23 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="settings-page">
-      <header className="settings-heading"><div><p className="overview-eyebrow">WORKSPACE</p><h1>Company Settings</h1><p>Manage the organization details used throughout ERPGO.</p></div><button className="overview-refresh" type="button" disabled={loading} onClick={() => setLoadAttempt((value) => value + 1)}><RefreshCw size={16} />Refresh</button></header>
-      {success && <div className="settings-success" role="status"><CheckCircle2 size={17} />{success}</div>}
-      {loadError && <div className="settings-error" role="alert">{loadError}<button type="button" onClick={() => setLoadAttempt((value) => value + 1)}>Try again</button></div>}
-      {loading ? <div className="settings-loading" role="status"><LoaderCircle className="settings-spin" size={19} />Loading company settings…</div> : !loadError && <form className="settings-form" onSubmit={(event) => void save(event)} noValidate>
-        <div className="settings-form-heading"><div><h2>Organization information</h2><p>{setting ? "Update the latest company settings record." : "No saved settings were found. Create the company settings record."}</p></div></div>
-        {formError && <p className="settings-error" role="alert">{formError}</p>}
+    <div className="settings-page" dir={direction}>
+      <header className="settings-heading"><div><p className="overview-eyebrow">{t("WORKSPACE")}</p><h1>{t("Company Settings")}</h1><p>{t("Manage the organization details used throughout ERPGO.")}</p></div><button className="overview-refresh" type="button" disabled={loading} onClick={() => setLoadAttempt((value) => value + 1)}><RefreshCw size={16} />{t("Refresh")}</button></header>
+      {success && <div className="settings-success" role="status"><CheckCircle2 size={17} />{t(success)}</div>}
+      {loadError && <div className="settings-error" role="alert">{t(loadError)}<button type="button" onClick={() => setLoadAttempt((value) => value + 1)}>{t("Try again")}</button></div>}
+      {loading ? <div className="settings-loading" role="status"><LoaderCircle className="settings-spin" size={19} />{t("Loading company settings…")}</div> : !loadError && <form className="settings-form" onSubmit={(event) => void save(event)} noValidate>
+        <div className="settings-form-heading"><div><h2>{t("Organization information")}</h2><p>{t(setting ? "Update the latest company settings record." : "No saved settings were found. Create the company settings record.")}</p></div></div>
+        {formError && <p className="settings-error" role="alert">{t(formError)}</p>}
         <div className="settings-fields">
-          <Field label="Company title in Pashto" error={fieldErrors.title_pa}><input dir="rtl" lang="ps" required maxLength={190} value={values.title_pa} onChange={(event) => updateValue("title_pa", event.target.value)} /></Field>
-          <Field label="Company title in English" error={fieldErrors.title_en}><input required maxLength={190} value={values.title_en} onChange={(event) => updateValue("title_en", event.target.value)} /></Field>
-          <Field label="Primary phone" error={fieldErrors.phone1}><input required type="tel" maxLength={20} value={values.phone1} onChange={(event) => updateValue("phone1", event.target.value)} /></Field>
-          <Field label="Secondary phone (optional)" error={fieldErrors.phone2}><input type="tel" maxLength={20} value={values.phone2} onChange={(event) => updateValue("phone2", event.target.value)} /></Field>
-          <Field label="Address" error={fieldErrors.address} wide><textarea required rows={3} value={values.address} onChange={(event) => updateValue("address", event.target.value)} /></Field>
-          <Field label="Bill text (optional)" error={fieldErrors.bill_text} wide><textarea rows={3} value={values.bill_text} onChange={(event) => updateValue("bill_text", event.target.value)} /></Field>
-          <div className="settings-field settings-field--wide"><span>Company logo (optional)</span><div className="settings-logo-row">{logoPreview ? <img className="settings-logo-preview" src={logoPreview} alt="Company logo preview" /> : <div className="settings-logo-placeholder"><ImagePlus size={21} /></div>}<label className="settings-logo-picker">Choose image<input id="settings-logo" type="file" accept="image/*" onChange={handleLogo} /></label><small>Image file, up to 2MB. Uploading a new logo replaces the current logo.</small></div>{fieldErrors.logo && <em>{fieldErrors.logo}</em>}</div>
+          <Field label={t("Company title in Pashto")} error={fieldErrors.title_pa ? t(fieldErrors.title_pa) : undefined}><input dir="rtl" lang="ps" required maxLength={190} value={values.title_pa} onChange={(event) => updateValue("title_pa", event.target.value)} /></Field>
+          <Field label={t("Company title in English")} error={fieldErrors.title_en ? t(fieldErrors.title_en) : undefined}><input required maxLength={190} value={values.title_en} onChange={(event) => updateValue("title_en", event.target.value)} /></Field>
+          <Field label={t("Primary phone")} error={fieldErrors.phone1 ? t(fieldErrors.phone1) : undefined}><input required type="tel" maxLength={20} value={values.phone1} onChange={(event) => updateValue("phone1", event.target.value)} /></Field>
+          <Field label={t("Secondary phone (optional)")} error={fieldErrors.phone2 ? t(fieldErrors.phone2) : undefined}><input type="tel" maxLength={20} value={values.phone2} onChange={(event) => updateValue("phone2", event.target.value)} /></Field>
+          <Field label={t("Address")} error={fieldErrors.address ? t(fieldErrors.address) : undefined} wide><textarea required rows={3} value={values.address} onChange={(event) => updateValue("address", event.target.value)} /></Field>
+          <Field label={t("Bill text (optional)")} error={fieldErrors.bill_text ? t(fieldErrors.bill_text) : undefined} wide><textarea rows={3} value={values.bill_text} onChange={(event) => updateValue("bill_text", event.target.value)} /></Field>
+          <div className="settings-field settings-field--wide"><span>{t("Company logo (optional)")}</span><div className="settings-logo-row">{logoPreview ? <img className="settings-logo-preview" src={logoPreview} alt={t("Company logo preview")} /> : <div className="settings-logo-placeholder"><ImagePlus size={21} /></div>}<label className="settings-logo-picker">{t("Choose image")}<input id="settings-logo" type="file" accept="image/*" onChange={handleLogo} /></label><small>{t("Image file, up to 2MB. Uploading a new logo replaces the current logo.")}</small></div>{fieldErrors.logo && <em>{t(fieldErrors.logo)}</em>}</div>
         </div>
-        <footer className="settings-form-footer"><button className="settings-save" type="submit" disabled={saving}>{saving ? <LoaderCircle className="settings-spin" size={16} /> : <CheckCircle2 size={16} />}{saving ? "Saving…" : "Save Settings"}</button></footer>
+        <footer className="settings-form-footer"><button className="settings-save" type="submit" disabled={saving}>{saving ? <LoaderCircle className="settings-spin" size={16} /> : <CheckCircle2 size={16} />}{t(saving ? "Saving…" : "Save Settings")}</button></footer>
       </form>}
     </div>
   );

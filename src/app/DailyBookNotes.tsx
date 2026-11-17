@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Eye, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { getErrorMessage, getValidationResult, isRecord, optionalText, parseId, parseLaravelPage, todayValue, type LaravelPage } from "@/app/InventoryShared";
+import { useLocale } from "@/lib/locale";
 
 interface DailyBookNote {
   id: number;
@@ -30,6 +31,7 @@ function displayDate(value: string): string {
 }
 
 export default function DailyBookNotes() {
+  const { direction, t } = useLocale();
   const [rows, setRows] = useState<LaravelPage<DailyBookNote> | null>(null);
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
@@ -102,46 +104,46 @@ export default function DailyBookNotes() {
   }
 
   return (
-    <main className="daily-notes-page">
+    <main className="daily-notes-page" dir={direction}>
       <header className="daily-notes-heading">
-        <div><p className="overview-eyebrow">SECRETARY / RECORDS</p><h1>Daily Book Notes</h1><p>Keep a clear record of daily business notes.</p></div>
-        <button className="daily-notes-primary" onClick={() => { resetForm(); setFormOpen(true); }}><Plus size={17} /> New Note</button>
+        <div><p className="overview-eyebrow">{t("SECRETARY / RECORDS")}</p><h1>{t("Daily Book Notes")}</h1><p>{t("Keep a clear record of daily business notes.")}</p></div>
+        <button className="daily-notes-primary" onClick={() => { resetForm(); setFormOpen(true); }}><Plus size={17} /> {t("New Note")}</button>
       </header>
 
-      {success && <div className="daily-notes-notice" role="status">{success}<button aria-label="Dismiss message" onClick={() => setSuccess(null)}><X size={16} /></button></div>}
+      {success && <div className="daily-notes-notice" role="status">{t(success)}<button aria-label={t("Dismiss message")} onClick={() => setSuccess(null)}><X size={16} /></button></div>}
 
       {formOpen && <section className="daily-notes-panel daily-notes-compose">
-        <div className="daily-notes-panel-heading"><div className="daily-notes-icon"><BookOpen size={18} /></div><div><h2>{editingId === null ? "Create note" : "Edit note"}</h2><p>Enter the note details and applicable date.</p></div><button className="daily-notes-icon-button" aria-label="Close form" onClick={resetForm}><X size={18} /></button></div>
+        <div className="daily-notes-panel-heading"><div className="daily-notes-icon"><BookOpen size={18} /></div><div><h2>{t(editingId === null ? "Create note" : "Edit note")}</h2><p>{t("Enter the note details and applicable date.")}</p></div><button className="daily-notes-icon-button" aria-label={t("Close form")} onClick={resetForm}><X size={18} /></button></div>
         <form className="daily-notes-form" onSubmit={(event) => void saveNote(event)}>
-          <label>Title <span>Optional</span><input value={title} maxLength={255} onChange={(event) => setTitle(event.target.value)} aria-invalid={Boolean(fieldErrors.title)} />{fieldErrors.title && <small>{fieldErrors.title}</small>}</label>
-          <label>Note date <b>*</b><input type="date" value={noteDate} onChange={(event) => setNoteDate(event.target.value)} required aria-invalid={Boolean(fieldErrors.note_date)} />{fieldErrors.note_date && <small>{fieldErrors.note_date}</small>}</label>
-          <label className="daily-notes-wide">Details <b>*</b><textarea value={details} onChange={(event) => setDetails(event.target.value)} rows={4} required aria-invalid={Boolean(fieldErrors.details)} />{fieldErrors.details && <small>{fieldErrors.details}</small>}</label>
-          {formError && <p className="daily-notes-form-error" role="alert">{formError}</p>}
-          <div className="daily-notes-form-actions"><button type="button" className="daily-notes-secondary" onClick={resetForm}>Cancel</button><button type="submit" className="daily-notes-primary" disabled={saving}>{saving && <LoaderCircle size={16} className="daily-notes-spin" />}{saving ? "Saving…" : editingId === null ? "Create Note" : "Save Changes"}</button></div>
+          <label>{t("Title")} <span>{t("Optional")}</span><input value={title} maxLength={255} onChange={(event) => setTitle(event.target.value)} aria-invalid={Boolean(fieldErrors.title)} />{fieldErrors.title && <small>{t(fieldErrors.title)}</small>}</label>
+          <label>{t("Note date")} <b>*</b><input type="date" value={noteDate} onChange={(event) => setNoteDate(event.target.value)} required aria-invalid={Boolean(fieldErrors.note_date)} />{fieldErrors.note_date && <small>{t(fieldErrors.note_date)}</small>}</label>
+          <label className="daily-notes-wide">{t("Details")} <b>*</b><textarea value={details} onChange={(event) => setDetails(event.target.value)} rows={4} required aria-invalid={Boolean(fieldErrors.details)} />{fieldErrors.details && <small>{t(fieldErrors.details)}</small>}</label>
+          {formError && <p className="daily-notes-form-error" role="alert">{t(formError)}</p>}
+          <div className="daily-notes-form-actions"><button type="button" className="daily-notes-secondary" onClick={resetForm}>{t("Cancel")}</button><button type="submit" className="daily-notes-primary" disabled={saving}>{saving && <LoaderCircle size={16} className="daily-notes-spin" />}{t(saving ? "Saving…" : editingId === null ? "Create Note" : "Save Changes")}</button></div>
         </form>
       </section>}
 
       <section className="daily-notes-panel">
-        <div className="daily-notes-list-heading"><div className="daily-notes-icon"><CalendarDays size={18} /></div><div><h2>Notes</h2><p>{rows ? `${rows.total} record${rows.total === 1 ? "" : "s"}` : "Browse and manage daily notes"}</p></div><button className="daily-notes-icon-button" aria-label="Refresh notes" onClick={() => setRetry((current) => current + 1)} disabled={loading}><RefreshCw size={16} /></button></div>
+        <div className="daily-notes-list-heading"><div className="daily-notes-icon"><CalendarDays size={18} /></div><div><h2>{t("Notes")}</h2><p>{rows ? t(rows.total === 1 ? "One record" : "{count} records").replace("{count}", String(rows.total)) : t("Browse and manage daily notes")}</p></div><button className="daily-notes-icon-button" aria-label={t("Refresh notes")} onClick={() => setRetry((current) => current + 1)} disabled={loading}><RefreshCw size={16} /></button></div>
         <form className="daily-notes-filters" onSubmit={applyFilters}>
-          <label className="daily-notes-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title or details" aria-label="Search title or details" /></label>
-          <label>From<input type="date" value={fromDate} onChange={(event) => { setFromDate(event.target.value); setPage(1); }} /></label>
-          <label>To<input type="date" value={toDate} onChange={(event) => { setToDate(event.target.value); setPage(1); }} /></label>
-          <button className="daily-notes-filter-button" type="submit">Search</button>
+          <label className="daily-notes-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search title or details")} aria-label={t("Search title or details")} /></label>
+          <label>{t("From")}<input type="date" value={fromDate} onChange={(event) => { setFromDate(event.target.value); setPage(1); }} /></label>
+          <label>{t("To")}<input type="date" value={toDate} onChange={(event) => { setToDate(event.target.value); setPage(1); }} /></label>
+          <button className="daily-notes-filter-button" type="submit">{t("Search")}</button>
         </form>
-        {loading ? <div className="daily-notes-state"><LoaderCircle className="daily-notes-spin" size={19} /> Loading notes…</div>
-          : loadError ? <div className="daily-notes-state daily-notes-state-error"><strong>Could not load notes</strong><span>{loadError}</span><button onClick={() => setRetry((current) => current + 1)}>Try again</button></div>
-          : !rows?.data.length ? <div className="daily-notes-state daily-notes-state-empty"><BookOpen size={22} /><strong>No notes found</strong><span>Create a note or adjust the search and date filters.</span></div>
+        {loading ? <div className="daily-notes-state"><LoaderCircle className="daily-notes-spin" size={19} /> {t("Loading notes…")}</div>
+          : loadError ? <div className="daily-notes-state daily-notes-state-error"><strong>{t("Could not load notes")}</strong><span>{t(loadError)}</span><button onClick={() => setRetry((current) => current + 1)}>{t("Try again")}</button></div>
+          : !rows?.data.length ? <div className="daily-notes-state daily-notes-state-empty"><BookOpen size={22} /><strong>{t("No notes found")}</strong><span>{t("Create a note or adjust the search and date filters.")}</span></div>
           : <>
-            <div className="daily-notes-table-wrap"><table className="daily-notes-table"><thead><tr><th>Title</th><th>Date</th><th>Details</th><th>Created by</th><th>Actions</th></tr></thead><tbody>{rows.data.map((note) => <tr key={note.id}>
-              <td><strong>{note.title || "Untitled note"}</strong></td><td>{displayDate(note.noteDate)}</td><td className="daily-notes-preview">{note.details}</td><td>{note.creator || "—"}</td>
-              <td><div className="daily-notes-row-actions"><button aria-label="View note" title="View note" onClick={() => void openNote(note.id)}><Eye size={16} /></button><button aria-label="Edit note" title="Edit note" onClick={() => void openNote(note.id, true)}><Pencil size={16} /></button></div></td>
+            <div className="daily-notes-table-wrap"><table className="daily-notes-table"><thead><tr><th>{t("Title")}</th><th>{t("Date")}</th><th>{t("Details")}</th><th>{t("Created by")}</th><th>{t("Actions")}</th></tr></thead><tbody>{rows.data.map((note) => <tr key={note.id}>
+              <td><strong>{note.title || t("Untitled note")}</strong></td><td>{displayDate(note.noteDate)}</td><td className="daily-notes-preview">{note.details}</td><td>{note.creator || "—"}</td>
+              <td><div className="daily-notes-row-actions"><button aria-label={t("View note")} title={t("View note")} onClick={() => void openNote(note.id)}><Eye size={16} /></button><button aria-label={t("Edit note")} title={t("Edit note")} onClick={() => void openNote(note.id, true)}><Pencil size={16} /></button></div></td>
             </tr>)}</tbody></table></div>
-            <footer className="daily-notes-pagination"><span>Showing {Math.min((rows.currentPage - 1) * rows.perPage + 1, rows.total)}–{Math.min(rows.currentPage * rows.perPage, rows.total)} of {rows.total}</span><div><button disabled={rows.currentPage <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft size={15} /> Previous</button><span>Page {rows.currentPage} of {rows.lastPage}</span><button disabled={rows.currentPage >= rows.lastPage} onClick={() => setPage((current) => current + 1)}>Next <ChevronRight size={15} /></button></div></footer>
+            <footer className="daily-notes-pagination"><span>{t("Showing {start}–{end} of {total}").replace("{start}", String(Math.min((rows.currentPage - 1) * rows.perPage + 1, rows.total))).replace("{end}", String(Math.min(rows.currentPage * rows.perPage, rows.total))).replace("{total}", String(rows.total))}</span><div><button disabled={rows.currentPage <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft size={15} /> {t("Previous")}</button><span>{t("Page")} {rows.currentPage} {t("of")} {rows.lastPage}</span><button disabled={rows.currentPage >= rows.lastPage} onClick={() => setPage((current) => current + 1)}>{t("Next")} <ChevronRight size={15} /></button></div></footer>
           </>}
       </section>
 
-      {(selected || detailLoading || detailError) && <div className="daily-notes-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setSelected(null); setDetailError(null); } }}><section className="daily-notes-detail" role="dialog" aria-modal="true" aria-labelledby="daily-notes-detail-title"><header><div><p className="overview-eyebrow">NOTE DETAILS</p><h2 id="daily-notes-detail-title">{selected?.title || "Daily book note"}</h2></div><button className="daily-notes-icon-button" aria-label="Close details" onClick={() => { setSelected(null); setDetailError(null); }}><X size={18} /></button></header>{detailLoading ? <div className="daily-notes-state"><LoaderCircle className="daily-notes-spin" size={19} /> Loading note…</div> : detailError ? <div className="daily-notes-state daily-notes-state-error">{detailError}</div> : selected && <><div className="daily-notes-meta"><div><small>Note date</small><strong>{displayDate(selected.noteDate)}</strong></div><div><small>Created by</small><strong>{selected.creator || "—"}</strong></div></div><p className="daily-notes-full-details">{selected.details}</p><footer><button className="daily-notes-secondary" onClick={() => { const note = selected; setSelected(null); setEditingId(note.id); setTitle(note.title ?? ""); setDetails(note.details); setNoteDate(note.noteDate); setFormOpen(true); }}>Edit note</button></footer></>}</section></div>}
+      {(selected || detailLoading || detailError) && <div className="daily-notes-backdrop" role="presentation"><section className="daily-notes-detail" role="dialog" aria-modal="true" aria-labelledby="daily-notes-detail-title"><header><div><p className="overview-eyebrow">{t("NOTE DETAILS")}</p><h2 id="daily-notes-detail-title">{selected?.title || t("Daily book note")}</h2></div><button className="daily-notes-icon-button" aria-label={t("Close details")} onClick={() => { setSelected(null); setDetailError(null); }}><X size={18} /></button></header>{detailLoading ? <div className="daily-notes-state"><LoaderCircle className="daily-notes-spin" size={19} /> {t("Loading note…")}</div> : detailError ? <div className="daily-notes-state daily-notes-state-error">{t(detailError)}</div> : selected && <><div className="daily-notes-meta"><div><small>{t("Note date")}</small><strong>{displayDate(selected.noteDate)}</strong></div><div><small>{t("Created by")}</small><strong>{selected.creator || "—"}</strong></div></div><p className="daily-notes-full-details">{selected.details}</p><footer><button className="daily-notes-secondary" onClick={() => { const note = selected; setSelected(null); setEditingId(note.id); setTitle(note.title ?? ""); setDetails(note.details); setNoteDate(note.noteDate); setFormOpen(true); }}>{t("Edit note")}</button></footer></>}</section></div>}
     </main>
   );
 }

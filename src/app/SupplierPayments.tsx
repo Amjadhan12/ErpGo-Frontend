@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { api } from '@/lib/api'
+import { useLocale } from '@/lib/locale'
 
 interface Supplier {
   id: number
@@ -269,6 +270,7 @@ function formatDate(value: string): string {
 }
 
 export default function SupplierPayments() {
+  const { direction, t } = useLocale()
   const [payments, setPayments] = useState<PaymentPage | null>(null)
   const [page, setPage] = useState(1)
   const [listLoading, setListLoading] = useState(true)
@@ -451,52 +453,52 @@ export default function SupplierPayments() {
   )
 
   return (
-    <div className="purchases-page supplier-payments-page">
+    <div className="purchases-page supplier-payments-page" dir={direction}>
       <header className="purchases-heading">
         <div>
-          <p className="overview-eyebrow">FINANCE &amp; TOOLS</p>
-          <h1>Supplier Payments</h1>
-          <p className="overview-heading__description">Record and review payments made to suppliers.</p>
+          <p className="overview-eyebrow">{t("FINANCE & TOOLS")}</p>
+          <h1>{t("Supplier Payments")}</h1>
+          <p className="overview-heading__description">{t("Record and review payments made to suppliers.")}</p>
         </div>
         <button className="purchase-create-button" type="button" onClick={startCreate}>
-          <span>+ New Payment</span>
+          <span>+ {t("New Payment")}</span>
         </button>
       </header>
 
-      {success && <p className="purchase-success-message supplier-payment-success" role="status">{success}</p>}
+      {success && <p className="purchase-success-message supplier-payment-success" role="status">{t(success)}</p>}
 
       {isFormOpen && (
         <section className="purchases-panel supplier-payment-form-panel">
           <header className="supplier-payment-form-heading">
-            <h2>Record Supplier Payment</h2>
-            <button type="button" className="purchase-cancel-button" onClick={() => setIsFormOpen(false)} disabled={isSaving}>Cancel</button>
+            <h2>{t("Record Supplier Payment")}</h2>
+            <button type="button" className="purchase-cancel-button" onClick={() => setIsFormOpen(false)} disabled={isSaving}>{t("Cancel")}</button>
           </header>
           {optionsError && (
             <div className="supplier-payment-error" role="alert">
-              {optionsError}
-              <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>Retry</button>
+              {t(optionsError)}
+              <button type="button" onClick={() => setOptionsRetry((value) => value + 1)}>{t("Retry")}</button>
             </div>
           )}
-          {formError && <p className="create-purchase-alert supplier-payment-alert" role="alert">{formError}</p>}
+          {formError && <p className="create-purchase-alert supplier-payment-alert" role="alert">{t(formError)}</p>}
           <form className="supplier-payment-form" onSubmit={(event) => void submit(event)} noValidate>
             <label className="purchase-field">
-              <span>Payment Number <i>*</i></span>
+              <span>{t("Payment Number")} <i>*</i></span>
               <input value={form.paymentNumber} onChange={(event) => setField('paymentNumber', event.target.value)} maxLength={50} aria-invalid={Boolean(fields.paymentNumber)} />
-              {fields.paymentNumber && <small className="purchase-field__error">{fields.paymentNumber}</small>}
+              {fields.paymentNumber && <small className="purchase-field__error">{t(fields.paymentNumber)}</small>}
             </label>
 
             <div className="purchase-field supplier-payment-supplier">
-              <label htmlFor="supplier-payment-search"><span>Supplier <i>*</i></span></label>
-              <input id="supplier-payment-search" type="search" placeholder="Search supplier" value={supplierSearch} onChange={(event) => setSupplierSearch(event.target.value)} disabled={optionsLoading || Boolean(optionsError)} />
-              <select value={form.supplierId} onChange={(event) => setField('supplierId', event.target.value)} disabled={optionsLoading || Boolean(optionsError)} aria-label="Supplier" aria-invalid={Boolean(fields.supplierId)}>
-                <option value="">{optionsLoading ? 'Loading suppliers…' : filteredSuppliers.length ? 'Select supplier' : 'No active suppliers found'}</option>
+              <label htmlFor="supplier-payment-search"><span>{t("Supplier")} <i>*</i></span></label>
+              <input id="supplier-payment-search" type="search" placeholder={t("Search supplier")} value={supplierSearch} onChange={(event) => setSupplierSearch(event.target.value)} disabled={optionsLoading || Boolean(optionsError)} />
+              <select value={form.supplierId} onChange={(event) => setField('supplierId', event.target.value)} disabled={optionsLoading || Boolean(optionsError)} aria-label={t("Supplier")} aria-invalid={Boolean(fields.supplierId)}>
+                <option value="">{optionsLoading ? t("Loading suppliers…") : filteredSuppliers.length ? t("Select supplier") : t("No active suppliers found")}</option>
                 {filteredSuppliers.map((supplier) => <option value={supplier.id} key={supplier.id}>{supplier.name}</option>)}
               </select>
-              {fields.supplierId && <small className="purchase-field__error">{fields.supplierId}</small>}
+              {fields.supplierId && <small className="purchase-field__error">{t(fields.supplierId)}</small>}
             </div>
 
             <label className="purchase-field">
-              <span>Currency <i>*</i></span>
+              <span>{t("Currency")} <i>*</i></span>
               <select value={form.currencyId} onChange={(event) => {
                 const currencyId = event.target.value
                 const currency = currencies.find((item) => String(item.id) === currencyId)
@@ -507,78 +509,78 @@ export default function SupplierPayments() {
                   accountId: '',
                 }))
               }} disabled={optionsLoading || Boolean(optionsError)} aria-invalid={Boolean(fields.currencyId)}>
-                <option value="">{optionsLoading ? 'Loading currencies…' : 'Select currency'}</option>
+                <option value="">{optionsLoading ? t("Loading currencies…") : t("Select currency")}</option>
                 {currencies.map((currency) => <option value={currency.id} key={currency.id}>{currency.code} — {currency.name}</option>)}
               </select>
-              {fields.currencyId && <small className="purchase-field__error">{fields.currencyId}</small>}
+              {fields.currencyId && <small className="purchase-field__error">{t(fields.currencyId)}</small>}
             </label>
 
             <label className="purchase-field">
-              <span>Financial Account <i>*</i></span>
+              <span>{t("Financial Account")} <i>*</i></span>
               <select value={form.accountId} onChange={(event) => setField('accountId', event.target.value)} disabled={!form.currencyId || accountsLoading || Boolean(accountsError) || accounts.length === 0} aria-invalid={Boolean(fields.accountId)}>
-                <option value="">{!form.currencyId ? 'Select currency first' : accountsLoading ? 'Loading accounts…' : accounts.length ? 'Select account' : 'No active account found'}</option>
+                <option value="">{!form.currencyId ? t("Select currency first") : accountsLoading ? t("Loading accounts…") : accounts.length ? t("Select account") : t("No active account found")}</option>
                 {accounts.map((account) => <option value={account.id} key={account.id}>{account.name} · {account.accountType}</option>)}
               </select>
-              {accountsError && <small className="purchase-field__error">{accountsError} <button type="button" onClick={() => setAccountRetry((value) => value + 1)}>Retry</button></small>}
-              {!accountsLoading && !accountsError && form.currencyId && accounts.length === 0 && <small className="purchase-field__error">No active account is available for this currency.</small>}
-              {fields.accountId && <small className="purchase-field__error">{fields.accountId}</small>}
+              {accountsError && <small className="purchase-field__error">{t(accountsError)} <button type="button" onClick={() => setAccountRetry((value) => value + 1)}>{t("Retry")}</button></small>}
+              {!accountsLoading && !accountsError && form.currencyId && accounts.length === 0 && <small className="purchase-field__error">{t("No active account is available for this currency.")}</small>}
+              {fields.accountId && <small className="purchase-field__error">{t(fields.accountId)}</small>}
             </label>
 
             <label className="purchase-field">
-              <span>Amount <i>*</i></span>
+              <span>{t("Amount")} <i>*</i></span>
               <input type="number" min="0" step="any" value={form.amount} onChange={(event) => setField('amount', event.target.value)} aria-invalid={Boolean(fields.amount)} />
-              {fields.amount && <small className="purchase-field__error">{fields.amount}</small>}
+              {fields.amount && <small className="purchase-field__error">{t(fields.amount)}</small>}
             </label>
 
             <label className="purchase-field">
-              <span>Exchange Rate to AFN <i>*</i></span>
-              <input type="number" min="0" step="any" value={form.exchangeRate} onChange={(event) => setField('exchangeRate', event.target.value)} disabled={!form.currencyId || isAfn} placeholder={isAfn ? '1' : 'Enter rate'} aria-invalid={Boolean(fields.exchangeRate)} />
+              <span>{t("Exchange Rate to AFN")} <i>*</i></span>
+              <input type="number" min="0" step="any" value={form.exchangeRate} onChange={(event) => setField('exchangeRate', event.target.value)} disabled={!form.currencyId || isAfn} placeholder={isAfn ? '1' : t("Enter rate")} aria-invalid={Boolean(fields.exchangeRate)} />
               {fields.exchangeRate
-                ? <small className="purchase-field__error">{fields.exchangeRate}</small>
-                : <small className="purchase-field__hint">{isAfn ? 'AFN rate is fixed at 1.' : 'Enter the current rate; no rate is assumed.'}</small>}
+                ? <small className="purchase-field__error">{t(fields.exchangeRate)}</small>
+                : <small className="purchase-field__hint">{t(isAfn ? 'AFN rate is fixed at 1.' : 'Enter the current rate; no rate is assumed.')}</small>}
             </label>
 
             <label className="purchase-field">
-              <span>Payment Date <i>*</i></span>
+              <span>{t("Payment Date")} <i>*</i></span>
               <input type="date" value={form.paymentDate} onChange={(event) => setField('paymentDate', event.target.value)} aria-invalid={Boolean(fields.paymentDate)} />
-              {fields.paymentDate && <small className="purchase-field__error">{fields.paymentDate}</small>}
+              {fields.paymentDate && <small className="purchase-field__error">{t(fields.paymentDate)}</small>}
             </label>
 
             <label className="purchase-field supplier-payment-notes">
-              <span>Notes</span>
+              <span>{t("Notes")}</span>
               <textarea rows={2} maxLength={5000} value={form.notes} onChange={(event) => setField('notes', event.target.value)} />
-              {fields.notes && <small className="purchase-field__error">{fields.notes}</small>}
+              {fields.notes && <small className="purchase-field__error">{t(fields.notes)}</small>}
             </label>
 
             <div className="supplier-payment-form-actions">
-              <button type="button" className="purchase-cancel-button" onClick={() => setIsFormOpen(false)} disabled={isSaving}>Cancel</button>
+              <button type="button" className="purchase-cancel-button" onClick={() => setIsFormOpen(false)} disabled={isSaving}>{t("Cancel")}</button>
               <button type="submit" className="purchase-save-button" disabled={isSaving || optionsLoading || Boolean(optionsError)}>
-                {isSaving ? 'Saving…' : 'Save Payment'}
+                {t(isSaving ? 'Saving…' : 'Save Payment')}
               </button>
             </div>
           </form>
         </section>
       )}
 
-      <section className="purchases-panel" aria-label="Supplier payments list">
+      <section className="purchases-panel" aria-label={t("Supplier payments list")}>
         {listLoading ? (
-          <div className="purchases-state" role="status"><span className="loading-spinner" /> Loading supplier payments…</div>
+          <div className="purchases-state" role="status"><span className="loading-spinner" /> {t("Loading supplier payments…")}</div>
         ) : listError ? (
           <div className="purchases-state purchases-state--error" role="alert">
-            {listError}
-            <button className="purchases-retry" type="button" onClick={() => setListRetry((value) => value + 1)}>Try again</button>
+            {t(listError)}
+            <button className="purchases-retry" type="button" onClick={() => setListRetry((value) => value + 1)}>{t("Try again")}</button>
           </div>
         ) : payments && payments.data.length === 0 ? (
           <div className="purchases-state purchases-state--empty">
-            <strong>No supplier payments yet</strong>
-            <span>Record a payment to see it listed here.</span>
+            <strong>{t("No supplier payments yet")}</strong>
+            <span>{t("Record a payment to see it listed here.")}</span>
           </div>
         ) : payments ? (
           <>
             <div className="purchases-table-scroll">
               <table className="purchases-table supplier-payments-table">
                 <thead>
-                  <tr><th>Payment Number</th><th>Payment Date</th><th>Supplier</th><th>Financial Account</th><th>Currency</th><th className="purchases-table__numeric">Amount</th><th>Created By</th><th>Details</th></tr>
+                  <tr><th>{t("Payment Number")}</th><th>{t("Payment Date")}</th><th>{t("Supplier")}</th><th>{t("Financial Account")}</th><th>{t("Currency")}</th><th className="purchases-table__numeric">{t("Amount")}</th><th>{t("Created By")}</th><th>{t("Details")}</th></tr>
                 </thead>
                 <tbody>
                   {payments.data.map((payment) => (
@@ -590,18 +592,18 @@ export default function SupplierPayments() {
                       <td><span className="purchases-currency">{payment.currency}</span></td>
                       <td className="purchases-table__numeric purchases-total">{formatAmount(payment.amount, payment.currency)}</td>
                       <td>{payment.createdBy}</td>
-                      <td><button className="purchase-view-button" type="button" onClick={() => setSelectedPayment(payment)}>Details</button></td>
+                      <td><button className="purchase-view-button" type="button" onClick={() => setSelectedPayment(payment)}>{t("Details")}</button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <footer className="purchases-pagination">
-              <span>Showing {payments.total ? (payments.currentPage - 1) * payments.perPage + 1 : 0}–{Math.min(payments.currentPage * payments.perPage, payments.total)} of {new Intl.NumberFormat().format(payments.total)} payments</span>
+              <span>{t("Showing {start}–{end} of {total} payments").replace("{start}", String(payments.total ? (payments.currentPage - 1) * payments.perPage + 1 : 0)).replace("{end}", String(Math.min(payments.currentPage * payments.perPage, payments.total))).replace("{total}", new Intl.NumberFormat().format(payments.total))}</span>
               <div className="purchases-pagination__controls">
-                <button type="button" onClick={() => setPage((current) => current - 1)} disabled={payments.currentPage <= 1}>‹ Previous</button>
-                <span>Page <strong>{payments.currentPage}</strong> of <strong>{payments.lastPage}</strong></span>
-                <button type="button" onClick={() => setPage((current) => current + 1)} disabled={payments.currentPage >= payments.lastPage}>Next ›</button>
+                <button type="button" onClick={() => setPage((current) => current - 1)} disabled={payments.currentPage <= 1}>{t("‹ Previous")}</button>
+                <span>{t("Page")} <strong>{payments.currentPage}</strong> {t("of")} <strong>{payments.lastPage}</strong></span>
+                <button type="button" onClick={() => setPage((current) => current + 1)} disabled={payments.currentPage >= payments.lastPage}>{t("Next ›")}</button>
               </div>
             </footer>
           </>
@@ -609,22 +611,20 @@ export default function SupplierPayments() {
       </section>
 
       {selectedPayment && (
-        <div className="purchase-modal-backdrop" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) setSelectedPayment(null)
-        }}>
+        <div className="purchase-modal-backdrop">
           <section className="purchase-modal supplier-payment-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-payment-detail-title">
             <header className="purchase-modal__header">
-              <div><p className="overview-eyebrow">SUPPLIER PAYMENT</p><h2 id="supplier-payment-detail-title">{selectedPayment.paymentNumber}</h2><p>{formatDate(selectedPayment.paymentDate)}</p></div>
-              <button type="button" className="purchase-modal__close" onClick={() => setSelectedPayment(null)} aria-label="Close details">×</button>
+              <div><p className="overview-eyebrow">{t("SUPPLIER PAYMENT")}</p><h2 id="supplier-payment-detail-title">{selectedPayment.paymentNumber}</h2><p>{formatDate(selectedPayment.paymentDate)}</p></div>
+              <button type="button" className="purchase-modal__close" onClick={() => setSelectedPayment(null)} aria-label={t("Close details")}>×</button>
             </header>
             <div className="purchase-modal__body">
               <dl className="purchase-detail-grid">
-                <div><dt>Supplier</dt><dd>{selectedPayment.supplier}</dd></div>
-                <div><dt>Financial Account</dt><dd>{selectedPayment.account} · {selectedPayment.accountType}</dd></div>
-                <div><dt>Amount</dt><dd>{formatAmount(selectedPayment.amount, selectedPayment.currency)}</dd></div>
-                <div><dt>Exchange Rate to AFN</dt><dd>{selectedPayment.exchangeRate}</dd></div>
-                <div><dt>Created By</dt><dd>{selectedPayment.createdBy}</dd></div>
-                <div><dt>Notes</dt><dd>{selectedPayment.notes || '—'}</dd></div>
+                <div><dt>{t("Supplier")}</dt><dd>{selectedPayment.supplier}</dd></div>
+                <div><dt>{t("Financial Account")}</dt><dd>{selectedPayment.account} · {t(selectedPayment.accountType)}</dd></div>
+                <div><dt>{t("Amount")}</dt><dd>{formatAmount(selectedPayment.amount, selectedPayment.currency)}</dd></div>
+                <div><dt>{t("Exchange Rate to AFN")}</dt><dd>{selectedPayment.exchangeRate}</dd></div>
+                <div><dt>{t("Created By")}</dt><dd>{selectedPayment.createdBy}</dd></div>
+                <div><dt>{t("Notes")}</dt><dd>{selectedPayment.notes || '—'}</dd></div>
               </dl>
             </div>
           </section>

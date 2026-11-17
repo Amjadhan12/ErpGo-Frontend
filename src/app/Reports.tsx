@@ -175,14 +175,14 @@ function agingLabel(value: string): string { return value.replaceAll("_", " ").r
 function SectionState<T>({ report, children }: { report: ReportState<T>; children: (data: T) => React.ReactNode }) {
   const { t } = useLocale();
   if (report.loading) return <div className="reports-state" role="status">{t("Loading report…")}</div>;
-  if (report.error) return <div className="reports-state reports-state--error" role="alert">{report.error}<button type="button" onClick={report.reload}>{t("Try again")}</button></div>;
+  if (report.error) return <div className="reports-state reports-state--error" role="alert">{t(report.error)}<button type="button" onClick={report.reload}>{t("Try again")}</button></div>;
   if (!report.data) return <div className="reports-state">{t("No report data available.")}</div>;
   return <>{children(report.data)}</>;
 }
 const chartColors = ["#0891b2", "#0e7490", "#22d3ee", "#155e75", "#67e8f9", "#164e63", "#a5f3fc"];
 
 export default function Reports() {
-  const { t, language } = useLocale();
+  const { t, language, direction } = useLocale();
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseOption[]>([]);
   const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -247,8 +247,11 @@ export default function Reports() {
   }, [inventory.data]);
   const currencyCode = (id: string) => currencies.find((item) => String(item.id) === id)?.code ?? "AFN";
   const financialCodes = useMemo(() => {
-    const codes = new Set(["AFN", "USD", "PKR", ...(financial.data?.cash.map((row) => row.currency) ?? []), ...Object.keys(financial.data?.customerReceivables ?? {}), ...Object.keys(financial.data?.supplierPayables ?? {})]);
-    if (financialCurrency) return [currencyCode(financialCurrency)];
+    const codes = new Set([...(financial.data?.cash.map((row) => row.currency) ?? []), ...Object.keys(financial.data?.customerReceivables ?? {}), ...Object.keys(financial.data?.supplierPayables ?? {})]);
+    if (financialCurrency) {
+      const selectedCode = currencyCode(financialCurrency);
+      return codes.has(selectedCode) ? [selectedCode] : [];
+    }
     const order = ["AFN", "USD", "PKR"];
     return [...codes].sort((a, b) => {
       const indexA = order.indexOf(a);
@@ -294,12 +297,24 @@ export default function Reports() {
   }
   function resetDates() { setPeriodMode("custom"); setFromDraft(""); setToDraft(""); setFromDate(""); setToDate(""); setPeriodLabel(t("All dates")); setDateError(null); }
 
-  return <div className="reports-page">
+  return <div className="reports-page" dir={direction}>
     <header className="reports-heading"><div><p className="reports-eyebrow">{t("ANALYTICS")}</p><h1>{t("Reports")}</h1><p>{t("Explore financial performance, cash movement, inventory, partners, and purchases.")}</p></div><button className="reports-refresh" type="button" onClick={() => { financial.reload(); profitLoss.reload(); cashFlow.reload(); inventory.reload(); partners.reload(); purchases.reload(); partnerAging.reload(); }}><RefreshCw size={16} /> {t("Refresh reports")}</button></header>
-    <section className="reports-date-filter"><div className="reports-period-copy"><strong>{t("Report period")}</strong><span>{t("Applies to Profit & Loss, Cash Flow, and Purchase Summary.")}</span><small>{t("Applied:")} {periodLabel}</small></div><label>{t("Period")}<select value={periodMode} onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}><option value="custom">{t("Custom Range")}</option><option value="monthly">{t("Monthly")}</option><option value="yearly">{t("Yearly")}</option></select></label>{periodMode === "custom" ? <><label>{t("From")}<input type="date" value={fromDraft} max={toDraft || undefined} onChange={(event) => setFromDraft(event.target.value)} /></label><label>{t("To")}<input type="date" value={toDraft} min={fromDraft || undefined} onChange={(event) => setToDraft(event.target.value)} /></label></> : <>{periodMode === "monthly" && <label>{t("Month")}<select value={periodMonth} onChange={(event) => setPeriodMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2020, index, 1))}</option>)}</select></label>}<label>{t("Year")}<input type="number" min="1" max="9999" value={periodYear} onChange={(event) => setPeriodYear(Number(event.target.value))} /></label></>}<div className="reports-filter-buttons"><button type="button" className="reports-reset" onClick={resetDates}>{t("Reset")}</button><button type="button" className="reports-apply" onClick={applyPeriod}>{t("Apply period")}</button></div>{dateError && <span className="reports-date-error" role="alert">{t(dateError)}</span>}</section>
-    {optionsError && <div className="reports-options-error" role="alert">{t("Some filter options could not be loaded:")} {optionsError}</div>}
+    <section className="reports-date-filter"><div className="reports-period-copy"><strong>{t("Report period")}</strong><span>{t("Applies to Profit & Loss, Cash Flow, and Purchase Summary.")}</span><small>{t("Applied:")} {periodLabel}</small></div><label>{t("Period")}<select value={periodMode} onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}><option value="custom">{t("Custom Range")}</option><option value="monthly">{t("Monthly")}</option><option value="yearly">{t("Yearly")}</option></select></label>{periodMode === "custom" ? <><label>{t("From")}<input type="date" value={fromDraft} max={toDraft || undefined} onChange={(event) => setFromDraft(event.target.value)} /></label><label>{t("To")}<input type="date" value={toDraft} min={fromDraft || undefined} onChange={(event) => setToDraft(event.target.value)} /></label></> : <>{periodMode === "monthly" && <label>{t("Month")}<select value={periodMonth} onChange={(event) => setPeriodMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat(language === "ps" ? "ps-AF" : "en-US", { month: "long" }).format(new Date(2020, index, 1))}</option>)}</select></label>}<label>{t("Year")}<input type="number" min="1" max="9999" value={periodYear} onChange={(event) => setPeriodYear(Number(event.target.value))} /></label></>}<div className="reports-filter-buttons"><button type="button" className="reports-reset" onClick={resetDates}>{t("Reset")}</button><button type="button" className="reports-apply" onClick={applyPeriod}>{t("Apply period")}</button></div>{dateError && <span className="reports-date-error" role="alert">{t(dateError)}</span>}</section>
+    {optionsError && <div className="reports-options-error" role="alert">{t("Some filter options could not be loaded:")} {t(optionsError)}</div>}
 
-    <section className="reports-section">
+    <nav className="reports-navigation" aria-label={t("Report sections")}>
+      {[
+        ["financial-summary", "Financial summary"],
+        ["profit-loss", "Profit & Loss"],
+        ["cash-flow", "Cash flow"],
+        ["inventory-report", "Inventory"],
+        ["partner-balances", "Partner balances"],
+        ["partner-aging", "Partner aging"],
+        ["purchase-summary", "Purchase summary"],
+      ].map(([id, label]) => <a key={id} href={`#${id}`}>{t(label)}</a>)}
+    </nav>
+
+    <section className="reports-section" id="financial-summary">
       <div className="reports-section-heading">
         <div className="reports-icon"><Wallet size={19} /></div>
         <div>
@@ -313,7 +328,9 @@ export default function Reports() {
           </select>
         </label>
       </div>
-      <SectionState report={financial}>{(data) => <>
+      <SectionState report={financial}>{(data) => financialCodes.length === 0
+        ? <div className="reports-empty">{t("No financial summary data for the selected currency.")}</div>
+        : <>
         <div className="reports-metric-grid">
           {financialCodes.map((code) => {
             const cash = data.cash.find((row) => row.currency === code);
@@ -356,7 +373,7 @@ export default function Reports() {
       </>}</SectionState>
     </section>
 
-    <section className="reports-section">
+    <section className="reports-section" id="profit-loss">
       <div className="reports-section-heading">
         <div className="reports-icon"><TrendingUp size={19} /></div>
         <div>
@@ -411,7 +428,7 @@ export default function Reports() {
       }}</SectionState>
     </section>
 
-    <section className="reports-section">
+    <section className="reports-section" id="cash-flow">
       <div className="reports-section-heading">
         <div className="reports-icon"><CircleDollarSign size={19} /></div>
         <div><h2>{t("Cash flow")}</h2><p>{t("Operating cash flows, excluding internal account transfers from inflow and outflow.")}</p></div>
@@ -454,7 +471,7 @@ export default function Reports() {
       </SectionState>
     </section>
 
-    <section className="reports-section">
+    <section className="reports-section" id="inventory-report">
       <div className="reports-section-heading">
         <div className="reports-icon"><Boxes size={19} /></div>
         <div><h2>{t("Inventory")}</h2><p>{t("Stock quantities stay with their product units; stock values are reported in AFN.")}</p></div>
@@ -508,7 +525,7 @@ export default function Reports() {
       </>}</SectionState>
     </section>
 
-    <section className="reports-section">
+    <section className="reports-section" id="partner-balances">
       <div className="reports-section-heading">
         <div className="reports-icon"><BarChart3 size={19} /></div>
         <div><h2>{t("Partner balances")}</h2><p>{t("Customer and supplier balances are compared within one selected currency.")}</p></div>
@@ -556,7 +573,7 @@ export default function Reports() {
       </SectionState>
     </section>
 
-    <section className="reports-section reports-aging-section">
+    <section className="reports-section reports-aging-section" id="partner-aging">
       <div className="reports-section-heading"><div className="reports-icon"><BarChart3 size={19} /></div><div><h2>{t("Partner aging")}</h2><p>{t("Outstanding open items are aged by transaction date using the backend’s FIFO allocation.")}</p></div></div>
       <form className="reports-aging-filters" onSubmit={(event) => { event.preventDefault(); setAgingFilters({ asOfDate: agingDateDraft, partnerType: agingTypeDraft, currencyId: agingCurrencyDraft, search: agingSearchDraft.trim() }); setAgingPage(1); setExpandedAgingRows({}); }}>
         <label>{t("As of date")}<input type="date" value={agingDateDraft} onChange={(event) => setAgingDateDraft(event.target.value)} required /></label>
@@ -585,7 +602,7 @@ export default function Reports() {
             </>}
     </section>
 
-    <section className="reports-section">
+    <section className="reports-section" id="purchase-summary">
       <div className="reports-section-heading">
         <div className="reports-icon"><BarChart3 size={19} /></div>
         <div><h2>{t("Purchase summary")}</h2><p>{t("Posted gross purchases by currency. Purchase returns are excluded by the backend.")}</p></div>

@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { LanguageSwitcher, useLocale } from "@/lib/locale";
+import { api } from "@/lib/api";
+import { isRecord } from "@/app/InventoryShared";
 
 interface MenuItem {
   label: string;
@@ -174,12 +176,16 @@ function SecretarySidebar({
   onClose,
   title,
   logoUrl,
+  unreadCount,
+  unreadError,
 }: {
   collapsed: boolean;
   mobileOpen: boolean;
   onClose: () => void;
   title?: string;
   logoUrl?: string;
+  unreadCount: number | null;
+  unreadError: string | null;
 }) {
   const { t } = useLocale();
   const location = useLocation();
@@ -230,12 +236,20 @@ function SecretarySidebar({
                       to={route}
                       end={label === "Dashboard"}
                       key={label}
-                      aria-label={label}
-                      title={collapsed ? label : undefined}
+                      aria-label={t(label)}
+                      title={collapsed ? t(label) : undefined}
                       onClick={onClose}
                     >
                       <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                       <span>{t(label)}</span>
+                      {label === "Chat" && unreadCount !== null && unreadCount > 0 && (
+                        <span className="secretary-navigation__badge" aria-label={`${unreadCount} ${t("unread messages")}`}>
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
+                      {label === "Chat" && unreadError && (
+                        <span className="secretary-navigation__badge secretary-navigation__badge--error" title={t("Unread message count unavailable")} aria-label={t("Unread message count unavailable")}>!</span>
+                      )}
                     </NavLink>
                   );
                 }
@@ -278,13 +292,15 @@ function SecretarySidebar({
 }
 
 export default function SecretaryLayout() {
-  const { t } = useLocale();
+  const { direction, t } = useLocale();
   const { user, companyBranding, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number | null>(null);
+  const [unreadError, setUnreadError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(
     () => window.matchMedia("(max-width: 760px)").matches,
   );
@@ -296,6 +312,34 @@ export default function SecretaryLayout() {
 
     mediaQuery.addEventListener("change", updateViewport);
     return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const refreshUnreadCount = () => {
+      void api.get<unknown>("/api/chat/unread-count").then(({ data }) => {
+        if (!isRecord(data) || !isRecord(data.data) || typeof data.data.unread_count !== "number") {
+          throw new Error("The unread count response is incomplete.");
+        }
+        if (active) {
+          setUnreadCount(data.data.unread_count);
+          setUnreadError(null);
+        }
+      }).catch((error: unknown) => {
+        if (active) setUnreadError(error instanceof Error ? error.message : "Could not load unread message count.");
+      });
+    };
+    const onChatRead = () => refreshUnreadCount();
+    refreshUnreadCount();
+    const intervalId = window.setInterval(refreshUnreadCount, 60_000);
+    window.addEventListener("focus", refreshUnreadCount);
+    window.addEventListener("erpgo:chat-read", onChatRead);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshUnreadCount);
+      window.removeEventListener("erpgo:chat-read", onChatRead);
+    };
   }, []);
 
   if (!user) return null;
@@ -342,6 +386,7 @@ export default function SecretaryLayout() {
   return (
     <div
       className={`secretary-shell${collapsed ? " secretary-shell--collapsed" : ""}`}
+      dir={direction}
     >
       <SecretarySidebar
         collapsed={collapsed}
@@ -349,6 +394,8 @@ export default function SecretaryLayout() {
         onClose={() => setMobileOpen(false)}
         title={companyTitle}
         logoUrl={companyBranding?.logoUrl}
+        unreadCount={unreadCount}
+        unreadError={unreadError}
       />
 
       <div className="secretary-main">

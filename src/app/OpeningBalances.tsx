@@ -3,6 +3,7 @@ import axios from "axios";
 import { AlertCircle, Banknote, LoaderCircle, Plus, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatCurrency, getErrorMessage, getValidationResult, isRecord, numberValue, optionalText, parseId, todayValue } from "@/app/InventoryShared";
+import { useLocale } from "@/lib/locale";
 
 interface AccountOption {
   id: number;
@@ -65,6 +66,7 @@ function formatDate(value: string): string {
 }
 
 export default function OpeningBalances() {
+  const { direction, t } = useLocale();
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [records, setRecords] = useState<OpeningBalanceRecord[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -146,30 +148,30 @@ export default function OpeningBalances() {
   }
 
   return (
-    <main className="account-opening-page">
-      <header className="account-opening-heading"><div><p className="overview-eyebrow">FINANCE</p><h1>Opening Balances</h1><p>Record starting balances for cash and bank accounts.</p></div></header>
-      {success && <p className="account-opening-notice" role="status">{success}</p>}
-      {accountsError && <p className="account-opening-notice account-opening-notice--error" role="alert">Could not load financial accounts: {accountsError}</p>}
+    <main className="account-opening-page" dir={direction}>
+      <header className="account-opening-heading"><div><p className="overview-eyebrow">{t("FINANCE")}</p><h1>{t("Opening Balances")}</h1><p>{t("Record starting balances for cash and bank accounts.")}</p></div></header>
+      {success && <p className="account-opening-notice" role="status">{t(success)}</p>}
+      {accountsError && <p className="account-opening-notice account-opening-notice--error" role="alert">{t("Could not load financial accounts:")} {t(accountsError)}</p>}
 
       <section className="account-opening-panel" aria-labelledby="account-opening-form-title">
-        <header className="account-opening-panel-heading"><span><Banknote size={18} /></span><div><h2 id="account-opening-form-title">Record opening balance</h2><p>Opening amounts are kept in the account’s own currency.</p></div></header>
+        <header className="account-opening-panel-heading"><span><Banknote size={18} /></span><div><h2 id="account-opening-form-title">{t("Record opening balance")}</h2><p>{t("Opening amounts are kept in the account’s own currency.")}</p></div></header>
         <form className="account-opening-form" onSubmit={(event) => void submit(event)} noValidate>
-          <label><span>Financial account <b>*</b></span><select value={selectedAccountId} disabled={accountsLoading || Boolean(accountsError) || saving} onChange={(event) => { setSelectedAccountId(event.target.value); clearFieldError("financial_account_id"); }} aria-invalid={Boolean(fieldErrors.financial_account_id)}><option value="">{accountsLoading ? "Loading accounts…" : "Select an active account"}</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.accountType} · {account.currencyCode}</option>)}</select>{fieldErrors.financial_account_id && <small>{fieldErrors.financial_account_id}</small>}{!accountsLoading && !accountsError && accounts.length === 0 && <small>No active financial accounts are available.</small>}</label>
-          <label><span>Opening amount <b>*</b></span><div className="account-opening-amount"><input type="number" inputMode="decimal" min="0" step="0.0001" value={amount} onChange={(event) => { setAmount(event.target.value); clearFieldError("amount"); }} disabled={saving} aria-invalid={Boolean(fieldErrors.amount)} placeholder="0.00" />{selectedAccount && <strong>{selectedAccount.currencyCode}</strong>}</div>{fieldErrors.amount && <small>{fieldErrors.amount}</small>}</label>
-          <label><span>Opening date <b>*</b></span><input type="date" value={openingDate} onChange={(event) => { setOpeningDate(event.target.value); clearFieldError("opening_date"); }} disabled={saving} aria-invalid={Boolean(fieldErrors.opening_date)} />{fieldErrors.opening_date && <small>{fieldErrors.opening_date}</small>}</label>
-          <label className="account-opening-field--wide"><span>Notes</span><textarea rows={3} maxLength={5000} value={notes} onChange={(event) => { setNotes(event.target.value); clearFieldError("notes"); }} disabled={saving} placeholder="Optional note" />{fieldErrors.notes && <small>{fieldErrors.notes}</small>}</label>
-          {knownDuplicate && <p className="account-opening-duplicate"><AlertCircle size={15} /> An opening balance already exists for this account and date.</p>}
-          {formError && <p className="account-opening-form-error" role="alert">{formError}</p>}
-          <footer className="account-opening-form-actions"><span>{selectedAccount ? `Amount will be recorded in ${selectedAccount.currencyCode}.` : "Each account can have one opening balance per date."}</span><button type="submit" disabled={saving || accountsLoading || historyLoading || Boolean(accountsError || historyError) || !accounts.length || knownDuplicate}>{saving ? <><LoaderCircle className="account-opening-spin" size={16} /> Saving…</> : <><Plus size={16} /> Record opening balance</>}</button></footer>
+          <label><span>{t("Financial account")} <b>*</b></span><select value={selectedAccountId} disabled={accountsLoading || Boolean(accountsError) || saving} onChange={(event) => { setSelectedAccountId(event.target.value); clearFieldError("financial_account_id"); }} aria-invalid={Boolean(fieldErrors.financial_account_id)}><option value="">{accountsLoading ? t("Loading accounts…") : t("Select an active account")}</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {t(account.accountType)} · {account.currencyCode}</option>)}</select>{fieldErrors.financial_account_id && <small>{t(fieldErrors.financial_account_id)}</small>}{!accountsLoading && !accountsError && accounts.length === 0 && <small>{t("No active financial accounts are available.")}</small>}</label>
+          <label><span>{t("Opening amount")} <b>*</b></span><div className="account-opening-amount"><input type="number" inputMode="decimal" min="0" step="0.0001" value={amount} onChange={(event) => { setAmount(event.target.value); clearFieldError("amount"); }} disabled={saving} aria-invalid={Boolean(fieldErrors.amount)} placeholder="0.00" />{selectedAccount && <strong>{selectedAccount.currencyCode}</strong>}</div>{fieldErrors.amount && <small>{t(fieldErrors.amount)}</small>}</label>
+          <label><span>{t("Opening date")} <b>*</b></span><input type="date" value={openingDate} onChange={(event) => { setOpeningDate(event.target.value); clearFieldError("opening_date"); }} disabled={saving} aria-invalid={Boolean(fieldErrors.opening_date)} />{fieldErrors.opening_date && <small>{t(fieldErrors.opening_date)}</small>}</label>
+          <label className="account-opening-field--wide"><span>{t("Notes")}</span><textarea rows={3} maxLength={5000} value={notes} onChange={(event) => { setNotes(event.target.value); clearFieldError("notes"); }} disabled={saving} placeholder={t("Optional note")} />{fieldErrors.notes && <small>{t(fieldErrors.notes)}</small>}</label>
+          {knownDuplicate && <p className="account-opening-duplicate"><AlertCircle size={15} /> {t("An opening balance already exists for this account and date.")}</p>}
+          {formError && <p className="account-opening-form-error" role="alert">{t(formError)}</p>}
+          <footer className="account-opening-form-actions"><span>{selectedAccount ? t("Amount will be recorded in {currency}.").replace("{currency}", selectedAccount.currencyCode) : t("Each account can have one opening balance per date.")}</span><button type="submit" disabled={saving || accountsLoading || historyLoading || Boolean(accountsError || historyError) || !accounts.length || knownDuplicate}>{saving ? <><LoaderCircle className="account-opening-spin" size={16} /> {t("Saving…")}</> : <><Plus size={16} /> {t("Record opening balance")}</>}</button></footer>
         </form>
       </section>
 
       <section className="account-opening-panel account-opening-history" aria-labelledby="account-opening-history-title">
-        <header className="account-opening-panel-heading"><span><Banknote size={18} /></span><div><h2 id="account-opening-history-title">Opening balance history</h2><p>{historyLoading ? "Loading records…" : `${records.length} recorded balance${records.length === 1 ? "" : "s"}`}</p></div><button type="button" className="account-opening-refresh" aria-label="Refresh opening balances and account balances" onClick={() => setRetry((value) => value + 1)} disabled={historyLoading || accountsLoading}><RefreshCw size={16} /></button></header>
-        {historyLoading ? <div className="account-opening-state" role="status"><LoaderCircle className="account-opening-spin" size={18} /> Loading opening balance history…</div>
-          : historyError ? <div className="account-opening-state account-opening-state--error" role="alert">{historyError}<button type="button" onClick={() => setRetry((value) => value + 1)}>Try again</button></div>
-          : records.length === 0 ? <div className="account-opening-state account-opening-state--empty"><strong>No opening balances recorded</strong><span>Recorded account opening balances will appear here.</span></div>
-          : <div className="account-opening-table-wrap"><table className="account-opening-table"><thead><tr><th>Opening date</th><th>Account</th><th>Type</th><th>Currency</th><th>Amount</th><th>Notes</th><th>Created by</th></tr></thead><tbody>{records.map((record) => <tr key={record.id}><td>{formatDate(record.openingDate)}</td><td><strong>{record.accountName}</strong></td><td>{record.accountType}</td><td><span className="account-opening-currency">{record.currencyCode}</span></td><td><strong>{formatCurrency(record.amount, record.currencyCode)}</strong></td><td>{record.notes || "—"}</td><td>{record.creator || "—"}</td></tr>)}</tbody></table></div>}
+        <header className="account-opening-panel-heading"><span><Banknote size={18} /></span><div><h2 id="account-opening-history-title">{t("Opening balance history")}</h2><p>{historyLoading ? t("Loading records…") : t(records.length === 1 ? "One recorded balance" : "{count} recorded balances").replace("{count}", String(records.length))}</p></div><button type="button" className="account-opening-refresh" aria-label={t("Refresh opening balances and account balances")} onClick={() => setRetry((value) => value + 1)} disabled={historyLoading || accountsLoading}><RefreshCw size={16} /></button></header>
+        {historyLoading ? <div className="account-opening-state" role="status"><LoaderCircle className="account-opening-spin" size={18} /> {t("Loading opening balance history…")}</div>
+          : historyError ? <div className="account-opening-state account-opening-state--error" role="alert">{t(historyError)}<button type="button" onClick={() => setRetry((value) => value + 1)}>{t("Try again")}</button></div>
+          : records.length === 0 ? <div className="account-opening-state account-opening-state--empty"><strong>{t("No opening balances recorded")}</strong><span>{t("Recorded account opening balances will appear here.")}</span></div>
+          : <div className="account-opening-table-wrap"><table className="account-opening-table"><thead><tr><th>{t("Opening date")}</th><th>{t("Account")}</th><th>{t("Type")}</th><th>{t("Currency")}</th><th>{t("Amount")}</th><th>{t("Notes")}</th><th>{t("Created by")}</th></tr></thead><tbody>{records.map((record) => <tr key={record.id}><td>{formatDate(record.openingDate)}</td><td><strong>{record.accountName}</strong></td><td>{t(record.accountType)}</td><td><span className="account-opening-currency">{record.currencyCode}</span></td><td><strong>{formatCurrency(record.amount, record.currencyCode)}</strong></td><td>{record.notes || "—"}</td><td>{record.creator || "—"}</td></tr>)}</tbody></table></div>}
       </section>
     </main>
   );
