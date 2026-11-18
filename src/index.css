@@ -15394,8 +15394,9 @@ html[dir="rtl"] .recharts-wrapper {
 .sales-redesign__modal-header { position: sticky; top: 0; z-index: 2; background: #fbfcfb; }
 .sales-redesign__modal-header h2 { margin: 4px 0 0; color: #20352a; }
 .sales-redesign__detail-body { padding: 18px; }
-.sales-redesign__modal-actions { justify-content: flex-end; }
-.sales-redesign__button--close { width: 36px; min-width: 36px; padding: 0; }
+.sales-redesign__modal-actions { flex-wrap: nowrap; justify-content: flex-end; }
+.sales-redesign__modal-actions > button { flex: 0 0 auto; }
+.sales-redesign__button--cancel { min-width: 92px; }
 
 @media (max-width: 900px) {
   .sales-redesign__form-layout { grid-template-columns: minmax(0, 1fr); }
@@ -15439,7 +15440,7 @@ html[dir="rtl"] .recharts-wrapper {
   .sales-redesign__line { grid-template-columns: minmax(0, 1fr); }
   .sales-redesign__line .sales-redesign__field:first-child { grid-column: auto; }
   .sales-redesign__remove { width: 100%; }
-  .sales-redesign__modal-actions { flex-wrap: wrap; }
+  .sales-redesign__modal-actions { flex-wrap: nowrap; }
   .sales-redesign__summary-list { padding-inline: 14px; }
 }
 
@@ -16205,6 +16206,19 @@ html[dir="rtl"] .recharts-wrapper {
   .reports-inventory-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .sales-redesign__modal-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sales-redesign__modal-actions {
+    width: 100%;
+  }
+
+  .sales-redesign__modal-actions > button {
+    flex: 1 1 0;
+  }
 }
 
 @media (max-width: 380px) {
@@ -16245,5 +16259,224 @@ html[dir="rtl"] .recharts-wrapper {
   .financial-modal-header-actions {
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .secretary-shell,
+  .secretary-main,
+  .secretary-content,
+  .sales-redesign__page {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .secretary-shell > :not(.secretary-main),
+  .secretary-main > :not(.secretary-content),
+  .secretary-content > :not(.sales-redesign__page),
+  .sales-redesign__page > :not(.sales-modal-backdrop) {
+    display: none !important;
+  }
+
+  .sales-modal-backdrop,
+  .sales-modal,
+  .sales-detail-body,
+  .sales-invoice-print,
+  .sales-invoice-print * {
+    visibility: visible !important;
+  }
+
+  .sales-modal-backdrop {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .sales-modal {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .sales-modal-header {
+    display: none !important;
+  }
+
+  .sales-detail-body {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .sales-invoice-print {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: #111 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    font-size: 9pt !important;
+  }
+
+  .sales-invoice-company {
+    display: grid !important;
+    grid-template-columns: 20mm minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 5mm !important;
+    margin-bottom: 5mm !important;
+    padding-bottom: 4mm !important;
+    border-bottom: 1.5pt solid #334155 !important;
+  }
+
+  .sales-invoice-company img {
+    width: 20mm !important;
+    max-width: 20mm !important;
+    max-height: 20mm !important;
+    object-fit: contain !important;
+  }
+
+  .sales-invoice-company h1 {
+    color: #111 !important;
+    font-size: 17pt !important;
+  }
+
+  .sales-invoice-company p,
+  .sales-invoice-company strong {
+    color: #334155 !important;
+    font-size: 9pt !important;
+  }
+
+  .sales-invoice-company strong {
+    margin: 0 !important;
+    text-align: end !important;
+  }
+
+  .sales-invoice-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 2mm !important;
+    margin: 4mm 0 !important;
+  }
+
+  .sales-invoice-meta > div {
+    padding: 2mm !important;
+    border: 1px solid #dbe2e8 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .sales-invoice-print .purchases-table-scroll {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .sales-invoice-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+    font-size: 7.5pt !important;
+  }
+
+  .sales-invoice-table thead {
+    display: table-header-group;
+  }
+
+  .sales-invoice-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .sales-invoice-table th,
+  .sales-invoice-table td {
+    padding: 2mm 1.2mm !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #111 !important;
+    background: #fff !important;
+    font-size: 7.5pt !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    text-align: start !important;
+  }
+
+  .sales-invoice-totals {
+    margin-top: 4mm !important;
+  }
+
+  .sales-invoice-totals dl {
+    width: min(100%, 85mm) !important;
+    padding: 3mm !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+  }
+
+  .sales-invoice-totals dl > div,
+  .sales-invoice-totals dd {
+    color: #111 !important;
+    font-size: 9pt !important;
+  }
+
+  .sales-invoice-notes,
+  .sales-invoice-footer {
+    color: #111 !important;
+    font-size: 9pt !important;
+  }
+
+  .sales-invoice-footer {
+    margin-top: 8mm !important;
+  }
+
+  .sales-invoice-footer > div {
+    margin-top: 10mm !important;
+  }
+
+  .sales-invoice-print[dir="rtl"] {
+    direction: rtl;
   }
 }

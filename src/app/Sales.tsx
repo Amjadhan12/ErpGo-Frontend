@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, Plus, Printer, Trash2 } from "lucide-react";
-import { useAuth } from "@/auth/AuthContext";
 import { api, getPublicStorageUrl } from "@/lib/api";
 import { useLocale } from "@/lib/locale";
 import {
@@ -110,7 +109,6 @@ export default function Sales() {
   const location = useLocation();
   const navigate = useNavigate();
   const { direction, language, t } = useLocale();
-  const { companyBranding } = useAuth();
   const isCreate = location.pathname.endsWith("/create");
   const [page, setPage] = useState<LaravelPage<Sale> | null>(null);
   const [listLoading, setListLoading] = useState(true);
@@ -122,6 +120,10 @@ export default function Sales() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailRetry, setDetailRetry] = useState(0);
   const autoPrintPending = useRef(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [products, setProducts] = useState<InventoryProductOption[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseOption[]>([]);
@@ -130,7 +132,7 @@ export default function Sales() {
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [optionsRetry, setOptionsRetry] = useState(0);
-  const [company, setCompany] = useState<CompanyInfo>({ name: companyBranding?.titleEn || "", namePa: companyBranding?.titlePa || "", logo: companyBranding?.logoUrl || null, phone: null, phone2: null, address: null, billText: null });
+  const [company, setCompany] = useState<CompanyInfo>({ name: "", namePa: "", logo: null, phone: null, phone2: null, address: null, billText: null });
   const [saleNumber, setSaleNumber] = useState(() => dateTimeNumber("SAL"));
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -155,6 +157,23 @@ export default function Sales() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const loadCompanySettings = useCallback(async (signal?: AbortSignal): Promise<CompanyInfo> => {
+    const { data } = await api.get<unknown>("/api/settings", { signal });
+    if (!isRecord(data) || !Array.isArray(data.data) || !isRecord(data.data[0])) {
+      throw new Error("No saved company settings were returned.");
+    }
+    const row = data.data[0];
+    return {
+      name: optionalText(row.title_en) || "",
+      namePa: optionalText(row.title_pa) || "",
+      logo: typeof row.image_path === "string" && row.image_path ? getPublicStorageUrl(row.image_path) : null,
+      phone: optionalText(row.phone1),
+      phone2: optionalText(row.phone2),
+      address: optionalText(row.address),
+      billText: optionalText(row.bill_text),
+    };
+  }, []);
 
   useEffect(() => {
     if (isCreate || !isRecord(location.state) || typeof location.state.saleCreated !== "number") return;
@@ -189,21 +208,15 @@ export default function Sales() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void api.get<unknown>("/api/settings", { signal: controller.signal }).then(({ data }) => {
-      if (!isRecord(data) || !Array.isArray(data.data) || !isRecord(data.data[0])) return;
-      const row = data.data[0];
-      setCompany({
-        name: companyBranding?.titleEn || optionalText(row.title_en) || "",
-        namePa: optionalText(row.title_pa) || companyBranding?.titlePa || "",
-        logo: companyBranding?.logoUrl || (typeof row.image_path === "string" && row.image_path ? getPublicStorageUrl(row.image_path) : null),
-        phone: optionalText(row.phone1),
-        phone2: optionalText(row.phone2),
-        address: optionalText(row.address),
-        billText: optionalText(row.bill_text),
-      });
-    }).catch(() => undefined);
+    setSettingsLoading(true);
+    setSettingsError(null);
+    void loadCompanySettings(controller.signal).then(setCompany).catch((error: unknown) => {
+      if (!controller.signal.aborted) setSettingsError(getErrorMessage(error));
+    }).finally(() => {
+      if (!controller.signal.aborted) setSettingsLoading(false);
+    });
     return () => controller.abort();
-  }, [companyBranding]);
+  }, [loadCompanySettings]);
 
   const currency = currencies.find((row) => String(row.id) === currencyId);
   const selectedAccount = accounts.find((row) => String(row.id) === accountId);
@@ -252,12 +265,39 @@ export default function Sales() {
     return () => controller.abort();
   }, [selectedId, detailRetry]);
 
+  const printBill = useCallback(async () => {
+    if (!detail || settingsLoading || settingsError || isPrinting) return;
+    setIsPrinting(true);
+    setPrintError(null);
+    try {
+      setCompany(await loadCompanySettings());
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+      });
+      const logo = document.querySelector<HTMLImageElement>(".sales-modal .sales-invoice-print img");
+      if (logo) {
+        if (!logo.complete) {
+          await new Promise<void>((resolve, reject) => {
+            logo.addEventListener("load", () => resolve(), { once: true });
+            logo.addEventListener("error", () => reject(new Error("The company logo could not be loaded.")), { once: true });
+          });
+        }
+        if (logo.naturalWidth === 0) throw new Error("The company logo could not be loaded.");
+        await logo.decode();
+      }
+      window.print();
+    } catch (error: unknown) {
+      setPrintError(getErrorMessage(error));
+    } finally {
+      setIsPrinting(false);
+    }
+  }, [detail, isPrinting, loadCompanySettings, settingsError, settingsLoading]);
+
   useEffect(() => {
-    if (!detail || !autoPrintPending.current) return;
+    if (!detail || !autoPrintPending.current || settingsLoading || settingsError) return;
     autoPrintPending.current = false;
-    const timer = window.setTimeout(() => window.print(), 250);
-    return () => window.clearTimeout(timer);
-  }, [detail]);
+    void printBill();
+  }, [detail, printBill, settingsError, settingsLoading]);
 
   function updateLine(key: number, field: keyof Omit<SaleLine, "key">, value: string) {
     setLines((current) => current.map((line) => line.key === key ? { ...line, [field]: value } : line));
@@ -458,11 +498,14 @@ export default function Sales() {
           <header className="sales-redesign__modal-header purchase-modal__header sales-modal-header">
             <div><p className="sales-redesign__eyebrow">{t("SALE DETAILS")}</p><h2>{detail?.saleNumber || t("Loading sale…")}</h2></div>
             <div className="sales-redesign__modal-actions sales-modal-actions">
-              <button className="sales-redesign__button sales-redesign__button--primary" type="button" disabled={!detail} onClick={() => window.print()}><Printer size={15} aria-hidden="true" />{t("Print Bill")}</button>
-              <button className="sales-redesign__button sales-redesign__button--close purchase-modal__close" type="button" aria-label={t("Close details")} onClick={() => setSelectedId(null)}>×</button>
+              <button className="sales-redesign__button sales-redesign__button--primary" type="button" disabled={!detail || settingsLoading || Boolean(settingsError) || isPrinting} onClick={() => void printBill()}><Printer size={15} aria-hidden="true" />{t(isPrinting ? "Preparing print…" : "Print Bill")}</button>
+              <button className="sales-redesign__button sales-redesign__button--cancel" type="button" onClick={() => setSelectedId(null)}>{t("Cancel")}</button>
             </div>
           </header>
           <div className="sales-redesign__detail-body purchase-modal__body sales-detail-body">
+            {settingsLoading && <div className="sales-redesign__state" role="status">{t("Loading company settings…")}</div>}
+            {settingsError && <div className="sales-redesign__state sales-redesign__state--error" role="alert">{t(settingsError)}</div>}
+            {printError && <div className="sales-redesign__state sales-redesign__state--error" role="alert">{t(printError)}</div>}
             {detailError ? <div className="sales-redesign__state sales-redesign__state--error" role="alert">{displayMessage(detailError)} <button className="sales-redesign__button" type="button" onClick={() => setDetailRetry((value) => value + 1)}>{t("Retry")}</button></div> : detail ? <Invoice sale={detail} company={company} t={t} language={language} displayStatus={displayStatus} displayCustomer={displayCustomer} displayWarehouse={displayWarehouse} /> : <div className="sales-redesign__state" role="status">{t("Loading sale details…")}</div>}
           </div>
         </section>
@@ -481,7 +524,7 @@ function Invoice({ sale, company, t, language, displayStatus, displayCustomer, d
   const balance = round4(sale.grandTotal - sale.paidAmount);
   const displayedName = language === "ps" && company.namePa ? company.namePa : company.name || company.namePa;
   const phoneNumbers = [company.phone, company.phone2].filter((phone): phone is string => Boolean(phone)).join(" · ");
-  return <article className="sales-invoice-print" dir={language === "ps" ? "rtl" : "ltr"}><header className="sales-invoice-company">{company.logo && <img src={company.logo} alt="" /> }<div><h1>{displayedName}</h1>{phoneNumbers && <p>{phoneNumbers}</p>}{company.address && <p>{company.address}</p>}</div><strong>{t("CUSTOMER INVOICE")}</strong></header>
+  return <article className="sales-invoice-print" dir={language === "ps" ? "rtl" : "ltr"} lang={language}><header className="sales-invoice-company">{company.logo && <img src={company.logo} alt="" /> }<div><h1>{displayedName}</h1>{phoneNumbers && <p>{phoneNumbers}</p>}{company.address && <p>{company.address}</p>}</div><strong>{t("CUSTOMER INVOICE")}</strong></header>
     <dl className="sales-invoice-meta"><div><dt>{t("Invoice number")}</dt><dd>{sale.invoiceNumber || "—"}</dd></div><div><dt>{t("Sale number")}</dt><dd>{sale.saleNumber}</dd></div><div><dt>{t("Sale date")}</dt><dd>{formatSaleDate(sale.saleDate, language)}</dd></div><div><dt>{t("Customer")}</dt><dd>{displayCustomer(sale)}</dd></div>{sale.customerPhone && <div><dt>{t("Customer phone")}</dt><dd>{sale.customerPhone}</dd></div>}{sale.customerEmail && <div><dt>{t("Customer email")}</dt><dd>{sale.customerEmail}</dd></div>}{sale.customerAddress && <div><dt>{t("Customer address")}</dt><dd>{sale.customerAddress}</dd></div>}<div><dt>{t("Warehouse")}</dt><dd>{displayWarehouse(sale)}</dd></div><div><dt>{t("Currency")}</dt><dd>{sale.currency}</dd></div></dl>
     <div className="purchases-table-scroll"><table className="purchases-table sales-invoice-table"><thead><tr><th>#</th><th>{t("Product")}</th><th>{t("SKU")}</th><th>{t("Quantity")}</th><th>{t("Unit")}</th><th>{t("Unit price")}</th><th>{t("Discount")}</th><th>{t("Line total")}</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={item.id}><td>{new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US").format(index + 1)}</td><td>{item.productName}</td><td>{item.sku || "—"}</td><td>{formatSaleQuantity(item.quantity, language)}</td><td>{item.unit || "—"}</td><td>{formatSaleCurrency(item.unitPrice, sale.currency, language)}</td><td>{formatSaleCurrency(item.discount, sale.currency, language)}</td><td>{formatSaleCurrency(item.lineTotal, sale.currency, language)}</td></tr>)}</tbody></table></div>
     <section className="sales-invoice-totals"><dl><div><dt>{t("Subtotal")}</dt><dd>{formatSaleCurrency(sale.subtotal, sale.currency, language)}</dd></div><div><dt>{t("Total discount")}</dt><dd>{formatSaleCurrency(sale.discount, sale.currency, language)}</dd></div><div className="sales-summary-grand"><dt>{t("Grand total")}</dt><dd>{formatSaleCurrency(sale.grandTotal, sale.currency, language)}</dd></div><div><dt>{t("Paid amount")}</dt><dd>{formatSaleCurrency(sale.paidAmount, sale.currency, language)}</dd></div><div><dt>{t("Remaining balance")}</dt><dd>{formatSaleCurrency(balance, sale.currency, language)}</dd></div><div><dt>{t("Payment status")}</dt><dd>{displayStatus(sale.paymentStatus)}</dd></div></dl></section>
