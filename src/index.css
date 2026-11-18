@@ -9072,19 +9072,26 @@ input:focus-visible {
 
 .purchase-modal-backdrop {
   position: fixed;
-  z-index: 100;
+  z-index: 1000;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: hidden;
+  overscroll-behavior: contain;
   background: rgb(25 37 29 / 48%);
   backdrop-filter: blur(2px);
 }
 
+body:has(.purchase-modal-backdrop),
+body:has([role="dialog"][aria-modal="true"]) {
+  overflow: hidden;
+}
+
 .purchase-modal {
   display: flex;
-  width: min(760px, 100%);
+  width: min(760px, calc(100vw - 40px));
   max-height: min(88vh, 850px);
   flex-direction: column;
   overflow: hidden;
@@ -9097,10 +9104,46 @@ input:focus-visible {
 
 .purchase-modal__header {
   display: flex;
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 22px 24px 18px;
+  background: #fff;
+  border-bottom: 1px solid #e6ece5;
+}
+
+.purchase-modal__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.purchase-modal__close {
+  flex: 0 0 auto;
+  min-width: 38px;
+  min-height: 38px;
+  border: 1px solid #d6dfd8;
+  border-radius: 9px;
+  color: #33483a;
+  background: #fff;
+  cursor: pointer;
+}
+
+.purchase-modal__close:hover {
+  border-color: #aabbb0;
+  background: #f4f7f4;
+}
+
+.partner-detail-backdrop,
+.sales-modal-backdrop,
+.supplier-payment-modal,
+.customer-modal,
+.supplier-modal {
+  z-index: 1100;
   border-bottom: 1px solid #edf1ec;
 }
 

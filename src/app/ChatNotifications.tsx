@@ -155,8 +155,14 @@ export default function ChatNotifications() {
     }
   }
 
+  function toggleNotifications() {
+    const shouldOpen = !open;
+    setOpen(shouldOpen);
+    if (shouldOpen) refresh(true);
+  }
+
   return <div className="chat-notifications" ref={rootRef}>
-    <button className="chat-notifications__trigger" type="button" aria-label={t("Chat notifications")} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((value) => { const next = !value; if (next) refresh(true); return next; })}>
+    <button className="chat-notifications__trigger" type="button" aria-label={t("Chat notifications")} aria-expanded={open} aria-haspopup="dialog" onClick={toggleNotifications}>
       <Bell size={18} aria-hidden="true" />
       {unreadCount !== null && unreadCount > 0 && <span className="chat-notifications__badge">{unreadCount > 99 ? "99+" : unreadCount}</span>}
       {error && <span className="chat-notifications__error-indicator" aria-hidden="true">!</span>}

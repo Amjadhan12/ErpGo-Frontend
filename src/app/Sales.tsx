@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, Plus, Printer, Trash2 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
@@ -121,6 +121,7 @@ export default function Sales() {
   const [detail, setDetail] = useState<Sale | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailRetry, setDetailRetry] = useState(0);
+  const autoPrintPending = useRef(false);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [products, setProducts] = useState<InventoryProductOption[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseOption[]>([]);
@@ -158,6 +159,7 @@ export default function Sales() {
   useEffect(() => {
     if (isCreate || !isRecord(location.state) || typeof location.state.saleCreated !== "number") return;
     setSuccess("Sale recorded successfully.");
+    autoPrintPending.current = true;
     setSelectedId(location.state.saleCreated);
     navigate(location.pathname, { replace: true, state: null });
   }, [isCreate, location.pathname, location.state, navigate]);
@@ -241,6 +243,13 @@ export default function Sales() {
     }).catch((error: unknown) => { if (!controller.signal.aborted) setDetailError(getErrorMessage(error)); });
     return () => controller.abort();
   }, [selectedId, detailRetry]);
+
+  useEffect(() => {
+    if (!detail || !autoPrintPending.current) return;
+    autoPrintPending.current = false;
+    const timer = window.setTimeout(() => window.print(), 250);
+    return () => window.clearTimeout(timer);
+  }, [detail]);
 
   function updateLine(key: number, field: keyof Omit<SaleLine, "key">, value: string) {
     setLines((current) => current.map((line) => line.key === key ? { ...line, [field]: value } : line));
@@ -441,7 +450,7 @@ export default function Sales() {
           <header className="sales-redesign__modal-header purchase-modal__header sales-modal-header">
             <div><p className="sales-redesign__eyebrow">{t("SALE DETAILS")}</p><h2>{detail?.saleNumber || t("Loading sale…")}</h2></div>
             <div className="sales-redesign__modal-actions sales-modal-actions">
-              <button className="sales-redesign__button" type="button" disabled={!detail} onClick={() => window.print()}><Printer size={15} aria-hidden="true" />{t("Print Bill")}</button>
+              <button className="sales-redesign__button sales-redesign__button--primary" type="button" disabled={!detail} onClick={() => window.print()}><Printer size={15} aria-hidden="true" />{t("Print Bill")}</button>
               <button className="sales-redesign__button sales-redesign__button--close purchase-modal__close" type="button" aria-label={t("Close details")} onClick={() => setSelectedId(null)}>×</button>
             </div>
           </header>
