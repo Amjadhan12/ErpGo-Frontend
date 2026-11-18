@@ -91,11 +91,14 @@ export default function CustomerChat() {
   }
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages]);
+  const ownMessageCount = messages.filter((message) => message.senderId === String(user?.id)).length;
+  const secretaryMessageCount = messages.filter((message) => message.senderId !== String(user?.id)).length;
 
   return <main className="supplier-chat-page">
     <header className="supplier-chat-heading"><div><p className="overview-eyebrow">{t("CUSTOMER PORTAL")}</p><h1>{t("Chat with Secretary")}</h1><p>{t("Messages between your account and the ERPGO Secretary.")}</p></div><button type="button" className="partner-portal-refresh" onClick={() => { setMessages([]); setPage(1); setRetry((value) => value + 1); }} disabled={loading}><RefreshCw size={15} /> {t("Refresh")}</button></header>
     <section className="supplier-chat-card" aria-label={t("Conversation with Secretary")}>
       <header className="supplier-chat-contact"><span><MessageCircle size={19} /></span><div><strong>{t("Secretary")}</strong><small>{t("ERPGO support")}</small></div></header>
+      <div className="supplier-chat-counts" aria-label={t("Message counts")}><span>{t("You")}: <strong>{ownMessageCount}</strong></span><span>{t("Secretary")}: <strong>{secretaryMessageCount}</strong></span></div>
       <div className="supplier-chat-messages" aria-live="polite">
         {lastPage > page && <button className="supplier-chat-older" type="button" disabled={loading} onClick={() => setPage((value) => value + 1)}>{t("Load older messages")}</button>}
         {loading && messages.length === 0 ? <div className="supplier-chat-state" role="status"><LoaderCircle className="partner-portal-spin" size={18} /> {t("Loading messages…")}</div>

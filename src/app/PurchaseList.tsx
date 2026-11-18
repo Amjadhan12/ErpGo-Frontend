@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { AlertCircle, ChevronLeft, ChevronRight, Eye, Plus, RefreshCw, X } from 'lucide-react'
+import { AlertCircle, ChevronLeft, ChevronRight, Eye, Plus, Printer, RefreshCw, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { api } from '@/lib/api'
+import { api, getPublicStorageUrl } from '@/lib/api'
 import { useLocale } from '@/lib/locale'
 
 interface PurchaseItem {
@@ -39,6 +39,16 @@ interface PurchasePage {
   lastPage: number
   perPage: number
   total: number
+}
+
+interface CompanyInfo {
+  name: string
+  namePa: string
+  logo: string | null
+  phone: string | null
+  phone2: string | null
+  address: string | null
+  billText: string | null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -184,6 +194,16 @@ export default function PurchaseList() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [company, setCompany] = useState<CompanyInfo>({
+    name: "",
+    namePa: "",
+    logo: null,
+    phone: null,
+    phone2: null,
+    address: null,
+    billText: null,
+  })
+  const autoPrintPending = useRef(false)
 
   useEffect(() => {
     if (
@@ -193,9 +213,45 @@ export default function PurchaseList() {
       location.state.purchaseCreated === true
     ) {
       setSuccessMessage(t('Purchase created successfully.'))
+      if ('purchaseId' in location.state && typeof location.state.purchaseId === 'number') {
+        autoPrintPending.current = true
+        void api.get<unknown>(`/api/purchases/${location.state.purchaseId}`)
+          .then(({ data }) => {
+            if (!isRecord(data) || !isRecord(data.data)) throw new Error('The saved purchase details are incomplete.')
+            setSelectedPurchase(parsePurchase(data.data))
+          })
+          .catch((loadError: unknown) => setError(getErrorMessage(loadError, t, language)))
+      }
       navigate(location.pathname, { replace: true, state: null })
     }
-  }, [location.pathname, location.state, navigate, t])
+  }, [location.pathname, location.state, navigate, t, language])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void api.get<unknown>('/api/settings', { signal: controller.signal })
+      .then(({ data }) => {
+        if (!isRecord(data) || !Array.isArray(data.data) || !isRecord(data.data[0])) return
+        const row = data.data[0]
+        setCompany({
+          name: typeof row.title_en === 'string' ? row.title_en : '',
+          namePa: typeof row.title_pa === 'string' ? row.title_pa : '',
+          logo: typeof row.image_path === 'string' && row.image_path ? getPublicStorageUrl(row.image_path) : null,
+          phone: typeof row.phone1 === 'string' && row.phone1.trim() ? row.phone1 : null,
+          phone2: typeof row.phone2 === 'string' && row.phone2.trim() ? row.phone2 : null,
+          address: typeof row.address === 'string' && row.address.trim() ? row.address : null,
+          billText: typeof row.bill_text === 'string' && row.bill_text.trim() ? row.bill_text : null,
+        })
+      })
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedPurchase || !autoPrintPending.current) return
+    autoPrintPending.current = false
+    const timer = window.setTimeout(() => window.print(), 250)
+    return () => window.clearTimeout(timer)
+  }, [selectedPurchase])
 
   useEffect(() => {
     if (!successMessage) return
@@ -370,12 +426,29 @@ export default function PurchaseList() {
                 <h2 id="purchase-modal-title">{selectedPurchase.purchaseNumber}</h2>
                 <p>{formatDate(selectedPurchase.purchaseDate, language)}</p>
               </div>
-              <button type="button" className="purchase-modal__close" aria-label={t('Close details')} onClick={() => setSelectedPurchase(null)}>
-                <X size={19} aria-hidden="true" />
-              </button>
+              <div className="purchase-detail-actions">
+                <button type="button" className="purchase-print-button" onClick={() => window.print()}>
+                  <Printer size={16} aria-hidden="true" /> {t('Print Invoice')}
+                </button>
+                <button type="button" className="purchase-modal__close" aria-label={t('Close details')} onClick={() => setSelectedPurchase(null)}>
+                  <X size={19} aria-hidden="true" />
+                </button>
+              </div>
             </header>
 
             <div className="purchase-modal__body purchase-redesign__detail-body">
+              <article className="purchase-invoice-print" dir={language === 'ps' ? 'rtl' : 'ltr'}>
+                <header className="purchase-invoice-company">
+                  {company.logo && <img src={company.logo} alt="" />}
+                  <div>
+                    <h1>{language === 'ps' && company.namePa ? company.namePa : company.name || company.namePa}</h1>
+                    {[company.phone, company.phone2].filter((phone): phone is string => Boolean(phone)).join(' · ') && (
+                      <p>{[company.phone, company.phone2].filter((phone): phone is string => Boolean(phone)).join(' · ')}</p>
+                    )}
+                    {company.address && <p>{company.address}</p>}
+                  </div>
+                  <strong>{t('SUPPLIER PURCHASE INVOICE')}</strong>
+                </header>
               <dl className="purchase-detail-grid purchase-redesign__detail-grid">
                 <div><dt>{t('Supplier')}</dt><dd>{selectedPurchase.supplier}</dd></div>
                 <div><dt>{t('Warehouse')}</dt><dd>{selectedPurchase.warehouse}</dd></div>
@@ -422,6 +495,8 @@ export default function PurchaseList() {
                 <strong>{t('Notes')}</strong>
                 <p>{selectedPurchase.notes || t('No notes provided.')}</p>
               </div>
+              {company.billText && <footer className="purchase-invoice-footer">{company.billText}</footer>}
+              </article>
             </div>
           </section>
         </div>

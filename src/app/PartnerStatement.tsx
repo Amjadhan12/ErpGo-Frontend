@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import {
   BookOpenText,
@@ -310,6 +311,25 @@ export default function PartnerStatement({ partnerId, partnerType, children }: P
       : [];
   const selectedRecordCurrency = selectedRecord ? documentCurrency(selectedRecord) : "";
   const selectedRecordAmount = selectedRecord ? documentAmount(selectedRecord) : null;
+
+  useEffect(() => {
+    if (!selectedRecord && !documentLoading && !documentError && !document) return;
+    const previousOverflow = window.document.body.style.overflow;
+    window.document.body.style.overflow = "hidden";
+    return () => { window.document.body.style.overflow = previousOverflow; };
+  }, [selectedRecord, documentLoading, documentError, document]);
+
+  useEffect(() => {
+    if (!selectedRecord) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        setSelectedRecord(null);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [selectedRecord]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -667,7 +687,7 @@ export default function PartnerStatement({ partnerId, partnerType, children }: P
       </div>
       </div>
 
-      {selectedRecord && selectedDocuments && (
+      {selectedRecord && selectedDocuments && createPortal(
         <div className="partner-statement__document-backdrop partner-statement__record-backdrop">
           <section className="partner-statement__document partner-document-detail" role="dialog" aria-modal="true" aria-labelledby="partner-record-title" dir={language === "ps" ? "rtl" : "ltr"}>
             <header>
@@ -745,10 +765,11 @@ export default function PartnerStatement({ partnerId, partnerType, children }: P
               </section>
             )}
           </section>
-        </div>
+        </div>,
+        window.document.body,
       )}
 
-      {(documentLoading || documentError || document) && (
+      {(documentLoading || documentError || document) && createPortal(
         <div
           className="partner-statement__document-backdrop"
           role="presentation"
@@ -771,7 +792,8 @@ export default function PartnerStatement({ partnerId, partnerType, children }: P
               </dl>
             )}
           </section>
-        </div>
+        </div>,
+        window.document.body,
       )}
     </section>
   );

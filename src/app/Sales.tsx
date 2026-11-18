@@ -27,7 +27,7 @@ interface AccountOption { id: number; name: string; currencyId: number; currency
 interface SaleItem { id: number; productId: number; productName: string; sku: string | null; unit: string; quantity: number; unitPrice: number; discount: number; lineTotal: number; notes: string | null }
 interface Sale { id: number; saleNumber: string; invoiceNumber: string | null; saleDate: string; customer: string; customerPhone: string | null; customerEmail: string | null; customerAddress: string | null; warehouse: string; currency: string; subtotal: number; discount: number; grandTotal: number; paymentStatus: string; status: string; notes: string | null; items: SaleItem[]; paidAmount: number }
 interface SaleLine { key: number; productId: string; quantity: string; unitPrice: string; discount: string; notes: string }
-interface CompanyInfo { name: string; logo: string | null; phone: string | null; address: string | null; billText: string | null }
+interface CompanyInfo { name: string; namePa: string; logo: string | null; phone: string | null; phone2: string | null; address: string | null; billText: string | null }
 
 function parseCustomer(value: unknown): CustomerOption {
   if (!isRecord(value) || typeof value.name !== "string") throw new Error("The customer list contains an incomplete record.");
@@ -130,7 +130,7 @@ export default function Sales() {
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [optionsRetry, setOptionsRetry] = useState(0);
-  const [company, setCompany] = useState<CompanyInfo>({ name: companyBranding?.titleEn || "", logo: companyBranding?.logoUrl || null, phone: null, address: null, billText: null });
+  const [company, setCompany] = useState<CompanyInfo>({ name: companyBranding?.titleEn || "", namePa: companyBranding?.titlePa || "", logo: companyBranding?.logoUrl || null, phone: null, phone2: null, address: null, billText: null });
   const [saleNumber, setSaleNumber] = useState(() => dateTimeNumber("SAL"));
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -192,7 +192,15 @@ export default function Sales() {
     void api.get<unknown>("/api/settings", { signal: controller.signal }).then(({ data }) => {
       if (!isRecord(data) || !Array.isArray(data.data) || !isRecord(data.data[0])) return;
       const row = data.data[0];
-      setCompany({ name: companyBranding?.titleEn || optionalText(row.title_en) || "", logo: companyBranding?.logoUrl || (typeof row.image_path === "string" && row.image_path ? getPublicStorageUrl(row.image_path) : null), phone: optionalText(row.phone1), address: optionalText(row.address), billText: optionalText(row.bill_text) });
+      setCompany({
+        name: companyBranding?.titleEn || optionalText(row.title_en) || "",
+        namePa: optionalText(row.title_pa) || companyBranding?.titlePa || "",
+        logo: companyBranding?.logoUrl || (typeof row.image_path === "string" && row.image_path ? getPublicStorageUrl(row.image_path) : null),
+        phone: optionalText(row.phone1),
+        phone2: optionalText(row.phone2),
+        address: optionalText(row.address),
+        billText: optionalText(row.bill_text),
+      });
     }).catch(() => undefined);
     return () => controller.abort();
   }, [companyBranding]);
@@ -471,7 +479,9 @@ function Pagination({ page, pageNumber, setPage, t }: { page: LaravelPage<Sale>;
 }
 function Invoice({ sale, company, t, language, displayStatus, displayCustomer, displayWarehouse }: { sale: Sale; company: CompanyInfo; t: Translate; language: Language; displayStatus: (value: string) => string; displayCustomer: (sale: Sale) => string; displayWarehouse: (sale: Sale) => string }) {
   const balance = round4(sale.grandTotal - sale.paidAmount);
-  return <article className="sales-invoice-print"><header className="sales-invoice-company">{company.logo && <img src={company.logo} alt="" /> }<div><h1>{company.name}</h1>{company.phone && <p>{company.phone}</p>}{company.address && <p>{company.address}</p>}</div><strong>{t("CUSTOMER INVOICE")}</strong></header>
+  const displayedName = language === "ps" && company.namePa ? company.namePa : company.name || company.namePa;
+  const phoneNumbers = [company.phone, company.phone2].filter((phone): phone is string => Boolean(phone)).join(" · ");
+  return <article className="sales-invoice-print" dir={language === "ps" ? "rtl" : "ltr"}><header className="sales-invoice-company">{company.logo && <img src={company.logo} alt="" /> }<div><h1>{displayedName}</h1>{phoneNumbers && <p>{phoneNumbers}</p>}{company.address && <p>{company.address}</p>}</div><strong>{t("CUSTOMER INVOICE")}</strong></header>
     <dl className="sales-invoice-meta"><div><dt>{t("Invoice number")}</dt><dd>{sale.invoiceNumber || "—"}</dd></div><div><dt>{t("Sale number")}</dt><dd>{sale.saleNumber}</dd></div><div><dt>{t("Sale date")}</dt><dd>{formatSaleDate(sale.saleDate, language)}</dd></div><div><dt>{t("Customer")}</dt><dd>{displayCustomer(sale)}</dd></div>{sale.customerPhone && <div><dt>{t("Customer phone")}</dt><dd>{sale.customerPhone}</dd></div>}{sale.customerEmail && <div><dt>{t("Customer email")}</dt><dd>{sale.customerEmail}</dd></div>}{sale.customerAddress && <div><dt>{t("Customer address")}</dt><dd>{sale.customerAddress}</dd></div>}<div><dt>{t("Warehouse")}</dt><dd>{displayWarehouse(sale)}</dd></div><div><dt>{t("Currency")}</dt><dd>{sale.currency}</dd></div></dl>
     <div className="purchases-table-scroll"><table className="purchases-table sales-invoice-table"><thead><tr><th>#</th><th>{t("Product")}</th><th>{t("SKU")}</th><th>{t("Quantity")}</th><th>{t("Unit")}</th><th>{t("Unit price")}</th><th>{t("Discount")}</th><th>{t("Line total")}</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={item.id}><td>{new Intl.NumberFormat(language === "ps" ? "ps-AF" : "en-US").format(index + 1)}</td><td>{item.productName}</td><td>{item.sku || "—"}</td><td>{formatSaleQuantity(item.quantity, language)}</td><td>{item.unit || "—"}</td><td>{formatSaleCurrency(item.unitPrice, sale.currency, language)}</td><td>{formatSaleCurrency(item.discount, sale.currency, language)}</td><td>{formatSaleCurrency(item.lineTotal, sale.currency, language)}</td></tr>)}</tbody></table></div>
     <section className="sales-invoice-totals"><dl><div><dt>{t("Subtotal")}</dt><dd>{formatSaleCurrency(sale.subtotal, sale.currency, language)}</dd></div><div><dt>{t("Total discount")}</dt><dd>{formatSaleCurrency(sale.discount, sale.currency, language)}</dd></div><div className="sales-summary-grand"><dt>{t("Grand total")}</dt><dd>{formatSaleCurrency(sale.grandTotal, sale.currency, language)}</dd></div><div><dt>{t("Paid amount")}</dt><dd>{formatSaleCurrency(sale.paidAmount, sale.currency, language)}</dd></div><div><dt>{t("Remaining balance")}</dt><dd>{formatSaleCurrency(balance, sale.currency, language)}</dd></div><div><dt>{t("Payment status")}</dt><dd>{displayStatus(sale.paymentStatus)}</dd></div></dl></section>

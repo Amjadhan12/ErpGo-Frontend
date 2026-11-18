@@ -1574,7 +1574,7 @@ export default function Products() {
                       >
                       {isUpdatingProductStatus
                         ? t(productDetails.isActive ? "Deactivating…" : "Activating…")
-                        : t(productDetails.isActive ? "Deactivate" : "Reactivate")}
+                        : t(productDetails.isActive ? "Deactivate" : "Activate")}
                     </button>
                   </div>
                 </>
@@ -1754,7 +1754,7 @@ export default function Products() {
                           >
                             {categoryStatusUpdatingId === category.id
                               ? t(category.isActive ? "Deactivating…" : "Activating…")
-                              : t(category.isActive ? "Deactivate" : "Reactivate")}
+                              : t(category.isActive ? "Deactivate" : "Activate")}
                           </button>
                         </div>
                       ))}
@@ -1956,7 +1956,7 @@ export default function Products() {
                           >
                             {unitStatusUpdatingId === unit.id
                               ? t(unit.isActive ? "Deactivating…" : "Activating…")
-                              : t(unit.isActive ? "Deactivate" : "Reactivate")}
+                              : t(unit.isActive ? "Deactivate" : "Activate")}
                           </button>
                         </div>
                       ))}

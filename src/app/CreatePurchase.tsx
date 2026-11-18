@@ -523,7 +523,7 @@ export default function CreatePurchase() {
 
     setIsSaving(true)
     try {
-      await api.post('/api/purchases', {
+      const { data } = await api.post('/api/purchases', {
         purchase_number: values.purchaseNumber.trim(),
         business_partner_id: Number(values.supplierId),
         warehouse_id: Number(values.warehouseId),
@@ -546,7 +546,13 @@ export default function CreatePurchase() {
       })
       navigate('/secretary/purchases', {
         replace: true,
-        state: { purchaseCreated: true },
+        state: {
+          purchaseCreated: true,
+          purchaseId: typeof data === 'object' && data !== null && 'data' in data
+            && typeof (data as { data?: { id?: unknown } }).data?.id === 'number'
+            ? (data as { data: { id: number } }).data.id
+            : null,
+        },
       })
     } catch (error: unknown) {
       const result = getValidationErrors(error, lines, t, language)
