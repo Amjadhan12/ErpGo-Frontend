@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { getDeleteErrorMessage } from "@/app/InventoryShared";
 import { useLocale } from "@/lib/locale";
 import PartnerStatement from "./PartnerStatement";
 
@@ -27,6 +28,7 @@ interface Customer {
   taxNumber: string | null;
   notes: string | null;
   isActive: boolean;
+  hasOpeningBalances: boolean;
 }
 
 interface CustomerPage {
@@ -103,6 +105,7 @@ function parseCustomer(value: unknown): Customer {
     taxNumber: optionalText(value.tax_number),
     notes: optionalText(value.notes),
     isActive: value.is_active,
+    hasOpeningBalances: Array.isArray(value.opening_balances) && value.opening_balances.length > 0,
   };
 }
 
@@ -369,16 +372,27 @@ export default function Customers() {
 
   async function toggleCustomerStatus(customer: Customer) {
     if (isPartnerActionProcessing) return;
+    const nextActive = !customer.isActive;
+    if (!nextActive && !window.confirm(
+      `${t("Deactivate")} ${customer.name}? ${t("Existing financial history will be preserved and the linked customer login will be disabled.")}`,
+    )) return;
     setIsPartnerActionProcessing(true);
     setPartnerActionError(null);
+    setSuccess(null);
     try {
-      await api.patch(`/api/business-partners/${customer.id}`, {
-        is_active: !customer.isActive,
+      const { data } = await api.patch<unknown>(`/api/business-partners/${customer.id}`, {
+        is_active: nextActive,
       });
+      if (!isRecord(data) || !isRecord(data.data) || data.data.is_active !== nextActive) {
+        throw new Error("The customer status response did not confirm the requested status.");
+      }
+      setCustomers((current) => current && ({
+        ...current,
+        data: current.data.map((item) => item.id === customer.id ? { ...item, isActive: nextActive } : item),
+      }));
+      setCustomerDetails((current) => current?.id === customer.id ? { ...current, isActive: nextActive } : current);
       setSuccess(
-        customer.isActive
-          ? "Customer deactivated successfully."
-          : "Customer activated successfully.",
+        nextActive ? "Customer activated successfully." : "Customer deactivated successfully.",
       );
       setDetailRetry((current) => current + 1);
       setListRetry((current) => current + 1);
@@ -392,7 +406,7 @@ export default function Customers() {
   async function deleteCustomer(customer: Customer) {
     if (isPartnerActionProcessing) return;
     const confirmed = window.confirm(
-      `${t("Delete customer")} "${customer.name}"?\n\n${t("This partner will be archived from the active list. Historical financial records will be preserved.")}`,
+      `${t("Delete customer")} "${customer.name}"?\n\n${t("This partner will be archived from the active list. Historical financial records will be preserved. Partners with opening balances cannot be deleted; deactivate them instead.")}`,
     );
     if (!confirmed) return;
 
@@ -405,7 +419,7 @@ export default function Customers() {
       setPage(1);
       setListRetry((current) => current + 1);
     } catch (error: unknown) {
-      setPartnerActionError(getErrorMessage(error));
+      setPartnerActionError(getDeleteErrorMessage(error));
     } finally {
       setIsPartnerActionProcessing(false);
     }
@@ -446,6 +460,11 @@ export default function Customers() {
       {success && (
         <p className="purchase-success-message customers-success" role="status">
           {t(success)}
+        </p>
+      )}
+      {partnerActionError && selectedCustomerId === null && (
+        <p className="form-alert form-alert--error" role="alert">
+          {t(partnerActionError)}
         </p>
       )}
 
@@ -782,6 +801,16 @@ export default function Customers() {
                           <Pencil size={15} aria-hidden="true" />
                           <span>{t("Edit")}</span>
                         </button>
+                        <button
+                          className={`partner-table-status ${customer.isActive ? "partner-table-status--deactivate" : "partner-table-status--activate"}`}
+                          type="button"
+                          onClick={() => void toggleCustomerStatus(customer)}
+                          disabled={isPartnerActionProcessing}
+                          aria-label={`${t(customer.isActive ? "Deactivate" : "Activate")} ${customer.name}`}
+                        >
+                          <Power size={15} aria-hidden="true" />
+                          <span>{t(customer.isActive ? "Deactivate" : "Activate")}</span>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -947,15 +976,17 @@ export default function Customers() {
                       <Power size={15} aria-hidden="true" />
                       {t(customerDetails.isActive ? "Deactivate" : "Reactivate")}
                     </button>
-                    <button
-                      className="partner-delete-button"
-                      type="button"
-                      onClick={() => void deleteCustomer(customerDetails)}
-                      disabled={isPartnerActionProcessing}
-                    >
-                      <Trash2 size={15} aria-hidden="true" />
-                      {t("Delete")}
-                    </button>
+                    {customerDetails.hasOpeningBalances
+                      ? <p className="partner-delete-restriction" role="note">{t("Customers with opening balances cannot be deleted. Deactivate the customer instead; financial history is preserved.")}</p>
+                      : <button
+                        className="partner-delete-button"
+                        type="button"
+                        onClick={() => void deleteCustomer(customerDetails)}
+                        disabled={isPartnerActionProcessing}
+                      >
+                        <Trash2 size={15} aria-hidden="true" />
+                        {t("Delete")}
+                      </button>}
                   </div>
                 </>
               ) : null}

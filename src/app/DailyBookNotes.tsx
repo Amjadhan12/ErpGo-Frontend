@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Eye, LoaderCircle, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
-import { getErrorMessage, getValidationResult, isRecord, optionalText, parseId, parseLaravelPage, todayValue, type LaravelPage } from "@/app/InventoryShared";
+import { getDeleteErrorMessage, getErrorMessage, getValidationResult, isRecord, optionalText, parseId, parseLaravelPage, todayValue, type LaravelPage } from "@/app/InventoryShared";
 import { useLocale } from "@/lib/locale";
 
 interface DailyBookNote {
@@ -115,7 +115,7 @@ export default function DailyBookNotes() {
       setPage((current) => rows?.data.length === 1 ? Math.max(1, current - 1) : current);
       setRetry((current) => current + 1);
     } catch (error) {
-      setDeleteError(getErrorMessage(error));
+      setDeleteError(getDeleteErrorMessage(error));
     } finally {
       setDeletingId(null);
     }

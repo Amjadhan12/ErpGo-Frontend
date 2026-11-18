@@ -108,7 +108,16 @@ export default function ExpenseCategories() {
     if (!nextActive && !window.confirm(t("Deactivate “{category}”? Existing expenses will remain unchanged.").replace("{category}", category.name))) return;
     setStatusUpdating(category.id); setSuccess(null); setLoadError(null);
     try {
-      await api.patch(`/api/expense-categories/${category.id}`, { is_active: nextActive });
+      const { data } = await api.patch<unknown>(`/api/expense-categories/${category.id}`, { is_active: nextActive });
+      if (!isRecord(data) || !isRecord(data.data)) throw new Error("The expense category status response is incomplete.");
+      const updatedCategory = { ...parseCategory(data.data), expensesCount: category.expensesCount };
+      if (updatedCategory.id !== category.id || updatedCategory.active !== nextActive) {
+        throw new Error("The expense category status response did not confirm the requested status.");
+      }
+      setRows((current) => current && ({
+        ...current,
+        data: current.data.map((item) => item.id === updatedCategory.id ? updatedCategory : item),
+      }));
       setSuccess(t(nextActive ? "Expense category activated." : "Expense category deactivated."));
       setRetry((value) => value + 1);
     } catch (error) { setLoadError(localizeMessage(getErrorMessage(error), t, language)); }

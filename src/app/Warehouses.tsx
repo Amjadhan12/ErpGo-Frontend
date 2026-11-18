@@ -259,6 +259,7 @@ export default function Warehouses() {
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [statusActionError, setStatusActionError] = useState<string | null>(null);
   const [formMode, setFormMode] = useState<WarehouseFormMode | null>(null);
   const [form, setForm] = useState<WarehouseForm>(emptyForm);
   const [formFields, setFormFields] = useState<FieldErrors>({});
@@ -490,40 +491,47 @@ export default function Warehouses() {
     }
   }
 
-  async function changeWarehouseStatus(activate: boolean) {
+  async function changeWarehouseStatus(warehouse: Warehouse, activate: boolean) {
     if (
-      !warehouseDetails ||
-      warehouseDetails.isActive === activate ||
+      warehouse.isActive === activate ||
       isChangingStatus
     )
       return;
-    const confirmation = `${t(activate ? "Activate" : "Deactivate")} ${warehouseDetails.name}?${activate ? "" : ` ${t("Warehouses with stock cannot be deactivated.")}`}`;
+    const confirmation = `${t(activate ? "Activate" : "Deactivate")} ${warehouse.name}?${activate ? "" : ` ${t("Warehouses with stock cannot be deactivated.")}`}`;
     if (!window.confirm(confirmation)) {
       return;
     }
     setIsChangingStatus(true);
     setDetailError(null);
+    setStatusActionError(null);
     try {
       const { data } = activate
         ? await api.put<unknown>(
-            `/api/warehouses/${warehouseDetails.id}`,
+            `/api/warehouses/${warehouse.id}`,
             {
-              name: warehouseDetails.name,
-              location: warehouseDetails.location,
-              description: warehouseDetails.description,
+              name: warehouse.name,
+              location: warehouse.location,
+              description: warehouse.description,
               is_active: true,
             },
           )
         : await api.patch<unknown>(
-            `/api/warehouses/${warehouseDetails.id}/deactivate`,
+            `/api/warehouses/${warehouse.id}/deactivate`,
           );
       if (!isRecord(data) || !("data" in data))
         throw new Error("The warehouse status response was incomplete.");
-          const updatedWarehouse = parseWarehouse(data.data);
-          setWarehouseDetails({
-            ...updatedWarehouse,
-            inventoryBalanceRecords: warehouseDetails.inventoryBalanceRecords,
-          });
+      const updatedWarehouse = parseWarehouse(data.data);
+      if (updatedWarehouse.id !== warehouse.id || updatedWarehouse.isActive !== activate)
+        throw new Error("The warehouse status response did not confirm the requested status.");
+      setWarehouseDetails((current) => current?.id === updatedWarehouse.id
+        ? { ...updatedWarehouse, inventoryBalanceRecords: current.inventoryBalanceRecords }
+        : current);
+      setWarehouses((current) => current && ({
+        ...current,
+        data: current.data.map((item) => item.id === updatedWarehouse.id
+          ? { ...updatedWarehouse, inventoryBalanceRecords: item.inventoryBalanceRecords }
+          : item),
+      }));
       setSuccess(
         activate
           ? "Warehouse activated successfully."
@@ -532,6 +540,7 @@ export default function Warehouses() {
       setListRetry((current) => current + 1);
     } catch (error: unknown) {
       setDetailError(getErrorMessage(error));
+      setStatusActionError(getErrorMessage(error));
     } finally {
       setIsChangingStatus(false);
     }
@@ -581,6 +590,11 @@ export default function Warehouses() {
           role="status"
         >
           {t(success)}
+        </p>
+      )}
+      {statusActionError && (
+        <p className="form-alert form-alert--error" role="alert">
+          {t(statusActionError)}
         </p>
       )}
 
@@ -749,6 +763,16 @@ export default function Warehouses() {
                         >
                           <Eye size={15} aria-hidden="true" />
                           <span>{t("Details")}</span>
+                        </button>
+                        <button
+                          className={`warehouse-status-action ${warehouse.isActive ? "warehouse-status-action--deactivate" : "warehouse-status-action--activate"}`}
+                          type="button"
+                          onClick={() => void changeWarehouseStatus(warehouse, !warehouse.isActive)}
+                          disabled={isChangingStatus}
+                        >
+                          {isChangingStatus
+                            ? t(warehouse.isActive ? "Deactivating…" : "Activating…")
+                            : t(warehouse.isActive ? "Deactivate" : "Activate")}
                         </button>
                       </td>
                     </tr>
@@ -924,7 +948,7 @@ export default function Warehouses() {
                       className={`warehouse-status-action ${warehouseDetails.isActive ? "warehouse-status-action--deactivate" : "warehouse-status-action--activate"}`}
                       type="button"
                       onClick={() =>
-                        void changeWarehouseStatus(!warehouseDetails.isActive)
+                        void changeWarehouseStatus(warehouseDetails, !warehouseDetails.isActive)
                       }
                       disabled={isChangingStatus}
                     >

@@ -316,6 +316,7 @@ export default function Products() {
   const [detailRetry, setDetailRetry] = useState(0);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isUpdatingProductStatus, setIsUpdatingProductStatus] = useState(false);
+  const [productStatusError, setProductStatusError] = useState<string | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [categoryFormMode, setCategoryFormMode] = useState<
     "create" | "edit" | null
@@ -585,42 +586,50 @@ export default function Products() {
     }
   }
 
-  async function updateProductStatus(isActive: boolean) {
-    if (!productDetails || isUpdatingProductStatus || productDetails.isActive === isActive) return;
+  async function updateProductStatus(product: Product, isActive: boolean) {
+    if (isUpdatingProductStatus || product.isActive === isActive) return;
     if (!isActive && !window.confirm(
-      `${t("Deactivate")} ${productDetails.name}? ${t("This will make it unavailable in new transactions.")}`,
+      `${t("Deactivate")} ${product.name}? ${t("This will make it unavailable in new transactions.")}`,
     )) {
       return;
     }
     setIsUpdatingProductStatus(true);
     setDetailError(null);
+    setProductStatusError(null);
+    setDetailSuccess(null);
     try {
       const payload: Record<string, string | number | boolean | null> = {
-        product_category_id: productDetails.productCategoryId,
-        sku: productDetails.sku,
-        name: productDetails.name,
-        unit: productDetails.unit,
-        description: productDetails.description,
-        minimum_stock: productDetails.minimumStock,
-        is_active: isActive,
+        product_category_id: product.productCategoryId,
+        sku: product.sku,
+        name: product.name,
+        unit: product.unit,
+        description: product.description,
+        minimum_stock: product.minimumStock,
+        is_active: true,
       };
-      if (productDetails.productType !== null) {
-        payload.product_type = productDetails.productType;
+      if (product.productType !== null) {
+        payload.product_type = product.productType;
       }
-      const { data } = await api.put<unknown>(
-        `/api/products/${productDetails.id}`,
-        payload,
-      );
+      const { data } = isActive
+        ? await api.put<unknown>(`/api/products/${product.id}`, payload)
+        : await api.patch<unknown>(`/api/products/${product.id}/deactivate`);
       if (!isRecord(data) || !("data" in data))
         throw new Error("The product status response was incomplete.");
       const updatedProduct = parseProduct(data.data);
-      setProductDetails(updatedProduct);
+      if (updatedProduct.id !== product.id || updatedProduct.isActive !== isActive)
+        throw new Error("The product status response did not confirm the requested status.");
+      setProducts((current) => current && ({
+        ...current,
+        data: current.data.map((item) => item.id === updatedProduct.id ? updatedProduct : item),
+      }));
+      setProductDetails((current) => current?.id === updatedProduct.id ? updatedProduct : current);
       const message = isActive ? "Product activated successfully." : "Product deactivated successfully.";
       setSuccess(message);
-      setDetailSuccess(message);
+      if (productDetails?.id === product.id) setDetailSuccess(message);
       setListRetry((current) => current + 1);
     } catch (error: unknown) {
       setDetailError(getErrorMessage(error));
+      setProductStatusError(getErrorMessage(error));
     } finally {
       setIsUpdatingProductStatus(false);
     }
@@ -749,15 +758,20 @@ export default function Products() {
     setCategoryError(null);
     setCategorySuccess(null);
     try {
-      const { data } = await api.put<unknown>(`/api/product-categories/${category.id}`, {
-        name: category.name,
-        description: category.description,
-        is_active: isActive,
-      });
+      const { data } = isActive
+        ? await api.put<unknown>(`/api/product-categories/${category.id}`, {
+            name: category.name,
+            description: category.description,
+            is_active: true,
+          })
+        : await api.patch<unknown>(`/api/product-categories/${category.id}/deactivate`);
       if (!isRecord(data) || !("data" in data)) {
         throw new Error("The category status response was incomplete.");
       }
       const updatedCategory = parseCategory(data.data);
+      if (updatedCategory.id !== category.id || updatedCategory.isActive !== isActive) {
+        throw new Error("The category status response did not confirm the requested status.");
+      }
       setCategories((current) => current.map((item) =>
         item.id === updatedCategory.id ? updatedCategory : item,
       ));
@@ -906,16 +920,21 @@ export default function Products() {
     setUnitError(null);
     setUnitSuccess(null);
     try {
-      const { data } = await api.put<unknown>(`/api/units/${unit.id}`, {
-        name: unit.name,
-        short_name: unit.shortName,
-        description: unit.description,
-        is_active: isActive,
-      });
+      const { data } = isActive
+        ? await api.put<unknown>(`/api/units/${unit.id}`, {
+            name: unit.name,
+            short_name: unit.shortName,
+            description: unit.description,
+            is_active: true,
+          })
+        : await api.patch<unknown>(`/api/units/${unit.id}/deactivate`);
       if (!isRecord(data) || !("data" in data)) {
         throw new Error("The unit status response was incomplete.");
       }
       const updatedUnit = parseUnit(data.data);
+      if (updatedUnit.id !== unit.id || updatedUnit.isActive !== isActive) {
+        throw new Error("The unit status response did not confirm the requested status.");
+      }
       setUnits((current) => current.map((item) =>
         item.id === updatedUnit.id ? updatedUnit : item,
       ));
@@ -988,6 +1007,11 @@ export default function Products() {
       {success && (
         <p className="purchase-success-message products-success" role="status">
           {t(success)}
+        </p>
+      )}
+      {productStatusError && (
+        <p className="form-alert form-alert--error" role="alert">
+          {t(productStatusError)}
         </p>
       )}
 
@@ -1419,6 +1443,16 @@ export default function Products() {
                           <Eye size={15} aria-hidden="true" />
                           <span>{t("Details")}</span>
                         </button>
+                        <button
+                          className={`product-status-action ${product.isActive ? "product-status-action--deactivate" : "product-status-action--activate"}`}
+                          type="button"
+                          onClick={() => void updateProductStatus(product, !product.isActive)}
+                          disabled={isUpdatingProductStatus}
+                        >
+                          {isUpdatingProductStatus
+                            ? t(product.isActive ? "Deactivating…" : "Activating…")
+                            : t(product.isActive ? "Deactivate" : "Activate")}
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1569,7 +1603,7 @@ export default function Products() {
                       <button
                       className={productDetails.isActive ? "product-deactivate-button" : "product-activate-button"}
                         type="button"
-                      onClick={() => void updateProductStatus(!productDetails.isActive)}
+                      onClick={() => void updateProductStatus(productDetails, !productDetails.isActive)}
                       disabled={isUpdatingProductStatus}
                       >
                       {isUpdatingProductStatus

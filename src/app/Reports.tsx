@@ -179,7 +179,7 @@ function SectionState<T>({ report, children }: { report: ReportState<T>; childre
   if (!report.data) return <div className="reports-state">{t("No report data available.")}</div>;
   return <>{children(report.data)}</>;
 }
-const chartColors = ["#0891b2", "#0e7490", "#22d3ee", "#155e75", "#67e8f9", "#164e63", "#a5f3fc"];
+const chartColors = ["#0f766e", "#0369a1", "#4f46e5", "#0e7490", "#475569", "#1d4ed8", "#3f6212"];
 
 export default function Reports() {
   const { t, language, direction } = useLocale();
@@ -304,14 +304,17 @@ export default function Reports() {
 
     <nav className="reports-navigation" aria-label={t("Report sections")}>
       {[
-        ["financial-summary", "Financial summary"],
-        ["profit-loss", "Profit & Loss"],
-        ["cash-flow", "Cash flow"],
-        ["inventory-report", "Inventory"],
-        ["partner-balances", "Partner balances"],
-        ["partner-aging", "Partner aging"],
-        ["purchase-summary", "Purchase summary"],
-      ].map(([id, label]) => <a key={id} href={`#${id}`}>{t(label)}</a>)}
+        ["#financial-summary", "Financial summary"],
+        ["#profit-loss", "Profit & Loss"],
+        ["#cash-flow", "Cash flow"],
+        ["#inventory-report", "Inventory"],
+        ["#partner-balances", "Partner balances"],
+        ["#partner-aging", "Partner aging"],
+        ["#purchase-summary", "Purchase summary"],
+        ["/secretary/cash-book", "Cash Book"],
+        ["/secretary/inventory", "Inventory & movements"],
+        ["/secretary/financial-accounts", "Financial Account Ledger"],
+      ].map(([href, label]) => <a key={href} href={href}>{t(label)}</a>)}
     </nav>
 
     <section className="reports-section" id="financial-summary">
@@ -355,14 +358,14 @@ export default function Reports() {
             ];
             return <div className="reports-chart-card" key={code}>
               <h3>{code} {t("balances")}</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={chartData} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 13 }} interval={0} />
-                  <YAxis tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
+              <ResponsiveContainer width="100%" height={245}>
+                <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 22, left: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 12 }} />
+                  <YAxis type="category" dataKey="name" width={112} tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value) => money(Number(value), code)} />
-                  <Legend />
-                  <Bar dataKey="amount" name={`${t("Amount")} (${code})`} radius={[5, 5, 0, 0]}>
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 6 }} />
+                  <Bar dataKey="amount" name={`${t("Amount")} (${code})`} radius={[0, 5, 5, 0]}>
                     {chartData.map((item) => <Cell key={item.name} fill={financialChartColor(item.amount, item.name === t("Receivables") ? "receivable" : item.name === t("Payables") ? "payable" : "balance")} />)}
                   </Bar>
                 </BarChart>
@@ -407,14 +410,14 @@ export default function Reports() {
           </div>
           <div className="reports-chart-card reports-chart-card--wide">
             <h3>{t("Profit & loss components ·")} {data.currency}</h3>
-            <ResponsiveContainer width="100%" height={270}>
-              <BarChart data={chartData} margin={{ top: 10, right: 15, left: 5, bottom: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 13 }} />
-                <YAxis tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 22, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 12 }} />
+                <YAxis type="category" dataKey="name" width={142} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(value) => money(Number(value), data.currency)} />
-                <Legend />
-                <Bar dataKey="amount" name={data.currency} radius={[5, 5, 0, 0]}>
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 6 }} />
+                <Bar dataKey="amount" name={data.currency} radius={[0, 5, 5, 0]}>
                   {chartData.map((item) => <Cell key={item.name} fill={financialChartColor(item.amount, item.kind)} />)}
                 </Bar>
               </BarChart>
@@ -452,14 +455,14 @@ export default function Reports() {
               <span>{t("Opening")} <strong className={financialValueClass(row.opening, "balance")}>{money(row.opening, row.currency)}</strong></span>
               <span>{t("Closing")} <strong className={financialValueClass(row.closing, "balance")}>{money(row.closing, row.currency)}</strong></span>
             </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 13 }} />
-                <YAxis tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
+            <ResponsiveContainer width="100%" height={245}>
+              <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 22, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 12 }} />
+                <YAxis type="category" dataKey="name" width={118} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(value) => money(Number(value), row.currency)} />
-                <Legend />
-                <Bar dataKey="amount" name={row.currency} radius={[5, 5, 0, 0]}>
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 6 }} />
+                <Bar dataKey="amount" name={row.currency} radius={[0, 5, 5, 0]}>
                   {chartData.map((item) => <Cell key={item.name} fill={financialChartColor(item.amount, item.kind)} />)}
                 </Bar>
               </BarChart>
@@ -492,10 +495,10 @@ export default function Reports() {
         {warehouseValues.length > 0 && <div className="reports-chart-grid reports-inventory-charts">
           <div className="reports-chart-card">
             <h3>{t("Stock value by warehouse · AFN")}</h3>
-            <ResponsiveContainer width="100%" height={270}>
-              <PieChart><Pie data={warehouseValues} dataKey="value" nameKey="warehouse" cx="50%" cy="50%" outerRadius="72%" label={({ name }) => name}>
+            <ResponsiveContainer width="100%" height={280}>
+            <PieChart><Pie data={warehouseValues} dataKey="value" nameKey="warehouse" cx="50%" cy="48%" innerRadius="48%" outerRadius="72%">
                 {warehouseValues.map((item, index) => <Cell key={item.warehouse} fill={chartColors[index % chartColors.length]} />)}
-              </Pie><Tooltip formatter={(value) => money(Number(value), "AFN")} /><Legend /></PieChart>
+            </Pie><Tooltip formatter={(value) => money(Number(value), "AFN")} /><Legend wrapperStyle={{ fontSize: 12 }} /></PieChart>
             </ResponsiveContainer>
           </div>
           <div className="reports-chart-card">
@@ -504,7 +507,7 @@ export default function Reports() {
               <BarChart data={warehouseValues} layout="vertical" margin={{ top: 8, right: 22, left: 18, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
-                <YAxis type="category" dataKey="warehouse" width={100} tick={{ fontSize: 13 }} />
+                <YAxis type="category" dataKey="warehouse" width={125} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(value) => money(Number(value), "AFN")} />
                 <Bar dataKey="value" name={t("Stock value (AFN)")} fill="#0891b2" radius={[0, 5, 5, 0]} />
               </BarChart>
@@ -516,10 +519,11 @@ export default function Reports() {
             <thead><tr><th>{t("Product")}</th><th>{t("Warehouse")}</th><th>{t("Quantity")}</th><th>{t("Stock value (AFN)")}</th><th>{t("Status")}</th></tr></thead>
             <tbody>{data.rows.map((row) => <tr key={row.id}>
               <td><strong>{row.product}</strong>{row.sku && <small>{row.sku}</small>}</td>
-              <td>{row.warehouse}</td><td>{formatQuantity(row.quantity)} {row.unit}</td>
-              <td>{money(row.valueAfn, "AFN")}</td>
+              <td>{row.warehouse}</td><td className="reports-numeric">{formatQuantity(row.quantity)} {row.unit}</td>
+              <td className="reports-numeric">{money(row.valueAfn, "AFN")}</td>
               <td><span className={`reports-stock-status reports-stock-status--${row.status}`}>{row.status.replaceAll("_", " ")}</span></td>
             </tr>)}</tbody>
+            <tfoot><tr><td colSpan={3}><strong>{t("Total stock value")}</strong></td><td className="reports-numeric"><strong>{money(data.totalValue, "AFN")}</strong></td><td /></tr></tfoot>
           </table></div>
           : <div className="reports-empty">{t("No inventory records match this warehouse.")}</div>}
       </>}</SectionState>
@@ -558,15 +562,15 @@ export default function Reports() {
                   <XAxis type="number" tickFormatter={moneyTick} tick={{ fontSize: 13 }} />
                   <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 13 }} />
                   <Tooltip formatter={(value, _name, item) => [`${money(Number(value), partnerCurrency)} · ${item.payload.type}`, t("Balance")]} />
-                  <Legend />
                   <Bar dataKey="balance" name={`${t("Balance")} (${partnerCurrency})`} radius={[0, 5, 5, 0]}>
-                    {visiblePartners.map((item) => <Cell key={item.id} fill={financialChartColor(item.balance, "balance")} />)}
+                    {visiblePartners.map((item) => <Cell key={item.id} fill={financialChartColor(item.balance, item.type === "Customer" ? "receivable" : "payable")} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
               <div className="reports-partner-legend">
-                <span>{t("Positive: customer owes us / we owe supplier")}</span>
-                <span>{t("Negative: customer credit / supplier owes us")}</span>
+                <span className="reports-partner-legend__receivable">{t("Customer receivables")}</span>
+                <span className="reports-partner-legend__payable">{t("Supplier payables")}</span>
+                <span>{t("Positive: customer owes us / we owe supplier · Negative: customer credit / supplier owes us")}</span>
               </div>
             </div>
             : <div className="reports-empty">{t("No partner has a")} {partnerCurrency} {t("balance.")}</div>}
@@ -622,7 +626,7 @@ export default function Reports() {
                 <YAxis allowDecimals={false} />
                 <Tooltip formatter={(value) => [Number(value).toLocaleString(), t("Purchases")]} />
                 <Legend />
-                <Bar dataKey="count" name={t("Purchase count")} fill="#7c3aed" radius={[5, 5, 0, 0]} />
+                <Bar dataKey="count" name={t("Purchase count")} fill="#c2410c" radius={[5, 5, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import axios from "axios";
 import { Download, Eye, FileText, LoaderCircle, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
 import { api } from "@/lib/api";
-import { getErrorMessage, getValidationResult, isRecord, optionalText, parseId, parseLaravelPage, type LaravelPage } from "@/app/InventoryShared";
+import { getDeleteErrorMessage, getErrorMessage, getValidationResult, isRecord, optionalText, parseId, parseLaravelPage, type LaravelPage } from "@/app/InventoryShared";
 import { useLocale } from "@/lib/locale";
 
 interface DocumentRecord {
@@ -172,6 +172,7 @@ export default function Documents() {
   }
 
   async function deleteDocument(document: DocumentRecord) {
+    if (busyId !== null) return;
     if (!window.confirm(t("Delete “{title}” and its uploaded file? This cannot be undone.").replace("{title}", document.title))) return;
     setBusyId(document.id); setActionError(null);
     try {
@@ -180,7 +181,7 @@ export default function Documents() {
       if (detail?.id === document.id) setDetail(null);
       if (page?.data.length === 1 && pageNumber > 1) setPageNumber((value) => value - 1);
       else setReload((value) => value + 1);
-    } catch (error: unknown) { setActionError(getErrorMessage(error)); }
+    } catch (error: unknown) { setActionError(getDeleteErrorMessage(error)); }
     finally { setBusyId(null); }
   }
 

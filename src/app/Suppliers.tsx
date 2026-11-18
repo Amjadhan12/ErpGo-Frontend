@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { getDeleteErrorMessage } from "@/app/InventoryShared";
 import { useLocale } from "@/lib/locale";
 import PartnerStatement from "./PartnerStatement";
 
@@ -27,6 +28,7 @@ interface Supplier {
   taxNumber: string | null;
   notes: string | null;
   isActive: boolean;
+  hasOpeningBalances: boolean;
 }
 
 interface SupplierPage {
@@ -103,6 +105,7 @@ function parseSupplier(value: unknown): Supplier {
     taxNumber: optionalText(value.tax_number),
     notes: optionalText(value.notes),
     isActive: value.is_active,
+    hasOpeningBalances: Array.isArray(value.opening_balances) && value.opening_balances.length > 0,
   };
 }
 
@@ -369,16 +372,27 @@ export default function Suppliers() {
 
   async function toggleSupplierStatus(supplier: Supplier) {
     if (isPartnerActionProcessing) return;
+    const nextActive = !supplier.isActive;
+    if (!nextActive && !window.confirm(
+      `${t("Deactivate")} ${supplier.name}? ${t("Existing financial history will be preserved and the linked supplier login will be disabled.")}`,
+    )) return;
     setIsPartnerActionProcessing(true);
     setPartnerActionError(null);
+    setSuccess(null);
     try {
-      await api.patch(`/api/business-partners/${supplier.id}`, {
-        is_active: !supplier.isActive,
+      const { data } = await api.patch<unknown>(`/api/business-partners/${supplier.id}`, {
+        is_active: nextActive,
       });
+      if (!isRecord(data) || !isRecord(data.data) || data.data.is_active !== nextActive) {
+        throw new Error("The supplier status response did not confirm the requested status.");
+      }
+      setSuppliers((current) => current && ({
+        ...current,
+        data: current.data.map((item) => item.id === supplier.id ? { ...item, isActive: nextActive } : item),
+      }));
+      setSupplierDetails((current) => current?.id === supplier.id ? { ...current, isActive: nextActive } : current);
       setSuccess(
-        supplier.isActive
-          ? "Supplier deactivated successfully."
-          : "Supplier activated successfully.",
+        nextActive ? "Supplier activated successfully." : "Supplier deactivated successfully.",
       );
       setDetailRetry((current) => current + 1);
       setListRetry((current) => current + 1);
@@ -392,7 +406,7 @@ export default function Suppliers() {
   async function deleteSupplier(supplier: Supplier) {
     if (isPartnerActionProcessing) return;
     const confirmed = window.confirm(
-      `${t("Delete supplier")} "${supplier.name}"?\n\n${t("This partner will be archived from the active list. Historical financial records will be preserved.")}`,
+      `${t("Delete supplier")} "${supplier.name}"?\n\n${t("This partner will be archived from the active list. Historical financial records will be preserved. Partners with opening balances cannot be deleted; deactivate them instead.")}`,
     );
     if (!confirmed) return;
 
@@ -405,7 +419,7 @@ export default function Suppliers() {
       setPage(1);
       setListRetry((current) => current + 1);
     } catch (error: unknown) {
-      setPartnerActionError(getErrorMessage(error));
+      setPartnerActionError(getDeleteErrorMessage(error));
     } finally {
       setIsPartnerActionProcessing(false);
     }
@@ -446,6 +460,11 @@ export default function Suppliers() {
       {success && (
         <p className="purchase-success-message suppliers-success" role="status">
           {t(success)}
+        </p>
+      )}
+      {partnerActionError && selectedSupplierId === null && (
+        <p className="form-alert form-alert--error" role="alert">
+          {t(partnerActionError)}
         </p>
       )}
 
@@ -782,6 +801,16 @@ export default function Suppliers() {
                           <Pencil size={15} aria-hidden="true" />
                           <span>{t("Edit")}</span>
                         </button>
+                        <button
+                          className={`partner-table-status ${supplier.isActive ? "partner-table-status--deactivate" : "partner-table-status--activate"}`}
+                          type="button"
+                          onClick={() => void toggleSupplierStatus(supplier)}
+                          disabled={isPartnerActionProcessing}
+                          aria-label={`${t(supplier.isActive ? "Deactivate" : "Activate")} ${supplier.name}`}
+                        >
+                          <Power size={15} aria-hidden="true" />
+                          <span>{t(supplier.isActive ? "Deactivate" : "Activate")}</span>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -947,15 +976,17 @@ export default function Suppliers() {
                       <Power size={15} aria-hidden="true" />
                       {t(supplierDetails.isActive ? "Deactivate" : "Reactivate")}
                     </button>
-                    <button
-                      className="partner-delete-button"
-                      type="button"
-                      onClick={() => void deleteSupplier(supplierDetails)}
-                      disabled={isPartnerActionProcessing}
-                    >
-                      <Trash2 size={15} aria-hidden="true" />
-                      {t("Delete")}
-                    </button>
+                    {supplierDetails.hasOpeningBalances
+                      ? <p className="partner-delete-restriction" role="note">{t("Suppliers with opening balances cannot be deleted. Deactivate the supplier instead; financial history is preserved.")}</p>
+                      : <button
+                        className="partner-delete-button"
+                        type="button"
+                        onClick={() => void deleteSupplier(supplierDetails)}
+                        disabled={isPartnerActionProcessing}
+                      >
+                        <Trash2 size={15} aria-hidden="true" />
+                        {t("Delete")}
+                      </button>}
                   </div>
                 </>
               ) : null}

@@ -72,6 +72,18 @@ export function getErrorMessage(error: unknown): string {
     : "The inventory request could not be completed.";
 }
 
+export function getDeleteErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error) && error.response) {
+    const body: unknown = error.response.data;
+    if (isRecord(body) && typeof body.message === "string") return body.message;
+    if (error.response.status === 403) return "You do not have permission to delete this record.";
+    if (error.response.status === 404) return "This record was not found or has already been removed.";
+    if (error.response.status === 409) return "This record cannot be deleted while it is referenced by other records.";
+    if (error.response.status === 422) return "This record cannot be deleted because it violates a business rule.";
+  }
+  return getErrorMessage(error);
+}
+
 export function getValidationResult(error: unknown): {
   fields: InventoryFieldErrors;
   message: string;

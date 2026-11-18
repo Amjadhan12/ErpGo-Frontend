@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { CheckCircle2, ImagePlus, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 import { api, getPublicStorageUrl } from "@/lib/api";
-import { getErrorMessage, getValidationResult, isRecord, optionalText, parseId } from "@/app/InventoryShared";
+import { getDeleteErrorMessage, getErrorMessage, getValidationResult, isRecord, optionalText, parseId } from "@/app/InventoryShared";
 import { useAuth } from "@/auth/AuthContext";
 import { useLocale } from "@/lib/locale";
 
@@ -168,7 +168,7 @@ export default function SettingsPage() {
       }
       setSuccess(data.message);
     } catch (error: unknown) {
-      setFormError(getErrorMessage(error));
+      setFormError(getDeleteErrorMessage(error));
     } finally {
       setDeleting(false);
     }
